@@ -1,4 +1,39 @@
-document.addEventListener('DOMContentLoaded', () => {
+// Criamos uma Promise que será resolvida quando a API do Google Maps carregar.
+const googleMapsApiReady = new Promise(resolve => {
+    // A função initMap agora está no escopo global e sua única responsabilidade
+    // é sinalizar que a API está pronta, resolvendo a Promise.
+    window.initMap = () => resolve();
+});
+
+// Flag para garantir que o script seja solicitado apenas uma vez.
+let isGoogleMapsScriptRequested = false;
+
+/**
+ * Carrega o script da API do Google Maps sob demanda.
+ * A função é idempotente, ou seja, só adiciona o script uma vez.
+ */
+function loadGoogleMapsScript() {
+    if (isGoogleMapsScriptRequested) {
+        return;
+    }
+    isGoogleMapsScriptRequested = true;
+
+    // VERIFICAÇÃO DE SEGURANÇA: Garante que a chave de API foi definida.
+    if (typeof GOOGLE_MAPS_API_KEY === 'undefined' || !GOOGLE_MAPS_API_KEY) {
+        console.error("Chave da API do Google Maps não foi encontrada. Verifique se o arquivo 'js/config.js' existe e está configurado corretamente.");
+        showToast('Configuração da API do Google Maps ausente.', 'error');
+        // Impede a criação da tag script sem a chave.
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=marker`;
+    script.async = true;
+    script.onerror = () => showToast('Falha ao carregar a API do Google Maps.', 'error');
+    document.head.appendChild(script);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
 
     // =================================================================================
     // DADOS MOCKADOS (Simulação de um banco de dados)
@@ -185,16 +220,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let radiusCircle = null;
     let isMapInitialized = false;
 
-    window.initMap = function() {
-        if (!document.getElementById("map") || !isMapInitialized) return;
-        
+    // Esta função agora é chamada internamente, depois de garantirmos que a API e o DOM estão prontos.
+    async function initializeMap() {
+        if (map) return; // Evita reinicialização
+
+        // Espera a API do Google Maps estar pronta antes de prosseguir.
+        await googleMapsApiReady;
+
         const sumare = { lat: -22.8219, lng: -47.2662 };
         map = new google.maps.Map(document.getElementById("map"), {
             zoom: 12,
             center: sumare,
-            mapId: "MOTIVE_MAP_ID", 
+            mapId: "MOTIVE_MAP_ID",
         });
         geocoder = new google.maps.Geocoder();
+        isMapInitialized = true;
         
         renderPropertiesOnMap(properties);
         renderPropertiesList(properties);
@@ -774,11 +814,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (viewName === 'map') {
             mainContent.classList.remove('p-6');
-            isMapInitialized = true;
-            initMap();
+            // Carrega o script da API (se ainda não foi carregado)
+            loadGoogleMapsScript();
+            // Chama a inicialização do mapa (que aguardará a API estar pronta)
+            initializeMap();
         } else {
             mainContent.classList.add('p-6');
-            isMapInitialized = false;
         }
         
         if (viewName === 'dashboard') renderDashboard();

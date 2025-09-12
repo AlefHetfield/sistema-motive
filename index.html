@@ -617,14 +617,6 @@
     <!-- Scripts -->
     <script src="js/config.js"></script> <!-- Carrega a chave de API primeiro -->
     <script src="js/main.js" defer></script>
-    <script>
-        // Carrega o script do Google Maps dinamicamente com a chave do config.js
-        var script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=marker`;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-    </script>
 
 </body>
 </html>
