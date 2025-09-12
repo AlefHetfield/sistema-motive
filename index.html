@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Motive | CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Novas bibliotecas para o Editor de PDF -->
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="antialiased">
+
+    <!-- Container principal da aplicação -->
+    <div id="app" class="h-screen flex flex-col">
+
+        <!-- Tela de Login (Visível inicialmente) -->
+        <div id="login-page" class="flex items-center justify-center h-full bg-gray-100">
+            <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
+                <div class="text-center">
+                    <img src="assets/logo-dark.png" alt="Logo Motive" class="w-48 mx-auto mb-4">
+                    <h2 class="text-2xl font-bold text-secondary">Acesse o Sistema</h2>
+                    <p class="text-text-secondary">Bem-vindo(a) de volta!</p>
+                </div>
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label for="email" class="text-sm font-medium text-gray-700">Email</label>
+                        <input id="email" name="email" type="email" autocomplete="email" required value="corretor@motive.com" class="form-input w-full px-3 py-2 mt-1 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="password" class="text-sm font-medium text-gray-700">Senha</label>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required value="123456" class="form-input w-full px-3 py-2 mt-1 rounded-md shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary">
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- View: Menu de Aplicativos (Oculto inicialmente) -->
+        <div id="app-menu-view" class="hidden h-full flex flex-col items-center justify-center p-8 fade-in">
+            <h1 class="text-3xl font-bold text-secondary mb-2">Bem-vindo(a) ao Sistema Motive</h1>
+            <p class="text-text-secondary mb-10">Selecione uma ferramenta para começar</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+                
+                <!-- Card CRM -->
+                <div id="app-card-crm" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">CRM de Clientes</h3>
+                    <p class="text-text-secondary text-sm mt-2">Gerencie clientes, processos, atividades e funil de vendas.</p>
+                </div>
+
+                <!-- Card Mapa -->
+                <div id="app-card-map" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">Mapa de Imóveis</h3>
+                    <p class="text-text-secondary text-sm mt-2">Cadastre e visualize a localização dos seus imóveis no mapa.</p>
+                </div>
+
+                <!-- Card Editor de PDF -->
+                <div id="app-card-pdf" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">Editor de PDF</h3>
+                    <p class="text-text-secondary text-sm mt-2">Junte, organize e salve documentos PDF com facilidade.</p>
+                </div>
+
+                <!-- Card Buscador de CEP -->
+                <div id="app-card-cep" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">Buscador de CEP</h3>
+                    <p class="text-text-secondary text-sm mt-2">Encontre endereços completos a partir de um CEP ou vice-versa.</p>
+                </div>
+                
+                <!-- Card Configurações -->
+                <div id="app-card-settings" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">Configurações</h3>
+                    <p class="text-text-secondary text-sm mt-2">Gerencie usuários, permissões e outras configurações do sistema.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estrutura Principal do App (Oculta inicialmente) -->
+        <div id="app-structure" class="hidden h-screen w-full flex">
+            <!-- Sidebar (Menu Lateral) -->
+            <aside class="w-64 bg-secondary text-white flex flex-col">
+                <div class="h-16 flex items-center justify-center border-b border-gray-700 px-4">
+                     <img src="assets/logo-light.png" alt="Logo Motive" class="h-10">
+                </div>
+                <nav class="flex-1 p-4 space-y-2">
+                    <a href="#" id="nav-app-menu" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700 text-gray-300">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Menu Principal
+                    </a>
+                    <hr class="border-gray-700 my-2">
+                    <a href="#" id="nav-dashboard" class="flex items-center px-4 py-2 rounded-lg bg-gray-700 text-white">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        Dashboard
+                    </a>
+                    <a href="#" id="nav-clients" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        Clientes
+                    </a>
+                    <a href="#" id="nav-map" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Mapa de Imóveis
+                    </a>
+                    <a href="#" id="nav-pdf" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Editor de PDF
+                    </a>
+                     <a href="#" id="nav-cep" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        Buscador de CEP
+                    </a>
+                     <a href="#" id="nav-settings" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Configurações
+                    </a>
+                </nav>
+            </aside>
+            
+            <!-- Conteúdo Principal -->
+            <main class="flex-1 flex flex-col h-full overflow-hidden">
+                <header class="h-16 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
+                    <h1 id="page-title" class="text-xl font-semibold text-secondary">Dashboard</h1>
+                    <div class="text-right">
+                        <p class="font-semibold text-sm text-secondary">Carlos Silva</p>
+                        <p class="text-xs text-text-secondary">corretor@motive.com</p>
+                    </div>
+                </header>
+                
+                <div id="main-content" class="flex-1 overflow-y-auto no-scrollbar">
+                    
+                    <!-- View: Dashboard -->
+                    <div id="dashboard-view" class="hidden fade-in space-y-8">
+                        <!-- Seção de Métricas (Funil) -->
+                        <div>
+                            <h2 class="text-lg font-semibold text-secondary mb-4">Funil de Clientes Ativos</h2>
+                            <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                <!-- Cards de status serão inseridos aqui -->
+                            </div>
+                        </div>
+
+                        <!-- Seção Gráfico e Atividades -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Coluna do Gráfico -->
+                            <div>
+                                <h2 class="text-lg font-semibold text-secondary mb-4">Distribuição por Status</h2>
+                                <div class="bg-surface rounded-lg shadow-md p-4 flex justify-center items-center h-80">
+                                    <canvas id="status-pie-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Coluna de Atividades Recentes -->
+                            <div>
+                                <h2 class="text-lg font-semibold text-secondary mb-4">Atividades Recentes</h2>
+                                <div class="bg-surface rounded-lg shadow-md">
+                                    <ul id="recent-activity-list" class="divide-y divide-gray-200">
+                                        <!-- Itens da lista de atividades serão inseridos aqui -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View: Clientes (Processos Ativos e Arquivados) -->
+                    <div id="clients-view" class="hidden fade-in">
+                        <!-- Abas de Navegação -->
+                        <div class="border-b border-gray-200 mb-4">
+                            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button id="tab-active" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-primary text-primary">
+                                    Processos Ativos
+                                </button>
+                                <button id="tab-archived" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                    Arquivados
+                                </button>
+                            </nav>
+                        </div>
+
+                        <!-- Conteúdo para Processos Ativos -->
+                        <div id="active-clients-content">
+                            <div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
+                                <div class="w-full md:w-1/3">
+                                    <input type="text" id="search-client" placeholder="Buscar cliente por nome..." class="form-input w-full">
+                                </div>
+                                <div class="w-full md:w-auto flex items-center gap-4">
+                                    <select id="filter-status" class="form-select">
+                                        <option value="">Todos os Status</option>
+                                    </select>
+                                    <select id="filter-corretor" class="form-select">
+                                        <option value="">Todos os Corretores</option>
+                                    </select>
+                                    <button id="add-client-btn" class="py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary whitespace-nowrap">
+                                        + Adicionar Cliente
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="bg-surface rounded-lg shadow-md overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Nome do Cliente</th>
+                                            <th scope="col" class="px-6 py-3">Imóvel</th>
+                                            <th scope="col" class="px-6 py-3">Corretor</th>
+                                            <th scope="col" class="px-6 py-3">Status</th>
+                                            <th scope="col" class="px-6 py-3">Dias</th>
+                                            <th scope="col" class="px-6 py-3">Data Assinatura</th>
+                                            <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clients-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Conteúdo para Arquivados -->
+                        <div id="archived-clients-content" class="hidden">
+                            <div class="flex items-center justify-start mb-4 gap-4">
+                                <select id="filter-archive-month" class="form-select">
+                                    <option value="">Todos os Meses</option>
+                                </select>
+                                <select id="filter-archive-year" class="form-select">
+                                    <option value="">Todos os Anos</option>
+                                </select>
+                            </div>
+                            <div class="bg-surface rounded-lg shadow-md overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Nome do Cliente</th>
+                                            <th scope="col" class="px-6 py-3">Corretor</th>
+                                            <th scope="col" class="px-6 py-3">Status Final</th>
+                                            <th scope="col" class="px-6 py-3">Data da Assinatura</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="archived-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- View: Mapa de Imóveis -->
+                    <div id="map-view" class="hidden fade-in flex h-full">
+                        <!-- Sidebar do Mapa -->
+                        <aside class="w-1/3 bg-surface flex flex-col h-full border-r border-gray-200">
+                            <div class="p-4 border-b shrink-0">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h2 class="text-lg font-semibold text-secondary">Imóveis Cadastrados</h2>
+                                        <p class="text-sm text-text-secondary">Agrupados por cidade</p>
+                                    </div>
+                                    <div class="relative">
+                                        <select id="order-by-property" class="form-select text-xs p-1 rounded-md">
+                                            <option value="price-asc">Menor Valor</option>
+                                            <option value="price-desc">Maior Valor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="properties-list" class="flex-1 overflow-y-auto no-scrollbar">
+                                <!-- A nova lista agrupada será inserida aqui -->
+                            </div>
+                            <div class="p-4 border-t shrink-0">
+                                <button id="add-property-btn" class="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary">
+                                    + Adicionar Imóvel
+                                </button>
+                            </div>
+                        </aside>
+
+                        <!-- Conteúdo do Mapa -->
+                        <main id="map-container" class="flex-1 h-full relative w-full">
+                            <div id="map"></div>
+                            <!-- NOVO PAINEL DE BUSCA POR RAIO -->
+                            <div id="radius-search-container" class="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg flex flex-col gap-2">
+                                <h4 class="text-sm font-semibold text-secondary text-center">Busca por Raio</h4>
+                                <div class="flex items-center gap-2">
+                                    <select id="radius-select" class="form-select text-xs p-1 rounded-md">
+                                        <option value="1">1 km</option>
+                                        <option value="2">2 km</option>
+                                        <option value="5">5 km</option>
+                                        <option value="10">10 km</option>
+                                    </select>
+                                    <button id="radius-search-btn" class="py-1 px-3 btn-primary rounded-md text-xs">Buscar</button>
+                                </div>
+                                <button id="radius-clear-btn" class="hidden py-1 px-3 bg-gray-200 text-gray-700 rounded-md text-xs hover:bg-gray-300">Limpar Busca</button>
+                            </div>
+                        </main>
+                    </div>
+                    
+                    <!-- View: Buscador de CEP -->
+                    <div id="cep-view" class="hidden fade-in max-w-4xl mx-auto">
+                        <div class="border-b border-gray-200 mb-6">
+                            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button id="cep-tab-by-cep" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-primary text-primary">
+                                    Buscar por CEP
+                                </button>
+                                <button id="cep-tab-by-address" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                    Buscar por Endereço
+                                </button>
+                            </nav>
+                        </div>
+                
+                        <!-- Conteúdo para Buscar por CEP -->
+                        <div id="cep-content-by-cep">
+                            <div class="bg-surface p-6 rounded-lg shadow-md">
+                                <form id="cep-form-by-cep" class="flex flex-col sm:flex-row items-end gap-4">
+                                    <div class="flex-grow w-full sm:w-auto">
+                                        <label for="cep-input" class="block text-sm font-medium text-gray-700">Digite o CEP</label>
+                                        <input type="text" id="cep-input" class="form-input mt-1 block w-full" placeholder="00000-000" maxlength="9">
+                                    </div>
+                                    <button type="submit" class="py-2 px-6 btn-primary rounded-md w-full sm:w-auto">Buscar</button>
+                                </form>
+                            </div>
+                        </div>
+                
+                        <!-- Conteúdo para Buscar por Endereço -->
+                        <div id="cep-content-by-address" class="hidden">
+                             <div class="bg-surface p-6 rounded-lg shadow-md">
+                                <form id="cep-form-by-address">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label for="cep-state" class="block text-sm font-medium text-gray-700">Estado (UF)</label>
+                                            <input type="text" id="cep-state" class="form-input mt-1 block w-full" placeholder="SP" maxlength="2" required>
+                                        </div>
+                                        <div>
+                                            <label for="cep-city" class="block text-sm font-medium text-gray-700">Cidade</label>
+                                            <input type="text" id="cep-city" class="form-input mt-1 block w-full" placeholder="São Paulo" required>
+                                        </div>
+                                        <div>
+                                            <label for="cep-street" class="block text-sm font-medium text-gray-700">Rua / Logradouro</label>
+                                            <input type="text" id="cep-street" class="form-input mt-1 block w-full" placeholder="Av. Paulista" required>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 text-right">
+                                         <button type="submit" class="py-2 px-6 btn-primary rounded-md">Buscar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                
+                        <!-- Resultados -->
+                        <div id="cep-results" class="mt-6">
+                            <!-- Results will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- View: Configurações -->
+                    <div id="settings-view" class="hidden fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-secondary">Gerenciamento de Usuários</h2>
+                             <button id="add-user-btn" class="py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary whitespace-nowrap">
+                                + Adicionar Usuário
+                            </button>
+                        </div>
+
+                         <!-- Tabela de Usuários -->
+                        <div class="bg-surface rounded-lg shadow-md overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">Nome</th>
+                                        <th scope="col" class="px-6 py-3">Email</th>
+                                        <th scope="col" class="px-6 py-3">Função</th>
+                                        <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <!-- Linhas da tabela de usuários serão inseridas via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- View: Editor de PDF -->
+                    <div id="pdf-editor-view" class="hidden fade-in space-y-6">
+                        <div class="bg-surface p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-bold text-secondary mb-2">Juntar e Organizar PDFs</h2>
+                            <p class="text-text-secondary mb-4">Selecione os arquivos, adicione mais se precisar e arraste as páginas para reordenar.</p>
+                            <div class="flex flex-col sm:flex-row items-center gap-4 flex-wrap">
+                                <label for="pdf-file-input-replace" class="w-full sm:w-auto cursor-pointer py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary whitespace-nowrap">
+                                    <i class="fa-solid fa-file-pdf mr-2"></i>
+                                    Selecionar Arquivos
+                                </label>
+                                <input type="file" id="pdf-file-input-replace" multiple accept=".pdf" class="hidden">
+                                <input type="file" id="pdf-file-input-append" multiple accept=".pdf" class="hidden">
+                                <button id="add-more-pdf-btn" class="w-full sm:w-auto cursor-pointer py-2 px-4 rounded-md shadow-sm text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 whitespace-nowrap" disabled>
+                                    <i class="fa-solid fa-plus mr-2"></i>
+                                    Adicionar Mais
+                                </button>
+                                <div class="flex-grow"></div> <!-- Spacer -->
+                                <button id="clear-pdf-btn" class="w-full sm:w-auto py-2 px-4 rounded-md shadow-sm text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300" disabled>
+                                    <i class="fa-solid fa-trash mr-2"></i>
+                                    Limpar Tudo
+                                </button>
+                                <button id="save-pdf-btn" class="w-full sm:w-auto py-2 px-4 rounded-md shadow-sm text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300" disabled>
+                                    <i class="fa-solid fa-save mr-2"></i>
+                                    Salvar PDF Combinado
+                                </button>
+                            </div>
+                             <p id="pdf-status" class="text-sm text-gray-500 mt-4 h-5"></p>
+                        </div>
+
+                        <div class="bg-surface p-4 rounded-lg shadow-md min-h-[400px]">
+                            <div id="pdf-pages-preview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                                <!-- Pré-visualizações das páginas serão inseridas aqui -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal/Form para Adicionar/Editar Cliente -->
+                    <div id="client-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-full flex flex-col fade-in">
+                            <div class="flex justify-between items-center p-4 border-b">
+                                <h3 id="form-title" class="text-lg font-semibold text-secondary">Adicionar Novo Cliente</h3>
+                                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                            <form id="client-form" class="p-6 space-y-4 overflow-y-auto">
+                                <input type="hidden" id="client-id">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="nome" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                                        <input type="text" id="nome" class="form-input mt-1 block w-full" required>
+                                    </div>
+                                    <div>
+                                        <label for="areaInteresse" class="block text-sm font-medium text-gray-700">Área de Interesse</label>
+                                        <input type="text" id="areaInteresse" class="form-input mt-1 block w-full">
+                                    </div>
+                                     <div>
+                                        <label for="corretor" class="block text-sm font-medium text-gray-700">Corretor</label>
+                                        <input type="text" id="corretor" class="form-input mt-1 block w-full">
+                                    </div>
+                                    <div>
+                                        <label for="responsavel" class="block text-sm font-medium text-gray-700">Responsável</label>
+                                        <input type="text" id="responsavel" class="form-input mt-1 block w-full">
+                                    </div>
+                                     <div>
+                                        <label for="agencia" class="block text-sm font-medium text-gray-700">Agência</label>
+                                        <input type="text" id="agencia" class="form-input mt-1 block w-full">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="observacoes" class="block text-sm font-medium text-gray-700">Observações</label>
+                                    <textarea id="observacoes" rows="4" class="form-input mt-1 block w-full"></textarea>
+                                </div>
+                                <div class="pt-4 flex justify-end gap-3">
+                                    <button type="button" id="cancel-form-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                                    <button type="submit" class="py-2 px-4 btn-primary rounded-md">Salvar Cliente</button>
+                                </div>
+                            </form>
+                         </div>
+                    </div>
+                    
+                    <!-- Modal/Form para Adicionar/Editar Usuário -->
+                    <div id="user-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col fade-in">
+                            <div class="flex justify-between items-center p-4 border-b">
+                                <h3 id="user-form-title" class="text-lg font-semibold text-secondary">Adicionar Novo Usuário</h3>
+                                <button id="close-user-modal-btn" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                            <form id="user-form" class="p-6 space-y-4">
+                                <input type="hidden" id="user-id">
+                                <div>
+                                    <label for="user-nome" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                                    <input type="text" id="user-nome" class="form-input mt-1 block w-full" required>
+                                </div>
+                                <div>
+                                    <label for="user-email" class="block text-sm font-medium text-gray-700">Email</label>
+                                    <input type="email" id="user-email" class="form-input mt-1 block w-full" required>
+                                </div>
+                                <div>
+                                    <label for="user-role" class="block text-sm font-medium text-gray-700">Função</label>
+                                    <select id="user-role" class="form-select mt-1 block w-full">
+                                        <option value="Corretor">Corretor</option>
+                                        <option value="Administrador">Administrador</option>
+                                    </select>
+                                </div>
+                                <div class="pt-4 flex justify-end gap-3">
+                                    <button type="button" id="cancel-user-form-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                                    <button type="submit" class="py-2 px-4 btn-primary rounded-md">Salvar Usuário</button>
+                                </div>
+                            </form>
+                         </div>
+                    </div>
+
+                    <!-- Modal/Form para Adicionar/Editar Imóvel -->
+                    <div id="property-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col fade-in">
+                            <div class="flex justify-between items-center p-4 border-b">
+                                <h3 id="property-form-title" class="text-lg font-semibold text-secondary">Adicionar Novo Imóvel</h3>
+                                <button id="close-property-modal-btn" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                            <form id="property-form" class="p-6 space-y-4">
+                                <input type="hidden" id="property-id">
+                                <div>
+                                    <label for="property-title" class="block text-sm font-medium text-gray-700">Título do Imóvel</label>
+                                    <input type="text" id="property-title" class="form-input mt-1 block w-full" required placeholder="Ex: Casa com 3 quartos em Sumaré">
+                                </div>
+                                <div>
+                                    <label for="property-description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                                    <textarea id="property-description" rows="3" class="form-input mt-1 block w-full" placeholder="Detalhes sobre o imóvel, diferenciais, etc."></textarea>
+                                </div>
+                                <div>
+                                    <label for="property-address" class="block text-sm font-medium text-gray-700">Endereço Completo</label>
+                                    <input type="text" id="property-address" class="form-input mt-1 block w-full" required placeholder="Rua, Número, Bairro, Cidade, Estado" autocomplete="off">
+                                </div>
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="property-price" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
+                                        <input type="number" id="property-price" class="form-input mt-1 block w-full" placeholder="500000">
+                                    </div>
+                                     <div>
+                                        <label for="property-area" class="block text-sm font-medium text-gray-700">Área (m²)</label>
+                                        <input type="number" id="property-area" class="form-input mt-1 block w-full" placeholder="150">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="property-photo" class="block text-sm font-medium text-gray-700">URL da Foto</label>
+                                    <input type="url" id="property-photo" class="form-input mt-1 block w-full" placeholder="https://...">
+                                </div>
+                                <div class="pt-4 flex justify-end gap-3">
+                                    <button type="button" id="cancel-property-form-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                                    <button type="submit" class="py-2 px-4 btn-primary rounded-md">Salvar Imóvel</button>
+                                </div>
+                            </form>
+                         </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Modal de Confirmação para Arquivar -->
+    <div id="archive-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 fade-in">
+            <h3 class="text-lg font-semibold text-secondary">Confirmar Arquivamento</h3>
+            <p class="mt-2 text-sm text-gray-600">Você tem certeza que deseja arquivar este cliente? Esta ação moverá o cliente para a lista de arquivados.</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="cancel-archive-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                <button type="button" id="confirm-archive-btn" class="py-2 px-4 btn-primary rounded-md">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Confirmação para Deletar Usuário -->
+    <div id="delete-user-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 fade-in">
+            <h3 class="text-lg font-semibold text-red-700">Confirmar Exclusão</h3>
+            <p class="mt-2 text-sm text-gray-600">Você tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="cancel-delete-user-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                <button type="button" id="confirm-delete-user-btn" class="py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-2 w-full max-w-xs sm:max-w-sm">
+        <!-- Toasts serão injetados aqui via JS -->
+    </div>
+
+    <!-- Modal de Confirmação para Deletar Cliente -->
+    <div id="delete-client-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 fade-in">
+            <h3 class="text-lg font-semibold text-red-700">Confirmar Exclusão</h3>
+            <p class="mt-2 text-sm text-gray-600">Você tem certeza que deseja excluir este cliente? Esta ação é permanente e não pode ser desfeita.</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="cancel-delete-client-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                <button type="button" id="confirm-delete-client-btn" class="py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar Exclusão</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação para Deletar Imóvel -->
+    <div id="delete-property-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 fade-in">
+            <h3 class="text-lg font-semibold text-red-700">Confirmar Exclusão</h3>
+            <p class="mt-2 text-sm text-gray-600">Você tem certeza que deseja excluir este imóvel? Esta ação é permanente e não pode ser desfeita.</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="cancel-delete-property-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
+                <button type="button" id="confirm-delete-property-btn" class="py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar Exclusão</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Status Dropdown Menu -->
+    <div id="status-dropdown-menu" class="hidden absolute z-20 bg-white rounded-md shadow-lg border w-36 py-1 text-sm">
+        <!-- Status options will be populated via JS -->
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script> <!-- Carrega a chave de API primeiro -->
+    <script src="js/main.js" defer></script>
+    <script>
+        // Carrega o script do Google Maps dinamicamente com a chave do config.js
+        var script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=marker`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    </script>
+
+</body>
+</html>
