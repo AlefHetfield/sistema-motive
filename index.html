@@ -270,16 +270,16 @@
                     </div>
 
                      <!-- View: Mapa de Imóveis -->
-                    <div id="map-view" class="hidden fade-in flex h-full">
+                    <div id="map-view" class="hidden fade-in flex flex-col lg:flex-row h-full">
                         <!-- Sidebar do Mapa -->
-                        <aside class="w-1/3 bg-surface flex flex-col h-full border-r border-gray-200">
+                        <aside class="w-full lg:w-1/3 xl:w-1/4 bg-surface flex flex-col h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-gray-200">
                             <div class="p-4 border-b shrink-0">
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <h2 class="text-lg font-semibold text-secondary">Imóveis Cadastrados</h2>
                                         <p class="text-sm text-text-secondary">Agrupados por cidade</p>
                                     </div>
-                                    <div class="relative">
+                                    <div class="relative shrink-0 ml-2">
                                         <select id="order-by-property" class="form-select text-xs p-1 rounded-md">
                                             <option value="price-asc">Menor Valor</option>
                                             <option value="price-desc">Maior Valor</option>
@@ -298,7 +298,7 @@
                         </aside>
 
                         <!-- Conteúdo do Mapa -->
-                        <main id="map-container" class="flex-1 h-full relative w-full">
+                        <main id="map-container" class="w-full lg:flex-1 h-1/2 lg:h-full relative">
                             <div id="map"></div>
                             <!-- NOVO PAINEL DE BUSCA POR RAIO -->
                             <div id="radius-search-container" class="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg flex flex-col gap-2">
