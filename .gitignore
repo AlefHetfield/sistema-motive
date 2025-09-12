@@ -1,5 +1,5 @@
-# Ignorar arquivos de configuração com chaves e segredos
+# Ignorar arquivos de configuração com chaves secretas
 js/config.js
 
-# Ignorar dependências do Node.js (caso use no futuro)
+# Outros arquivos comuns a serem ignorados (opcional, mas boa prática)
 /node_modules
