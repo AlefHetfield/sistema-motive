@@ -64,13 +64,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     let clients = [
-        { id: 1, nome: 'João da Silva', areaInteresse: 'Apartamento 3 quartos', corretor: 'Carlos Silva', responsavel: 'Ana Souza', observacoes: 'Cliente quer visitar imóveis no centro.', agencia: 'Matriz', status: 'Aprovado', ultimaAtualizacao: '2025-08-28T10:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-04T10:00:00Z' },
-        { id: 2, nome: 'Maria Oliveira', areaInteresse: 'Casa com quintal', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Prefere bairros residenciais.', agencia: 'Filial Sul', status: 'Aprovado', ultimaAtualizacao: '2025-08-27T15:30:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-25T15:30:00Z' },
-        { id: 3, nome: 'Pedro Martins', areaInteresse: 'Cobertura', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Aguardando documentação do banco.', agencia: 'Matriz', status: 'Engenharia', ultimaAtualizacao: '2025-08-29T11:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-15T11:00:00Z' },
-        { id: 4, nome: 'Juliana Costa', areaInteresse: 'Loft moderno', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Processo em fase final.', agencia: 'Matriz', status: 'Finalização', ultimaAtualizacao: '2025-08-25T09:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-01T09:00:00Z' },
-        { id: 5, nome: 'Lucas Ferreira', areaInteresse: 'Terreno comercial', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Análise de conformidade em andamento.', agencia: 'Filial Sul', status: 'Conformidade', ultimaAtualizacao: '2025-08-29T14:20:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-02T14:20:00Z' },
-        { id: 6, nome: 'Beatriz Almeida', areaInteresse: 'Apartamento 2 quartos', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Contrato assinado com sucesso.', agencia: 'Matriz', status: 'Assinado', ultimaAtualizacao: '2025-07-15T18:00:00Z', dataAssinaturaContrato: '2025-07-15', createdAt: '2025-06-10T18:00:00Z' },
-        { id: 7, nome: 'Roberto Nunes', areaInteresse: 'Sítio', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Cliente desistiu da compra.', agencia: 'Matriz', status: 'Assinado', ultimaAtualizacao: '2025-06-20T12:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-05-20T12:00:00Z' },
+        { id: 1, nome: 'João da Silva', cpf: '11122233344', areaInteresse: 'Apartamento 3 quartos', corretor: 'Carlos Silva', responsavel: 'Ana Souza', observacoes: 'Cliente quer visitar imóveis no centro.', agencia: 101, modalidade: 'Financiamento', status: 'Aprovado', ultimaAtualizacao: '2025-08-28T10:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-04T10:00:00Z' },
+        { id: 2, nome: 'Maria Oliveira', cpf: '55566677788', areaInteresse: 'Casa com quintal', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Prefere bairros residenciais.', agencia: 205, modalidade: 'À Vista', status: 'Aprovado', ultimaAtualizacao: '2025-08-27T15:30:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-25T15:30:00Z' },
+        { id: 3, nome: 'Pedro Martins', cpf: '99988877766', areaInteresse: 'Cobertura', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Aguardando documentação do banco.', agencia: 101, modalidade: 'Consórcio', status: 'Engenharia', ultimaAtualizacao: '2025-08-29T11:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-15T11:00:00Z' },
+        { id: 4, nome: 'Juliana Costa', cpf: '12345678900', areaInteresse: 'Loft moderno', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Processo em fase final.', agencia: 311, modalidade: 'Financiamento', status: 'Finalização', ultimaAtualizacao: '2025-08-25T09:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-01T09:00:00Z' },
+        { id: 5, nome: 'Lucas Ferreira', cpf: '09876543211', areaInteresse: 'Terreno comercial', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Análise de conformidade em andamento.', agencia: 205, modalidade: 'Permuta', status: 'Conformidade', ultimaAtualizacao: '2025-08-29T14:20:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-02T14:20:00Z' },
+        { id: 6, nome: 'Beatriz Almeida', cpf: '11223344556', areaInteresse: 'Apartamento 2 quartos', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Contrato assinado com sucesso.', agencia: 101, modalidade: 'Financiamento', status: 'Assinado', ultimaAtualizacao: '2025-07-15T18:00:00Z', dataAssinaturaContrato: '2025-07-15', createdAt: '2025-06-10T18:00:00Z' },
+        { id: 7, nome: 'Roberto Nunes', cpf: '66554433221', areaInteresse: 'Sítio', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Cliente desistiu da compra.', agencia: 311, modalidade: 'À Vista', status: 'Assinado', ultimaAtualizacao: '2025-06-20T12:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-05-20T12:00:00Z' },
     ];
     
     let users = [
@@ -830,6 +830,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (viewName === 'settings') renderUsersTable();
     }
     
+    /**
+     * Formata uma string de CPF para o padrão 000.000.000-00.
+     * @param {string} cpf O CPF a ser formatado (pode conter ou não a máscara).
+     * @returns {string} O CPF formatado.
+     */
+    function formatCPF(cpf) {
+        if (!cpf) return '';
+        let value = cpf.toString().replace(/\D/g, ''); // Remove tudo que não é dígito
+        value = value.substring(0, 11); // Limita a 11 caracteres
+
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
+        value = value.replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        return value;
+    }
+
     // O resto das suas funções (renderDashboard, updateStatusBadge, etc.)
     // continuam aqui...
     function logActivity(clientName, action) {
@@ -1039,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         clientsTableBody.innerHTML = '';
         if (activeClients.length === 0) {
-            clientsTableBody.innerHTML = `<tr><td colspan="7" class="text-center p-6 text-gray-500">Nenhum cliente encontrado.</td></tr>`;
+            clientsTableBody.innerHTML = `<tr><td colspan="11" class="text-center p-6 text-gray-500">Nenhum cliente encontrado.</td></tr>`;
             return;
         }
 
@@ -1050,8 +1066,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             row.innerHTML = `
                 <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+                <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
                 <td class="px-6 py-4">${client.areaInteresse}</td>
                 <td class="px-6 py-4">${client.corretor}</td>
+                <td class="px-6 py-4">${client.responsavel || ''}</td>
+                <td class="px-6 py-4">${client.agencia || ''}</td>
+                <td class="px-6 py-4">${client.modalidade || ''}</td>
                 <td class="px-6 py-4">
                     <div class="relative">
                         <button data-id="${client.id}" class="status-badge text-xs font-medium px-3 py-1.5 rounded-full w-full text-left flex justify-between items-center">
@@ -1154,11 +1174,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const client = clients.find(c => c.id === clientId);
             formTitle.textContent = 'Editar Detalhes do Cliente';
             document.getElementById('client-id').value = client.id;
-            document.getElementById('nome').value = client.nome;
+            document.getElementById('nome').value = client.nome;            
+            document.getElementById('cpf').value = formatCPF(client.cpf || '');
             document.getElementById('areaInteresse').value = client.areaInteresse;
             document.getElementById('corretor').value = client.corretor;
             document.getElementById('responsavel').value = client.responsavel;
-            document.getElementById('agencia').value = client.agencia;
+            document.getElementById('agencia').value = client.agencia || '';
+            document.getElementById('modalidade').value = client.modalidade || '';
             document.getElementById('observacoes').value = client.observacoes;
         } else {
             formTitle.textContent = 'Adicionar Novo Cliente';
@@ -1176,10 +1198,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = document.getElementById('client-id').value;
         const clientData = {
             nome: document.getElementById('nome').value,
+            cpf: document.getElementById('cpf').value.replace(/\D/g, ''),
             areaInteresse: document.getElementById('areaInteresse').value,
             corretor: document.getElementById('corretor').value,
             responsavel: document.getElementById('responsavel').value,
-            agencia: document.getElementById('agencia').value,
+            agencia: document.getElementById('agencia').value.replace(/\D/g, ''),
+            modalidade: document.getElementById('modalidade').value,
             observacoes: document.getElementById('observacoes').value,
             ultimaAtualizacao: new Date().toISOString(),
         };
@@ -1193,6 +1217,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             clientData.status = 'Aprovado'; 
             clientData.createdAt = new Date().toISOString();
             clientData.dataAssinaturaContrato = null;
+            clientData.cpf = clientData.cpf || null;
+            clientData.agencia = clientData.agencia || null;
+            clientData.modalidade = clientData.modalidade || null;
             clients.push(clientData);
             logActivity(clientData.nome, 'Cliente adicionado');
         }
@@ -1513,6 +1540,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelFormBtn.addEventListener('click', closeFormModal);
     clientForm.addEventListener('submit', handleFormSubmit);
     
+    // Adiciona máscara simples para campos numéricos no formulário de cliente
+    clientForm.addEventListener('input', (e) => {
+        if (e.target.id === 'cpf') {
+            e.target.value = formatCPF(e.target.value);
+        } else if (e.target.id === 'agencia') {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        }
+    });
+
     addUserBtn.addEventListener('click', () => openUserFormModal());
     closeUserModalBtn.addEventListener('click', closeUserFormModal);
     cancelUserFormBtn.addEventListener('click', closeUserFormModal);

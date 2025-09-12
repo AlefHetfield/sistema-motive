@@ -47,6 +47,7 @@
         
         <!-- View: Menu de Aplicativos (Oculto inicialmente) -->
         <div id="app-menu-view" class="hidden h-full flex flex-col items-center justify-center p-8 fade-in">
+            <img src="assets/logo-dark.png" alt="Logo Motive" class="w-48 mb-6">
             <h1 class="text-3xl font-bold text-secondary mb-2">Bem-vindo(a) ao Sistema Motive</h1>
             <p class="text-text-secondary mb-10">Selecione uma ferramenta para começar</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
@@ -225,12 +226,16 @@
                                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
                                             <th scope="col" class="px-6 py-3">Nome do Cliente</th>
+                                            <th scope="col" class="px-6 py-3">CPF</th>
                                             <th scope="col" class="px-6 py-3">Imóvel</th>
                                             <th scope="col" class="px-6 py-3">Corretor</th>
+                                            <th scope="col" class="px-6 py-3">Responsável</th>
+                                            <th scope="col" class="px-6 py-3">Agência</th>
+                                            <th scope="col" class="px-6 py-3">Modalidade</th>
                                             <th scope="col" class="px-6 py-3">Status</th>
-                                            <th scope="col" class="px-6 py-3">Dias</th>
+                                            <th scope="col" class="px-6 py-3 text-center">Dias</th>
                                             <th scope="col" class="px-6 py-3">Data Assinatura</th>
-                                            <th scope="col" class="px-6 py-3 text-center">Ações</th>
+                                            <th scope="col" class="px-6 py-3 text-center whitespace-nowrap">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody id="clients-table-body"></tbody>
@@ -443,10 +448,14 @@
                             </div>
                             <form id="client-form" class="p-6 space-y-4 overflow-y-auto">
                                 <input type="hidden" id="client-id">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label for="nome" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
                                         <input type="text" id="nome" class="form-input mt-1 block w-full" required>
+                                    </div>
+                                    <div>
+                                        <label for="cpf" class="block text-sm font-medium text-gray-700">CPF</label>
+                                        <input type="text" id="cpf" class="form-input mt-1 block w-full" placeholder="000.000.000-00" maxlength="14">
                                     </div>
                                     <div>
                                         <label for="areaInteresse" class="block text-sm font-medium text-gray-700">Área de Interesse</label>
@@ -454,15 +463,19 @@
                                     </div>
                                      <div>
                                         <label for="corretor" class="block text-sm font-medium text-gray-700">Corretor</label>
-                                        <input type="text" id="corretor" class="form-input mt-1 block w-full">
+                                        <input type="text" id="corretor" class="form-input mt-1 block w-full" required>
                                     </div>
                                     <div>
                                         <label for="responsavel" class="block text-sm font-medium text-gray-700">Responsável</label>
                                         <input type="text" id="responsavel" class="form-input mt-1 block w-full">
                                     </div>
                                      <div>
-                                        <label for="agencia" class="block text-sm font-medium text-gray-700">Agência</label>
-                                        <input type="text" id="agencia" class="form-input mt-1 block w-full">
+                                        <label for="agencia" class="block text-sm font-medium text-gray-700">Agência (Nº)</label>
+                                        <input type="text" id="agencia" class="form-input mt-1 block w-full" placeholder="Apenas números">
+                                    </div>
+                                    <div class="md:col-span-3">
+                                        <label for="modalidade" class="block text-sm font-medium text-gray-700">Modalidade</label>
+                                        <input type="text" id="modalidade" class="form-input mt-1 block w-full" placeholder="Ex: Financiamento, À Vista...">
                                     </div>
                                 </div>
                                 <div>
