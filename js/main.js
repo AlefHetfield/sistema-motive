@@ -96,6 +96,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginPage = document.getElementById('login-page');
     const appMenuView = document.getElementById('app-menu-view');
     const appStructure = document.getElementById('app-structure');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+
     const loginForm = document.getElementById('login-form');
     
     const appCardCrm = document.getElementById('app-card-crm');
@@ -1345,6 +1348,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentStatusBadge = null;
         }
     }
+
+    sidebarToggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('w-64');
+        sidebar.classList.toggle('w-0');
+        document.querySelectorAll('.sidebar-text').forEach(text => text.classList.toggle('hidden'));
+    });
 
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
