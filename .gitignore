@@ -1,5 +1,4 @@
-# Ignorar arquivos de configuração com chaves secretas
-js/config.js
-
-# Outros arquivos comuns a serem ignorados (opcional, mas boa prática)
-/node_modules
+# Ignorar a pasta de dependências do Node.js
+node_modules
+# Ignorar o arquivo de variáveis de ambiente locais
+.env

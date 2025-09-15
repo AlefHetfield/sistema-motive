@@ -77,6 +77,11 @@ tbody tr:nth-child(even) {
     background-color: #f9fafb; /* Cor suave para linhas pares (Tailwind gray-50) */
 }
 
+/* Efeito de hover para todas as linhas do corpo da tabela */
+tbody tr:hover {
+    background-color: #f3f4f6; /* Cor de hover mais escura (Tailwind gray-100) */
+}
+
 /* Destaque moderno para o item ativo no menu lateral */
 aside nav a.bg-gray-700 {
     font-weight: 600; /* Deixa o texto mais forte */

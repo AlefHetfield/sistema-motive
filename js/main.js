@@ -33,6 +33,8 @@ function loadGoogleMapsScript() {
     document.head.appendChild(script);
 }
 
+import { fetchClients, fetchClient, saveClient, deleteClient, fetchUsers, saveUser, deleteUser } from './api.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     // =================================================================================
@@ -63,21 +65,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         'default': '#E11D48'                 // Cor Padrão (Rosa)
     };
 
-    let clients = [
-        { id: 1, nome: 'João da Silva', cpf: '11122233344', areaInteresse: 'Apartamento 3 quartos', corretor: 'Carlos Silva', responsavel: 'Ana Souza', observacoes: 'Cliente quer visitar imóveis no centro.', agencia: 101, modalidade: 'Financiamento', status: 'Aprovado', ultimaAtualizacao: '2025-08-28T10:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-04T10:00:00Z' },
-        { id: 2, nome: 'Maria Oliveira', cpf: '55566677788', areaInteresse: 'Casa com quintal', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Prefere bairros residenciais.', agencia: 205, modalidade: 'À Vista', status: 'Aprovado', ultimaAtualizacao: '2025-08-27T15:30:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-25T15:30:00Z' },
-        { id: 3, nome: 'Pedro Martins', cpf: '99988877766', areaInteresse: 'Cobertura', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Aguardando documentação do banco.', agencia: 101, modalidade: 'Consórcio', status: 'Engenharia', ultimaAtualizacao: '2025-08-29T11:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-15T11:00:00Z' },
-        { id: 4, nome: 'Juliana Costa', cpf: '12345678900', areaInteresse: 'Loft moderno', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Processo em fase final.', agencia: 311, modalidade: 'Financiamento', status: 'Finalização', ultimaAtualizacao: '2025-08-25T09:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-01T09:00:00Z' },
-        { id: 5, nome: 'Lucas Ferreira', cpf: '09876543211', areaInteresse: 'Terreno comercial', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Análise de conformidade em andamento.', agencia: 205, modalidade: 'Permuta', status: 'Conformidade', ultimaAtualizacao: '2025-08-29T14:20:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-02T14:20:00Z' },
-        { id: 6, nome: 'Beatriz Almeida', cpf: '11223344556', areaInteresse: 'Apartamento 2 quartos', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Contrato assinado com sucesso.', agencia: 101, modalidade: 'Financiamento', status: 'Assinado', ultimaAtualizacao: '2025-07-15T18:00:00Z', dataAssinaturaContrato: '2025-07-15', createdAt: '2025-06-10T18:00:00Z' },
-        { id: 7, nome: 'Roberto Nunes', cpf: '66554433221', areaInteresse: 'Sítio', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Cliente desistiu da compra.', agencia: 311, modalidade: 'À Vista', status: 'Assinado', ultimaAtualizacao: '2025-06-20T12:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-05-20T12:00:00Z' },
-    ];
-    
-    let users = [
-        { id: 101, nome: 'Carlos Silva', email: 'carlos.silva@motive.com', role: 'Administrador' },
-        { id: 102, nome: 'Fernanda Lima', email: 'fernanda.lima@motive.com', role: 'Corretor' },
-        { id: 103, nome: 'Ricardo Alves', email: 'ricardo.alves@motive.com', role: 'Corretor' },
-    ];
+    // Os dados dos clientes agora virão de um banco de dados através da API.
+    // Este array mockado não é mais a fonte principal de dados.
+    // let clients = [
+    //     { id: 1, nome: 'João da Silva', cpf: '11122233344', areaInteresse: 'Apartamento 3 quartos', corretor: 'Carlos Silva', responsavel: 'Ana Souza', observacoes: 'Cliente quer visitar imóveis no centro.', agencia: 101, modalidade: 'Financiamento', status: 'Aprovado', ultimaAtualizacao: '2025-08-28T10:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-04T10:00:00Z' },
+    //     { id: 2, nome: 'Maria Oliveira', cpf: '55566677788', areaInteresse: 'Casa com quintal', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Prefere bairros residenciais.', agencia: 205, modalidade: 'À Vista', status: 'Aprovado', ultimaAtualizacao: '2025-08-27T15:30:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-25T15:30:00Z' },
+    //     { id: 3, nome: 'Pedro Martins', cpf: '99988877766', areaInteresse: 'Cobertura', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Aguardando documentação do banco.', agencia: 101, modalidade: 'Consórcio', status: 'Engenharia', ultimaAtualizacao: '2025-08-29T11:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-15T11:00:00Z' },
+    //     { id: 4, nome: 'Juliana Costa', cpf: '12345678900', areaInteresse: 'Loft moderno', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Processo em fase final.', agencia: 311, modalidade: 'Financiamento', status: 'Finalização', ultimaAtualizacao: '2025-08-25T09:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-01T09:00:00Z' },
+    //     { id: 5, nome: 'Lucas Ferreira', cpf: '09876543211', areaInteresse: 'Terreno comercial', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Análise de conformidade em andamento.', agencia: 205, modalidade: 'Permuta', status: 'Conformidade', ultimaAtualizacao: '2025-08-29T14:20:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-02T14:20:00Z' },
+    //     { id: 6, nome: 'Beatriz Almeida', cpf: '11223344556', areaInteresse: 'Apartamento 2 quartos', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Contrato assinado com sucesso.', agencia: 101, modalidade: 'Financiamento', status: 'Assinado', ultimaAtualizacao: '2025-07-15T18:00:00Z', dataAssinaturaContrato: '2025-07-15', createdAt: '2025-06-10T18:00:00Z' },
+    //     { id: 7, nome: 'Roberto Nunes', cpf: '66554433221', areaInteresse: 'Sítio', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Cliente desistiu da compra.', agencia: 311, modalidade: 'À Vista', status: 'Assinado', ultimaAtualizacao: '2025-06-20T12:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-05-20T12:00:00Z' },
+    // ];
     
     let properties = [
         { id: 201, city: 'Sumaré', title: 'Casa Térrea no Jd. das Flores', address: 'Rua das Rosas, 123, Sumaré, SP', price: 650000, area: 200, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+1', lat: -22.8219, lng: -47.2662, description: 'Bela casa com 3 dormitórios, sendo 1 suíte. Amplo quintal com churrasqueira. Garagem para 2 carros.' },
@@ -101,8 +99,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const loginForm = document.getElementById('login-form');
     
-    const appCardCrm = document.getElementById('app-card-crm');
+    const appCardDashboard = document.getElementById('app-card-dashboard');
     const appCardMap = document.getElementById('app-card-map');
+    const appCardClients = document.getElementById('app-card-clients');
     const appCardCep = document.getElementById('app-card-cep');
     const appCardPdf = document.getElementById('app-card-pdf');
     const appCardSettings = document.getElementById('app-card-settings');
@@ -143,8 +142,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('search-client');
     const filterStatus = document.getElementById('filter-status');
     const filterCorretor = document.getElementById('filter-corretor');
-    const filterArchiveMonth = document.getElementById('filter-archive-month');
-    const filterArchiveYear = document.getElementById('filter-archive-year');
+    // Novos seletores para os filtros da aba de arquivados
+    const searchArchivedInput = document.getElementById('search-archived-client');
+    const filterArchivedStatus = document.getElementById('filter-archived-status');
+    const filterArchivedCorretor = document.getElementById('filter-archived-corretor');
 
     const clientFormModal = document.getElementById('client-form-modal');
     const clientForm = document.getElementById('client-form');
@@ -594,6 +595,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================================
 
     /**
+     * Renderiza um estado de "carregando" com linhas de esqueleto.
+     * @param {HTMLElement} container O elemento (tbody) onde o loader será inserido.
+     * @param {number} columns O número de colunas da tabela.
+     * @param {number} rows O número de linhas de esqueleto a serem exibidas.
+     */
+    function renderSkeletonLoader(container, columns, rows = 5) {
+        let skeletonHTML = '';
+        for (let i = 0; i < rows; i++) {
+            skeletonHTML += '<tr class="bg-white border-b">';
+            for (let j = 0; j < columns; j++) {
+                skeletonHTML += `
+                    <td class="px-6 py-4">
+                        <div class="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                `;
+            }
+            skeletonHTML += '</tr>';
+        }
+        container.innerHTML = skeletonHTML;
+    }
+
+    /**
+     * Renderiza uma mensagem de "estado vazio" para tabelas.
+     * @param {HTMLElement} container O elemento (tbody) onde a mensagem será inserida.
+     * @param {string} icon O HTML do ícone SVG.
+     * @param {string} title O título da mensagem.
+     * @param {string} subtitle O subtítulo ou descrição.
+     * @param {number} colspan O número de colunas que a célula deve ocupar.
+     */
+    function renderEmptyState(container, icon, title, subtitle, colspan = 12) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="${colspan}" class="text-center p-10">
+                    <div class="flex flex-col items-center text-gray-400 max-w-md mx-auto">
+                        ${icon}
+                        <h3 class="text-lg font-semibold text-gray-600 mt-4">${title}</h3>
+                        <p class="text-sm">${subtitle}</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    /**
      * Exibe uma notificação toast na tela.
      * @param {string} message A mensagem a ser exibida.
      * @param {'success'|'error'} type O tipo de notificação.
@@ -868,13 +913,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return "agora mesmo";
     }
 
-    function renderDashboard() {
-        const statusCounts = clients.reduce((acc, client) => {
-            if (!FINAL_STATUSES.includes(client.status)) {
-                acc[client.status] = (acc[client.status] || 0) + 1;
-            }
-            return acc;
-        }, {});
+    async function renderDashboard() {
+        let statusCounts = {};
+        try {
+            const clients = await fetchClients();
+            statusCounts = clients.reduce((acc, client) => {
+                if (!FINAL_STATUSES.includes(client.status)) {
+                    acc[client.status] = (acc[client.status] || 0) + 1;
+                }
+                return acc;
+            }, {});
+        } catch (error) {
+            console.error("Erro ao renderizar dashboard:", error);
+        }
 
         statsGrid.innerHTML = '';
         STATUS_OPTIONS.filter(s => !FINAL_STATUSES.includes(s)).forEach(status => {
@@ -893,7 +944,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             statsGrid.innerHTML += card;
         });
-        renderStatusPieChart();
+        await renderStatusPieChart();
 
         recentActivityList.innerHTML = '';
         if (activityLog.length === 0) {
@@ -914,15 +965,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function renderStatusPieChart() {
+    async function renderStatusPieChart() {
         const ctx = document.getElementById('status-pie-chart')?.getContext('2d');
         if (!ctx) return;
 
-        const activeClients = clients.filter(client => !FINAL_STATUSES.includes(client.status));
-        const statusCounts = activeClients.reduce((acc, client) => {
-            acc[client.status] = (acc[client.status] || 0) + 1;
-            return acc;
-        }, {});
+        let statusCounts = {};
+        try {
+            const clients = await fetchClients();
+            const activeClients = clients.filter(client => !FINAL_STATUSES.includes(client.status));
+            statusCounts = activeClients.reduce((acc, client) => {
+                acc[client.status] = (acc[client.status] || 0) + 1;
+                return acc;
+            }, {});
+        } catch (error) {
+            console.error("Erro ao renderizar gráfico:", error);
+        }
 
         const labels = Object.keys(statusCounts);
         const data = Object.values(statusCounts);
@@ -966,27 +1023,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (colorClass) badgeElement.classList.add(colorClass);
     }
     
-    function showActiveTab() {
+    async function showActiveTab() {
         activeClientsContent.classList.remove('hidden');
         archivedClientsContent.classList.add('hidden');
         tabActive.classList.add('border-primary', 'text-primary');
         tabActive.classList.remove('border-transparent', 'text-gray-500');
         tabArchived.classList.add('border-transparent', 'text-gray-500');
         tabArchived.classList.remove('border-primary', 'text-primary');
-        renderClientsTable();
+        await renderClientsTable();
     }
 
-    function showArchivedTab() {
+    async function showArchivedTab() {
         activeClientsContent.classList.add('hidden');
         archivedClientsContent.classList.remove('hidden');
         tabArchived.classList.add('border-primary', 'text-primary');
         tabArchived.classList.remove('border-transparent', 'text-gray-500');
         tabActive.classList.add('border-transparent', 'text-gray-500');
         tabActive.classList.remove('border-primary', 'text-primary');
-        renderArchivedTable();
+        await renderArchivedTable();
     }
     
-    function populateFilters() {
+    async function populateFilters() {
         filterStatus.innerHTML = '<option value="">Todos os Status</option>';
         STATUS_OPTIONS.forEach(status => {
             const option = document.createElement('option');
@@ -994,33 +1051,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             option.textContent = status;
             filterStatus.appendChild(option);
         });
+        
+        try {
+            const allClients = await fetchClients();
+            filterCorretor.innerHTML = '<option value="">Todos os Corretores</option>';
+            // Filtra para pegar apenas corretores não nulos ou vazios
+            const corretores = [...new Set(allClients.map(c => c.corretor).filter(Boolean))];
+            corretores.forEach(corretor => {
+                const option = document.createElement('option');
+                option.value = corretor;
+                option.textContent = corretor;
+                filterCorretor.appendChild(option);
+            });
 
-        filterCorretor.innerHTML = '<option value="">Todos os Corretores</option>';
-        const corretores = [...new Set(clients.map(c => c.corretor))];
-        corretores.forEach(corretor => {
-            const option = document.createElement('option');
-            option.value = corretor;
-            option.textContent = corretor;
-            filterCorretor.appendChild(option);
-        });
+            // Reutiliza os dados dos clientes para os filtros de arquivados
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            filterArchiveMonth.innerHTML = '<option value="">Todos os Meses</option>';
+            meses.forEach((mes, index) => {
+                const option = document.createElement('option');
+                option.value = index + 1;
+                option.textContent = mes;
+                filterArchiveMonth.appendChild(option);
+            });
 
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        filterArchiveMonth.innerHTML = '<option value="">Todos os Meses</option>';
-        meses.forEach((mes, index) => {
-            const option = document.createElement('option');
-            option.value = index + 1;
-            option.textContent = mes;
-            filterArchiveMonth.appendChild(option);
-        });
+            filterArchiveYear.innerHTML = '<option value="">Todos os Anos</option>';
+            const anos = [...new Set(allClients.filter(c => c.dataAssinaturaContrato).map(c => new Date(c.dataAssinaturaContrato).getFullYear()))].sort().reverse();
+            anos.forEach(ano => {
+                const option = document.createElement('option');
+                option.value = ano;
+                option.textContent = ano;
+                filterArchiveYear.appendChild(option);
+            });
 
-        filterArchiveYear.innerHTML = '<option value="">Todos os Anos</option>';
-        const anos = [...new Set(clients.filter(c => c.dataAssinaturaContrato).map(c => new Date(c.dataAssinaturaContrato).getFullYear()))].sort().reverse();
-        anos.forEach(ano => {
-            const option = document.createElement('option');
-            option.value = ano;
-            option.textContent = ano;
-            filterArchiveYear.appendChild(option);
-        });
+        } catch (error) {
+            console.error("Erro ao popular filtros:", error);
+            filterCorretor.innerHTML = '<option value="">Falha ao carregar</option>';
+        }
     }
 
     function getDayCounter(creationDate) {
@@ -1041,27 +1107,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    function renderClientsTable() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const statusFilter = filterStatus.value;
-        const corretorFilter = filterCorretor.value;
+    async function renderClientsTable() {
+        renderSkeletonLoader(clientsTableBody, 11); // Mostra o esqueleto de carregamento
 
-        const activeClients = clients.filter(client => 
-            !FINAL_STATUSES.includes(client.status) &&
-            client.nome.toLowerCase().includes(searchTerm) &&
-            (statusFilter === '' || client.status === statusFilter) &&
-            (corretorFilter === '' || client.corretor === corretorFilter)
-        );
+        try {
+            const allClients = await fetchClients();
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusFilter = filterStatus.value;
+            const corretorFilter = filterCorretor.value;
 
-        clientsTableBody.innerHTML = '';
-        if (activeClients.length === 0) {
-            clientsTableBody.innerHTML = `<tr><td colspan="11" class="text-center p-6 text-gray-500">Nenhum cliente encontrado.</td></tr>`;
-            return;
-        }
+            const activeClients = allClients.filter(client => 
+                !FINAL_STATUSES.includes(client.status) &&
+                client.nome.toLowerCase().includes(searchTerm) &&
+                (statusFilter === '' || client.status === statusFilter) &&
+                (corretorFilter === '' || client.corretor === corretorFilter)
+            );
 
-        activeClients.forEach(client => {
+            clientsTableBody.innerHTML = ''; // Limpa o loader
+            if (activeClients.length === 0) {
+                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`;
+                renderEmptyState(clientsTableBody, icon, 'Nenhum cliente encontrado', 'Tente ajustar seus filtros ou adicione um novo cliente.', 11);
+                return;
+            }
+
+            activeClients.forEach(client => {
             const row = document.createElement('tr');
-            row.className = 'bg-white border-b'; // A classe de hover agora é global via CSS
+            row.className = 'bg-white border-b';
             const dayCounter = getDayCounter(client.createdAt);
             
             row.innerHTML = `
@@ -1097,91 +1168,146 @@ document.addEventListener('DOMContentLoaded', async () => {
             const newBadge = row.querySelector('.status-badge');
             updateStatusBadge(newBadge, client.status);
         });
+        } catch (error) {
+            console.error("Erro ao renderizar tabela de clientes:", error);
+            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            renderEmptyState(clientsTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
+        }
     }
     
-    function renderArchivedTable() {
-        const monthFilter = filterArchiveMonth.value;
-        const yearFilter = filterArchiveYear.value;
+    async function renderArchivedTable() {
+        renderSkeletonLoader(archivedTableBody, 11); // Agora com 11 colunas
 
-        const archivedClients = clients.filter(client => {
-            if (!FINAL_STATUSES.includes(client.status)) return false;
-            
-            if (monthFilter || yearFilter) {
-                if (!client.dataAssinaturaContrato) return false;
-                const date = new Date(client.dataAssinaturaContrato + 'T00:00:00');
-                const monthMatch = monthFilter === '' || (date.getMonth() + 1) == monthFilter;
-                const yearMatch = yearFilter === '' || date.getFullYear() == yearFilter;
-                return monthMatch && yearMatch;
+        try {
+            const allClients = await fetchClients();
+            // Utiliza os novos filtros
+            const searchTerm = searchArchivedInput.value.toLowerCase();
+            const statusFilter = filterArchivedStatus.value;
+            const corretorFilter = filterArchivedCorretor.value;
+
+            const archivedClients = allClients.filter(client => {
+                return FINAL_STATUSES.includes(client.status) &&
+                       client.nome.toLowerCase().includes(searchTerm) &&
+                       (statusFilter === '' || client.status === statusFilter) &&
+                       (corretorFilter === '' || client.corretor === corretorFilter);
+            });
+
+            archivedTableBody.innerHTML = ''; // Limpa o loader
+            if (archivedClients.length === 0) {
+                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>`;
+                renderEmptyState(archivedTableBody, icon, 'Nenhum cliente arquivado encontrado', 'Ajuste os filtros ou verifique se há clientes com status final.', 11);
+                return;
             }
 
-            return true;
-        });
-        
-        archivedTableBody.innerHTML = '';
-        if (archivedClients.length === 0) {
-            archivedTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-gray-500">Nenhum cliente arquivado encontrado.</td></tr>`;
-            return;
-        }
+            archivedClients.forEach(client => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b';
 
-        archivedClients.forEach(client => {
-            const row = document.createElement('tr');
-            row.className = 'bg-white border-b';
-            const signatureDate = client.dataAssinaturaContrato 
-                ? new Date(client.dataAssinaturaContrato + 'T00:00:00').toLocaleDateString('pt-BR')
-                : 'Não informada';
-            
-            const colorClass = statusColorMap[client.status] || 'status-aprovado';
-            
-            row.innerHTML = `
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
-                <td class="px-6 py-4">${client.corretor}</td>
-                <td class="px-6 py-4"><span class="text-xs font-medium px-3 py-1.5 rounded-full ${colorClass}">${client.status}</span></td>
-                <td class="px-6 py-4">${signatureDate}</td>
-            `;
-            archivedTableBody.appendChild(row);
-        });
+                // Calcula a duração do processo (criação até assinatura)
+                let durationDays = 'N/A';
+                let durationColor = 'bg-gray-100 text-gray-800';
+                if (client.createdAt && client.dataAssinaturaContrato) {
+                    const created = new Date(client.createdAt);
+                    const signed = new Date(client.dataAssinaturaContrato);
+                    const diffTime = Math.abs(signed - created);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    durationDays = diffDays.toString().padStart(2, '0');
+                    if (diffDays < 30) durationColor = 'bg-green-100 text-green-800';
+                    else if (diffDays < 60) durationColor = 'bg-yellow-100 text-yellow-800';
+                    else durationColor = 'bg-red-100 text-red-800';
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+                    <td class="px-6 py-4">${client.corretor}</td>
+                    <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
+                    <td class="px-6 py-4">${client.areaInteresse}</td>
+                    <td class="px-6 py-4">${client.responsavel || ''}</td>
+                    <td class="px-6 py-4">${client.agencia || ''}</td>
+                    <td class="px-6 py-4">${client.modalidade || ''}</td>
+                    <td class="px-6 py-4">
+                        <span class="status-badge text-xs font-medium px-3 py-1.5 rounded-full">
+                            <span>${client.status}</span>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="text-sm font-bold px-2.5 py-1 rounded-full ${durationColor}">${durationDays}</span>
+                    </td>
+                    <td class="px-6 py-4">${client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}</td>
+                    <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
+                        <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
+                        <button data-id="${client.id}" class="restore-client-btn font-medium text-green-600 hover:underline">Restaurar</button>
+                        <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
+                    </td>
+                `;
+                archivedTableBody.appendChild(row);
+
+                const newBadge = row.querySelector('.status-badge');
+                updateStatusBadge(newBadge, client.status);
+            });
+        } catch (error) {
+            console.error("Erro ao renderizar tabela de arquivados:", error);
+            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            renderEmptyState(archivedTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
+        }
     }
     
-    function renderUsersTable() {
-        usersTableBody.innerHTML = '';
-        if (users.length === 0) {
-            usersTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-gray-500">Nenhum usuário cadastrado.</td></tr>`;
-            return;
-        }
+    async function renderUsersTable() {
+        renderSkeletonLoader(usersTableBody, 4);
 
-        users.forEach(user => {
-            const row = document.createElement('tr');
-            row.className = 'bg-white border-b'; // A classe de hover agora é global via CSS
-            const roleClass = user.role === 'Administrador' ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-800';
-            row.innerHTML = `
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${user.nome}</td>
-                <td class="px-6 py-4">${user.email}</td>
-                <td class="px-6 py-4">
-                    <span class="text-xs font-medium px-2.5 py-0.5 rounded ${roleClass}">${user.role}</span>
-                </td>
-                <td class="px-6 py-4 text-center space-x-4 whitespace-nowrap">
-                    <button data-id="${user.id}" class="edit-user-btn font-medium text-primary hover:underline">Editar</button>
-                    <button data-id="${user.id}" class="delete-user-btn font-medium text-red-600 hover:underline">Excluir</button>
-                </td>
-            `;
-            usersTableBody.appendChild(row);
-        });
+        try {
+            const users = await fetchUsers();
+            usersTableBody.innerHTML = '';
+
+            if (users.length === 0) {
+                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
+                renderEmptyState(usersTableBody, icon, 'Nenhum usuário cadastrado', 'Adicione o primeiro usuário da sua equipe clicando no botão acima.', 4);
+                return;
+            }
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b';
+                const roleClass = user.role === 'Administrador' ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-800';
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${user.nome}</td>
+                    <td class="px-6 py-4">${user.email}</td>
+                    <td class="px-6 py-4">
+                        <span class="text-xs font-medium px-2.5 py-0.5 rounded ${roleClass}">${user.role}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center space-x-4 whitespace-nowrap">
+                        <button data-id="${user.id}" class="edit-user-btn font-medium text-primary hover:underline">Editar</button>
+                        <button data-id="${user.id}" class="delete-user-btn font-medium text-red-600 hover:underline">Excluir</button>
+                    </td>
+                `;
+                usersTableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error("Erro ao renderizar tabela de usuários:", error);
+            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            renderEmptyState(usersTableBody, icon, 'Falha ao carregar usuários', 'Verifique a conexão com o servidor e tente novamente.', 4);
+        }
     }
     
-    function openFormModal(clientId = null) {
+    async function openFormModal(clientId = null) {
         clientForm.reset();
         if (clientId) {
-            const client = clients.find(c => c.id === clientId);
-            formTitle.textContent = 'Editar Detalhes do Cliente';
-            document.getElementById('client-id').value = client.id;
-            document.getElementById('nome').value = client.nome;            
-            document.getElementById('cpf').value = formatCPF(client.cpf || '');
-            document.getElementById('areaInteresse').value = client.areaInteresse;
-            document.getElementById('corretor').value = client.corretor;
-            document.getElementById('responsavel').value = client.responsavel;
-            document.getElementById('agencia').value = client.agencia || '';
-            document.getElementById('modalidade').value = client.modalidade || '';
-            document.getElementById('observacoes').value = client.observacoes;
+            try {
+                const client = await fetchClient(clientId);
+                formTitle.textContent = 'Editar Detalhes do Cliente';
+                document.getElementById('client-id').value = client.id;
+                document.getElementById('nome').value = client.nome;            
+                document.getElementById('cpf').value = formatCPF(client.cpf || '');
+                document.getElementById('areaInteresse').value = client.areaInteresse;
+                document.getElementById('corretor').value = client.corretor;
+                document.getElementById('responsavel').value = client.responsavel;
+                document.getElementById('agencia').value = client.agencia || '';
+                document.getElementById('modalidade').value = client.modalidade || '';
+                document.getElementById('observacoes').value = client.observacoes;
+            } catch (error) {
+                showToast('Erro ao carregar dados do cliente.', 'error');
+                return;
+            }
         } else {
             formTitle.textContent = 'Adicionar Novo Cliente';
             document.getElementById('client-id').value = '';
@@ -1193,9 +1319,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         clientFormModal.classList.add('hidden');
     }
 
-    function handleFormSubmit(event) {
+    async function handleFormSubmit(event) {
         event.preventDefault();
         const id = document.getElementById('client-id').value;
+        
         const clientData = {
             nome: document.getElementById('nome').value,
             cpf: document.getElementById('cpf').value.replace(/\D/g, ''),
@@ -1205,40 +1332,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             agencia: document.getElementById('agencia').value.replace(/\D/g, ''),
             modalidade: document.getElementById('modalidade').value,
             observacoes: document.getElementById('observacoes').value,
-            ultimaAtualizacao: new Date().toISOString(),
         };
 
-        if (id) { 
-            const clientIndex = clients.findIndex(c => c.id == id);
-            clients[clientIndex] = { ...clients[clientIndex], ...clientData };
-            logActivity(clientData.nome, 'Dados atualizados');
-        } else { 
-            clientData.id = Date.now();
-            clientData.status = 'Aprovado'; 
-            clientData.createdAt = new Date().toISOString();
-            clientData.dataAssinaturaContrato = null;
-            clientData.cpf = clientData.cpf || null;
-            clientData.agencia = clientData.agencia || null;
-            clientData.modalidade = clientData.modalidade || null;
-            clients.push(clientData);
-            logActivity(clientData.nome, 'Cliente adicionado');
+        if (id) {
+            clientData.id = id;
         }
-        
-        closeFormModal();
-        showToast('Cliente salvo com sucesso!', 'success');
-        renderClientsTable();
-        populateFilters(); 
+
+        try {
+            const savedClient = await saveClient(clientData);
+            logActivity(savedClient.nome, id ? 'Dados atualizados' : 'Cliente adicionado');
+            
+            closeFormModal();
+            showToast('Cliente salvo com sucesso!', 'success');
+            await renderClientsTable();
+            await populateFilters(); 
+        } catch (error) {
+            console.error('Erro ao salvar cliente:', error);
+            showToast('Não foi possível salvar o cliente. Tente novamente.', 'error');
+        }
     }
     
-    function openUserFormModal(userId = null) {
+    async function openUserFormModal(userId = null) {
         userForm.reset();
+        document.getElementById('user-id').value = '';
         if (userId) {
-            const user = users.find(u => u.id === userId);
-            userFormTitle.textContent = 'Editar Usuário';
-            document.getElementById('user-id').value = user.id;
-            document.getElementById('user-nome').value = user.nome;
-            document.getElementById('user-email').value = user.email;
-            document.getElementById('user-role').value = user.role;
+            try {
+                // Para não criar um endpoint `GET /users/:id`, buscamos todos e filtramos.
+                // Para um número grande de usuários, o ideal seria ter o endpoint específico.
+                const allUsers = await fetchUsers();
+                const user = allUsers.find(u => u.id === userId);
+                if (user) {
+                    userFormTitle.textContent = 'Editar Usuário';
+                    document.getElementById('user-id').value = user.id;
+                    document.getElementById('user-nome').value = user.nome;
+                    document.getElementById('user-email').value = user.email;
+                    document.getElementById('user-role').value = user.role;
+                }
+            } catch (error) {
+                showToast('Erro ao carregar dados do usuário.', 'error');
+                return;
+            }
         } else {
             userFormTitle.textContent = 'Adicionar Novo Usuário';
             document.getElementById('user-id').value = '';
@@ -1250,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         userFormModal.classList.add('hidden');
     }
 
-    function handleUserFormSubmit(event) {
+    async function handleUserFormSubmit(event) {
         event.preventDefault();
         const id = document.getElementById('user-id').value;
         const userData = {
@@ -1259,17 +1392,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             role: document.getElementById('user-role').value,
         };
 
-        if (id) {
-            const userIndex = users.findIndex(u => u.id == id);
-            users[userIndex] = { ...users[userIndex], ...userData };
-        } else {
-            userData.id = Date.now();
-            users.push(userData);
+        if (id) userData.id = id;
+
+        try {
+            await saveUser(userData);
+            closeUserFormModal();
+            showToast('Usuário salvo com sucesso!', 'success');
+            await renderUsersTable();
+        } catch (error) {
+            console.error('Erro ao salvar usuário:', error);
+            showToast('Não foi possível salvar o usuário. Tente novamente.', 'error');
         }
-        
-        closeUserFormModal();
-        showToast('Usuário salvo com sucesso!', 'success');
-        renderUsersTable();
     }
     
     function showCepByCepTab() {
@@ -1390,37 +1523,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         appMenuView.classList.remove('hidden');
     });
     
-    appCardCrm.addEventListener('click', () => {
-        appMenuView.classList.add('hidden');
-        appStructure.classList.remove('hidden');
-        populateFilters();
-        navigateTo('dashboard');
-    });
+    // Função auxiliar para colapsar a sidebar.
+    const collapseSidebar = () => {
+        // Apenas colapsa se já não estiver colapsada, para evitar que a interface "pisque".
+        if (!sidebar.classList.contains('w-0')) {
+            sidebar.classList.remove('w-64');
+            sidebar.classList.add('w-0');
+            document.querySelectorAll('.sidebar-text').forEach(text => text.classList.add('hidden'));
+        }
+    };
 
-    appCardMap.addEventListener('click', () => {
+    // Função para entrar em uma das aplicações a partir do menu principal.
+    // Esta é a única ação que deve colapsar a sidebar por padrão.
+    const enterApplication = (viewName, setupFunction = null) => {
         appMenuView.classList.add('hidden');
         appStructure.classList.remove('hidden');
-        navigateTo('map');
-    });
-    
-    appCardPdf.addEventListener('click', () => {
-        appMenuView.classList.add('hidden');
-        appStructure.classList.remove('hidden');
-        navigateTo('pdf');
-    });
+        collapseSidebar();
+        
+        if (setupFunction) {
+            setupFunction();
+        }
+        navigateTo(viewName);
+    };
 
-    appCardCep.addEventListener('click', () => {
-        appMenuView.classList.add('hidden');
-        appStructure.classList.remove('hidden');
-        navigateTo('cep');
-    });
-
-    appCardSettings.addEventListener('click', () => {
-        appMenuView.classList.add('hidden');
-        appStructure.classList.remove('hidden');
-        navigateTo('settings');
-        renderUsersTable();
-    });
+    appCardDashboard.addEventListener('click', () => enterApplication('dashboard'));
+    appCardClients.addEventListener('click', () => enterApplication('clients', populateFilters));
+    appCardMap.addEventListener('click', () => enterApplication('map'));
+    appCardPdf.addEventListener('click', () => enterApplication('pdf'));
+    appCardCep.addEventListener('click', () => enterApplication('cep'));
+    appCardSettings.addEventListener('click', () => enterApplication('settings', renderUsersTable));
 
     navLinks.appMenu.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1433,39 +1564,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (key === 'appMenu') return; 
         navLinks[key].addEventListener('click', (e) => {
             e.preventDefault();
+            // A navegação interna não colapsa a sidebar
             navigateTo(key);
-            if(key === 'settings') renderUsersTable();
+            // Adicionado para garantir que a tabela de usuários seja renderizada ao clicar no link da sidebar
+            if (key === 'settings') renderUsersTable();
         });
     });
     
-    tabActive.addEventListener('click', showActiveTab);
-    tabArchived.addEventListener('click', showArchivedTab);
+    tabActive.addEventListener('click', () => showActiveTab());
+    tabArchived.addEventListener('click', () => showArchivedTab());
     
     cepTabByCep.addEventListener('click', showCepByCepTab);
     cepTabByAddress.addEventListener('click', showCepByAddressTab);
 
-    searchInput.addEventListener('input', renderClientsTable);
-    filterStatus.addEventListener('change', renderClientsTable);
+    searchInput.addEventListener('input', () => renderClientsTable());
+    filterStatus.addEventListener('change', () => renderClientsTable());
     filterCorretor.addEventListener('change', renderClientsTable);
-    filterArchiveMonth.addEventListener('change', renderArchivedTable);
-    filterArchiveYear.addEventListener('change', renderArchivedTable);
     
+    // Adiciona listeners para os novos filtros da aba de arquivados
+    searchArchivedInput.addEventListener('input', renderArchivedTable);
+    filterArchivedStatus.addEventListener('change', renderArchivedTable);
+    filterArchivedCorretor.addEventListener('change', renderArchivedTable);
+
     orderByProperty.addEventListener('change', () => renderPropertiesList(properties));
     radiusSearchBtn.addEventListener('click', startRadiusSearch);
     radiusClearBtn.addEventListener('click', clearRadiusSearch);
 
-    clientsTableBody.addEventListener('input', (e) => {
+    clientsTableBody.addEventListener('input', async (e) => {
         if (e.target.classList.contains('signature-date-input')) {
             const clientId = parseInt(e.target.dataset.id, 10);
             const dateValue = e.target.value;
-            const client = clients.find(c => c.id === clientId);
             const archiveBtn = e.target.closest('tr').querySelector('.archive-btn');
-            if (client) client.dataAssinaturaContrato = dateValue;
+
+            try {
+                // Atualiza a data no backend
+                await saveClient({ id: clientId, dataAssinaturaContrato: dateValue });
+                showToast('Data de assinatura atualizada.', 'success');
+            } catch (error) {
+                console.error("Erro ao atualizar data:", error);
+                showToast('Falha ao salvar a data.', 'error');
+                e.target.value = e.target.dataset.originalValue || ''; // Reverte a mudança na UI
+            }
+
             if (archiveBtn) archiveBtn.disabled = !dateValue;
         }
     });
 
-    clientsTableBody.addEventListener('click', e => {
+    clientsTableBody.addEventListener('click', async e => {
         const badge = e.target.closest('.status-badge');
         if (badge) {
             e.stopPropagation(); 
@@ -1495,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (e.target.classList.contains('edit-btn')) {
-            openFormModal(parseInt(e.target.dataset.id));
+            await openFormModal(parseInt(e.target.dataset.id));
         } else if (e.target.classList.contains('archive-btn')) {
             confirmArchiveBtn.dataset.clientId = parseInt(e.target.dataset.id, 10);
             archiveConfirmModal.classList.remove('hidden');
@@ -1505,29 +1650,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    statusDropdownMenu.addEventListener('click', e => {
+    // Adiciona listener para a tabela de arquivados
+    archivedTableBody.addEventListener('click', async e => {
+        if (e.target.classList.contains('edit-btn')) {
+            await openFormModal(parseInt(e.target.dataset.id));
+        } else if (e.target.classList.contains('delete-client-btn')) {
+            confirmDeleteClientBtn.dataset.clientId = parseInt(e.target.dataset.id, 10);
+            deleteClientConfirmModal.classList.remove('hidden');
+        } else if (e.target.classList.contains('restore-client-btn')) {
+            const clientId = parseInt(e.target.dataset.id, 10);
+            try {
+                const updatedClient = await saveClient({ id: clientId, status: 'Aprovado' }); // Volta para o status inicial
+                logActivity(updatedClient.nome, 'Cliente restaurado para processos ativos');
+                showToast('Cliente restaurado com sucesso!', 'success');
+                await showArchivedTab(); // Atualiza a tabela de arquivados
+            } catch (error) {
+                showToast('Falha ao restaurar o cliente.', 'error');
+            }
+        }
+    });
+
+    statusDropdownMenu.addEventListener('click', async e => {
         const target = e.target;
         if (target.dataset.status) {
             const newStatus = target.dataset.status;
             const clientId = parseInt(target.dataset.clientId, 10);
             
-            const clientIndex = clients.findIndex(c => c.id === clientId);
-            if (clientIndex > -1) {
-                const clientName = clients[clientIndex].nome;
-                clients[clientIndex].status = newStatus;
-                clients[clientIndex].ultimaAtualizacao = new Date().toISOString();
-                logActivity(clientName, `Status alterado para ${newStatus}`);
-                showToast(`Status de ${clientName} alterado para ${newStatus}.`, 'success');
+            try {
+                const updatedClient = await saveClient({ id: clientId, status: newStatus });
+                logActivity(updatedClient.nome, `Status alterado para ${newStatus}`);
+                showToast(`Status de ${updatedClient.nome} alterado para ${newStatus}.`, 'success');
+                
                 const originalBadge = document.querySelector(`.status-badge[data-id="${clientId}"]`);
                 if(originalBadge) updateStatusBadge(originalBadge, newStatus);
+            } catch (error) {
+                console.error("Erro ao atualizar status:", error);
+                showToast('Falha ao alterar o status.', 'error');
             }
             hideStatusMenu();
         }
     });
     
-    usersTableBody.addEventListener('click', e => {
+    usersTableBody.addEventListener('click', async e => {
         if (e.target.classList.contains('edit-user-btn')) {
-            openUserFormModal(parseInt(e.target.dataset.id));
+            await openUserFormModal(parseInt(e.target.dataset.id));
         }
         if (e.target.classList.contains('delete-user-btn')) {
             confirmDeleteUserBtn.dataset.userId = parseInt(e.target.dataset.id, 10);
@@ -1535,12 +1701,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    addClientBtn.addEventListener('click', () => openFormModal());
+    addClientBtn.addEventListener('click', () => openFormModal(null));
     closeModalBtn.addEventListener('click', closeFormModal);
     cancelFormBtn.addEventListener('click', closeFormModal);
     clientForm.addEventListener('submit', handleFormSubmit);
     
-    // Adiciona máscara simples para campos numéricos no formulário de cliente
+    // Adiciona máscara de formatação para campos no formulário de cliente
     clientForm.addEventListener('input', (e) => {
         if (e.target.id === 'cpf') {
             e.target.value = formatCPF(e.target.value);
@@ -1549,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    addUserBtn.addEventListener('click', () => openUserFormModal());
+    addUserBtn.addEventListener('click', () => openUserFormModal(null));
     closeUserModalBtn.addEventListener('click', closeUserFormModal);
     cancelUserFormBtn.addEventListener('click', closeUserFormModal);
     userForm.addEventListener('submit', handleUserFormSubmit);
@@ -1568,31 +1734,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     cepFormByAddress.addEventListener('submit', handleAddressSearch);
 
     cancelArchiveBtn.addEventListener('click', () => archiveConfirmModal.classList.add('hidden'));
-    confirmArchiveBtn.addEventListener('click', () => {
+    confirmArchiveBtn.addEventListener('click', async () => {
         const clientId = parseInt(confirmArchiveBtn.dataset.clientId, 10);
-        const clientIndex = clients.findIndex(c => c.id === clientId);
-        
-        if (clientIndex !== -1 && clients[clientIndex].dataAssinaturaContrato) {
-            const clientName = clients[clientIndex].nome;
-            clients[clientIndex].status = 'Assinado';
-            clients[clientIndex].ultimaAtualizacao = new Date().toISOString();
-            logActivity(clientName, 'Cliente arquivado');
-            
-            archiveConfirmModal.classList.add('hidden');
+        archiveConfirmModal.classList.add('hidden');
+
+        try {
+            const updatedClient = await saveClient({ id: clientId, status: 'Assinado' });
+            logActivity(updatedClient.nome, 'Cliente arquivado');
             showToast('Cliente arquivado com sucesso!', 'success');
-            renderClientsTable();
-        } else {
-            archiveConfirmModal.classList.add('hidden');
+            await renderClientsTable();
+        } catch (error) {
+            console.error("Erro ao arquivar cliente:", error);
+            showToast('Falha ao arquivar o cliente.', 'error');
         }
     });
     
     cancelDeleteUserBtn.addEventListener('click', () => deleteUserConfirmModal.classList.add('hidden'));
-    confirmDeleteUserBtn.addEventListener('click', () => {
+    confirmDeleteUserBtn.addEventListener('click', async () => {
         const userId = parseInt(confirmDeleteUserBtn.dataset.userId, 10);
-        users = users.filter(u => u.id !== userId);
         deleteUserConfirmModal.classList.add('hidden');
-        showToast('Usuário excluído com sucesso.', 'success');
-        renderUsersTable();
+        try {
+            await deleteUser(userId);
+            showToast('Usuário excluído com sucesso.', 'success');
+            await renderUsersTable();
+        } catch (error) {
+            showToast('Falha ao excluir o usuário.', 'error');
+        }
     });
 
     cancelDeletePropertyBtn.addEventListener('click', () => deletePropertyConfirmModal.classList.add('hidden'));
@@ -1606,12 +1773,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     cancelDeleteClientBtn.addEventListener('click', () => deleteClientConfirmModal.classList.add('hidden'));
-    confirmDeleteClientBtn.addEventListener('click', () => {
+    confirmDeleteClientBtn.addEventListener('click', async () => {
         const clientId = parseInt(confirmDeleteClientBtn.dataset.clientId, 10);
-        clients = clients.filter(c => c.id !== clientId);
         deleteClientConfirmModal.classList.add('hidden');
-        showToast('Cliente excluído com sucesso.', 'success');
-        renderClientsTable();
+        try {
+            await deleteClient(clientId);
+            showToast('Cliente excluído com sucesso.', 'success');
+            await renderClientsTable();
+        } catch (error) {
+            console.error("Erro ao excluir cliente:", error);
+            showToast('Falha ao excluir o cliente.', 'error');
+        }
     });
 
     // Event Listeners do Editor de PDF
