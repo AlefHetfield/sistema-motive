@@ -6,7 +6,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('./generated/client');
 
 // 2. INICIALIZAR O APLICATIVO EXPRESS
 const app = express();

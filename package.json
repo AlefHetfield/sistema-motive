@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "postinstall": "prisma generate"
   },
   "repository": {
     "type": "git",
@@ -21,11 +22,10 @@
   "homepage": "https://github.com/AlefHetfield/sistema-motive#readme",
   "dependencies": {
     "@prisma/client": "^6.16.2",
-    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "pg": "^8.16.3"
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
