@@ -2,3 +2,4 @@
 node_modules
 # Ignorar o arquivo de variáveis de ambiente locais
 .env
+/generated/prisma

@@ -5,38 +5,17 @@
 // 1. IMPORTAR DEPENDÊNCIAS
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config(); // Carrega as variáveis do arquivo .env
-const { Pool } = require('pg');
+const { PrismaClient } = require('@prisma/client');
 
 // 2. INICIALIZAR O APLICATIVO EXPRESS
 const app = express();
-const port = 3000; // A porta em que nosso servidor vai rodar
+const prisma = new PrismaClient();
 
 // 3. CONFIGURAR MIDDLEWARES
 // O 'cors' permite que nosso frontend (rodando em outra porta/origem) acesse esta API.
 app.use(cors());
 // O 'express.json()' permite que o servidor entenda requisições com corpo em formato JSON.
 app.use(express.json());
-
-// 4. CONFIGURAÇÃO DO BANCO DE DADOS POSTGRESQL
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        // Necessário para conexões com bancos de dados em nuvem como Supabase, Heroku, etc.
-        rejectUnauthorized: false
-    }
-});
-
-// Adiciona um teste de conexão para fornecer um feedback claro no console.
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('❌ Erro ao conectar com o banco de dados:', err.stack);
-        console.error('   Verifique se o serviço do PostgreSQL está rodando e se as credenciais no arquivo .env estão corretas.');
-        return;
-    }
-    console.log('✅ Conexão com o banco de dados PostgreSQL estabelecida com sucesso!');
-    client.release();
-});
 
 
 // 5. DEFINIR AS ROTAS DA API (ENDPOINTS)
@@ -45,8 +24,10 @@ pool.connect((err, client, release) => {
 app.get('/api/clients', async (req, res) => {
     try {
         console.log('GET /api/clients - Buscando todos os clientes do banco de dados');
-        const { rows } = await pool.query('SELECT * FROM clients ORDER BY "createdAt" DESC');
-        res.json(rows);
+        const clients = await prisma.client.findMany({
+            orderBy: { createdAt: 'desc' },
+        });
+        res.json(clients);
     } catch (err) {
         console.error('Erro ao buscar clientes:', err.stack);
         res.status(500).json({ message: 'Erro no servidor ao buscar clientes' });
@@ -58,9 +39,11 @@ app.get('/api/clients/:id', async (req, res) => {
     const { id } = req.params;
     try {
         console.log(`GET /api/clients/${id} - Buscando cliente`);
-        const { rows } = await pool.query('SELECT * FROM clients WHERE id = $1', [id]);
-        if (rows.length > 0) {
-            res.json(rows[0]);
+        const client = await prisma.client.findUnique({
+            where: { id: parseInt(id) },
+        });
+        if (client) {
+            res.json(client);
         } else {
             res.status(404).json({ message: 'Cliente não encontrado' });
         }
@@ -71,20 +54,14 @@ app.get('/api/clients/:id', async (req, res) => {
 });
 
 // Rota para CRIAR um novo cliente (POST /api/clients)
-app.post('/api/clients', async (req, res) => {
-    const { nome, cpf, areaInteresse, corretor, responsavel, observacoes, agencia, modalidade } = req.body;
-    const status = 'Aprovado'; // Status padrão para novos clientes
-    
+app.post('/api/clients', async (req, res) => {    
+    const { nome, cpf, areaInteresse, corretor, responsavel, observacoes, agencia, modalidade, status } = req.body;
     try {
         console.log(`POST /api/clients - Criando novo cliente: ${nome}`);
-        const query = `
-            INSERT INTO clients(nome, cpf, "areaInteresse", corretor, responsavel, observacoes, agencia, modalidade, status)
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *;
-        `;
-        const values = [nome, cpf, areaInteresse, corretor, responsavel, observacoes, agencia, modalidade, status];
-        const { rows } = await pool.query(query, values);
-        res.status(201).json(rows[0]);
+        const newClient = await prisma.client.create({
+            data: { nome, cpf, areaInteresse, corretor, responsavel, observacoes, agencia, modalidade, status },
+        });
+        res.status(201).json(newClient);
     } catch (err) {
         console.error('Erro ao criar cliente:', err.stack);
         res.status(500).json({ message: 'Erro no servidor ao criar cliente' });
@@ -94,34 +71,19 @@ app.post('/api/clients', async (req, res) => {
 // Rota para ATUALIZAR um cliente existente (PUT /api/clients/:id)
 app.put('/api/clients/:id', async (req, res) => {
     const { id } = req.params;
-    const fields = Object.keys(req.body);
-    const values = Object.values(req.body);
-    
-    // Constrói a cláusula SET dinamicamente para atualizar apenas os campos enviados
-    const setClause = fields.map((field, index) => `"${field}" = $${index + 1}`).join(', ');
-    
-    if (fields.length === 0) {
+    if (Object.keys(req.body).length === 0) {
         return res.status(400).json({ message: 'Nenhum campo para atualizar' });
     }
     
     try {
         console.log(`PUT /api/clients/${id} - Atualizando cliente`);
-        const query = `
-            UPDATE clients
-            SET ${setClause}, "ultimaAtualizacao" = NOW()
-            WHERE id = $${fields.length + 1}
-            RETURNING *;
-        `;
-        const { rows } = await pool.query(query, [...values, id]);
-        
-        if (rows.length > 0) {
-            res.json(rows[0]);
-        } else {
-            res.status(404).json({ message: 'Cliente não encontrado' });
-        }
-    } catch (err) {
-        console.error(`Erro ao atualizar cliente ${id}:`, err.stack);
-        res.status(500).json({ message: 'Erro no servidor ao atualizar cliente' });
+        const updatedClient = await prisma.client.update({
+            where: { id: parseInt(id) },
+            data: req.body,
+        });
+        res.json(updatedClient);
+    } catch (error) {
+        next(error); // Passa o erro para o middleware de erro
     }
 });
 
@@ -130,14 +92,12 @@ app.delete('/api/clients/:id', async (req, res) => {
     const { id } = req.params;
     try {
         console.log(`DELETE /api/clients/${id} - Deletando cliente`);
-        const result = await pool.query('DELETE FROM clients WHERE id = $1', [id]);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Cliente não encontrado' });
-        }
+        await prisma.client.delete({
+            where: { id: parseInt(id) },
+        });
         res.status(204).send(); // 204 No Content (sucesso, sem corpo de resposta)
-    } catch (err) {
-        console.error(`Erro ao deletar cliente ${id}:`, err.stack);
-        res.status(500).json({ message: 'Erro no servidor ao deletar cliente' });
+    } catch (error) {
+        next(error);
     }
 });
 
@@ -148,8 +108,10 @@ app.delete('/api/clients/:id', async (req, res) => {
 // Rota para BUSCAR TODOS os usuários
 app.get('/api/users', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT * FROM users ORDER BY nome ASC');
-        res.json(rows);
+        const users = await prisma.user.findMany({
+            orderBy: { nome: 'asc' },
+        });
+        res.json(users);
     } catch (err) {
         console.error('Erro ao buscar usuários:', err.stack);
         res.status(500).json({ message: 'Erro no servidor ao buscar usuários' });
@@ -160,9 +122,10 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
     const { nome, email, role } = req.body;
     try {
-        const query = 'INSERT INTO users(nome, email, role) VALUES($1, $2, $3) RETURNING *;';
-        const { rows } = await pool.query(query, [nome, email, role]);
-        res.status(201).json(rows[0]);
+        const newUser = await prisma.user.create({
+            data: { nome, email, role },
+        });
+        res.status(201).json(newUser);
     } catch (err) {
         console.error('Erro ao criar usuário:', err.stack);
         res.status(500).json({ message: 'Erro no servidor ao criar usuário' });
@@ -174,13 +137,13 @@ app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { nome, email, role } = req.body;
     try {
-        const query = 'UPDATE users SET nome = $1, email = $2, role = $3 WHERE id = $4 RETURNING *;';
-        const { rows } = await pool.query(query, [nome, email, role, id]);
-        if (rows.length > 0) res.json(rows[0]);
-        else res.status(404).json({ message: 'Usuário não encontrado' });
-    } catch (err) {
-        console.error(`Erro ao atualizar usuário ${id}:`, err.stack);
-        res.status(500).json({ message: 'Erro no servidor ao atualizar usuário' });
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { nome, email, role },
+        });
+        res.json(updatedUser);
+    } catch (error) {
+        next(error);
     }
 });
 
@@ -188,15 +151,83 @@ app.put('/api/users/:id', async (req, res) => {
 app.delete('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        await prisma.user.delete({
+            where: { id: parseInt(id) },
+        });
         res.status(204).send();
-    } catch (err) {
-        console.error(`Erro ao deletar usuário ${id}:`, err.stack);
-        res.status(500).json({ message: 'Erro no servidor ao deletar usuário' });
+    } catch (error) {
+        next(error);
     }
 });
 
+// =================================================================================
+// ROTAS DA API PARA IMÓVEIS (PROPERTIES)
+// =================================================================================
+
+// Rota para BUSCAR TODOS os imóveis
+app.get('/api/properties', async (req, res) => {
+    try {
+        const properties = await prisma.property.findMany();
+        res.json(properties);
+    } catch (err) {
+        console.error('Erro ao buscar imóveis:', err.stack);
+        res.status(500).json({ message: 'Erro no servidor ao buscar imóveis' });
+    }
+});
+
+// Rota para CRIAR um novo imóvel
+app.post('/api/properties', async (req, res) => {
+    try {
+        const newProperty = await prisma.property.create({ data: req.body });
+        res.status(201).json(newProperty);
+    } catch (err) {
+        console.error('Erro ao criar imóvel:', err.stack);
+        res.status(500).json({ message: 'Erro no servidor ao criar imóvel' });
+    }
+});
+
+// Rota para ATUALIZAR um imóvel
+app.put('/api/properties/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const updatedProperty = await prisma.property.update({
+            where: { id: parseInt(id) },
+            data: req.body,
+        });
+        res.json(updatedProperty);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Rota para DELETAR um imóvel
+app.delete('/api/properties/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.property.delete({ where: { id: parseInt(id) } });
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 // 6. INICIAR O SERVIDOR
+
+// Middleware de tratamento de erros. Deve ser o último `app.use()`.
+app.use((err, req, res, next) => {
+    console.error('❌ Erro capturado pelo middleware:', err.stack);
+
+    // Trata erros específicos do Prisma (ex: registro não encontrado)
+    if (err.code === 'P2025') {
+        return res.status(404).json({ message: 'O registro solicitado não foi encontrado.' });
+    }
+
+    // Outros erros do Prisma podem ser tratados aqui...
+
+    // Resposta para erros genéricos
+    res.status(500).json({ message: 'Ocorreu um erro inesperado no servidor.' });
+});
 
 // Exporta o app para ser usado pela Vercel como uma Serverless Function
 module.exports = app;

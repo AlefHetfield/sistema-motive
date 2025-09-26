@@ -20,12 +20,14 @@
   },
   "homepage": "https://github.com/AlefHetfield/sistema-motive#readme",
   "dependencies": {
+    "@prisma/client": "^6.16.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "pg": "^8.16.3"
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "prisma": "^6.16.2"
   }
 }
