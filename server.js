@@ -5,6 +5,7 @@
 // 1. IMPORTAR DEPENDÊNCIAS
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 const { PrismaClient } = require('@prisma/client');
 
 // 2. INICIALIZAR O APLICATIVO EXPRESS
@@ -14,8 +15,8 @@ const prisma = new PrismaClient();
 // 3. CONFIGURAR MIDDLEWARES
 // O 'cors' permite que nosso frontend (rodando em outra porta/origem) acesse esta API.
 app.use(cors());
-// O 'express.json()' permite que o servidor entenda requisições com corpo em formato JSON.
-app.use(express.json());
+// O 'bodyParser.json()' permite que o servidor entenda requisições com corpo em formato JSON.
+app.use(bodyParser.json());
 
 
 // 5. DEFINIR AS ROTAS DA API (ENDPOINTS)
