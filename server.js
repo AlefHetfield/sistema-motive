@@ -214,11 +214,12 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Ocorreu um erro inesperado no servidor.' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-});
-
-
 // Exporta o app para ser usado pela Vercel como uma Serverless Function
-module.exports = app;
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app; 
