@@ -6,7 +6,6 @@ generator client {
   // native: para seu ambiente local (Windows)
   // rhel-openssl-3.0.x: para o ambiente Linux do Vercel
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
-  output   = "../api/generated/client"
 }
 
 datasource db {
