@@ -1593,7 +1593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     radiusSearchBtn.addEventListener('click', startRadiusSearch);
     radiusClearBtn.addEventListener('click', clearRadiusSearch);
 
-    clientsTableBody.addEventListener('change', async (e) => {
+    clientsTableBody.addEventListener('blur', async (e) => {
         if (e.target.classList.contains('signature-date-input')) {
             const clientId = parseInt(e.target.dataset.id, 10);
             const dateString = e.target.value; // Ex: "2025-09-05"
