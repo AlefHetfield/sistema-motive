@@ -1322,14 +1322,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleFormSubmit(event) {
         event.preventDefault();
         const id = document.getElementById('client-id').value;
+        const cpfValue = document.getElementById('cpf').value.replace(/\D/g, '');
+        const agenciaValue = document.getElementById('agencia').value.replace(/\D/g, '');
         
         const clientData = {
             nome: document.getElementById('nome').value,
-            cpf: document.getElementById('cpf').value.replace(/\D/g, ''),
+            cpf: cpfValue || null, // Envia null se a string for vazia
             areaInteresse: document.getElementById('areaInteresse').value,
             corretor: document.getElementById('corretor').value,
             responsavel: document.getElementById('responsavel').value,
-            agencia: document.getElementById('agencia').value.replace(/\D/g, ''),
+            agencia: agenciaValue || null, // Envia null se a string for vazia
             modalidade: document.getElementById('modalidade').value,
             observacoes: document.getElementById('observacoes').value,
             status: 'Aprovado', // <<<< ADICIONE ESTA LINHA
@@ -1594,8 +1596,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     clientsTableBody.addEventListener('input', async (e) => {
         if (e.target.classList.contains('signature-date-input')) {
             const clientId = parseInt(e.target.dataset.id, 10);
-            const dateValue = e.target.value;
+            const dateString = e.target.value; // Ex: "2025-09-05"
             const archiveBtn = e.target.closest('tr').querySelector('.archive-btn');
+
+            // Se a data for apagada, enviamos null. Se não, convertemos para o formato ISO.
+            // O 'T12:00:00.000Z' ajuda a evitar problemas de fuso horário (timezone).
+            const dateValue = dateString ? new Date(`${dateString}T12:00:00.000Z`).toISOString() : null;
 
             try {
                 // Atualiza a data no backend
@@ -1607,7 +1613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.target.value = e.target.dataset.originalValue || ''; // Reverte a mudança na UI
             }
 
-            if (archiveBtn) archiveBtn.disabled = !dateValue;
+            if (archiveBtn) archiveBtn.disabled = !dateString;
         }
     });
 
