@@ -1108,71 +1108,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderClientsTable() {
-        renderSkeletonLoader(clientsTableBody, 11); // Mostra o esqueleto de carregamento
+      renderSkeletonLoader(clientsTableBody, 11); // Mostra o esqueleto de carregamento
+  
+      try {
+          const allClients = await fetchClients();
+          const searchTerm = searchInput.value.toLowerCase();
+          const statusFilter = filterStatus.value;
+          const corretorFilter = filterCorretor.value;
+  
+          const activeClients = allClients.filter(client => 
+              !FINAL_STATUSES.includes(client.status) &&
+              client.nome.toLowerCase().includes(searchTerm) &&
+              (statusFilter === '' || client.status === statusFilter) &&
+              (corretorFilter === '' || client.corretor === corretorFilter)
+          );
+  
+          clientsTableBody.innerHTML = ''; // Limpa o loader
+          if (activeClients.length === 0) {
+              const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`;
+              renderEmptyState(clientsTableBody, icon, 'Nenhum cliente encontrado', 'Tente ajustar seus filtros ou adicione um novo cliente.', 11);
+              return;
+          }
+  
+          activeClients.forEach(client => {
+          const row = document.createElement('tr');
+          row.className = 'bg-white border-b';
+          const dayCounter = getDayCounter(client.createdAt);
+          
+          row.innerHTML = `
+              <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+              <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
+              <td class="px-6 py-4">${client.areaInteresse}</td>
+              <td class="px-6 py-4">${client.corretor}</td>
+              <td class="px-6 py-4">${client.responsavel || ''}</td>
+              <td class="px-6 py-4">${client.agencia || ''}</td>
+              <td class="px-6 py-4">${client.modalidade || ''}</td>
+              <td class="px-6 py-4">
+                  <div class="relative">
+                      <button data-id="${client.id}" class="status-badge text-xs font-medium px-3 py-1.5 rounded-full w-full text-left flex justify-between items-center">
+                          <span>${client.status}</span>
+                          <svg class="w-3 h-3 text-gray-500 ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </button>
+                  </div>
+              </td>
+              <td class="px-6 py-4 text-center">
+                  <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
+              </td>
+              <td class="px-6 py-4">
+                  <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato || ''}">
+              </td>
+              <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
+                  <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
+                  <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
+                  <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Arquivar</button>
+              </td>
+          `;
+          clientsTableBody.appendChild(row);
 
-        try {
-            const allClients = await fetchClients();
-            const searchTerm = searchInput.value.toLowerCase();
-            const statusFilter = filterStatus.value;
-            const corretorFilter = filterCorretor.value;
-
-            const activeClients = allClients.filter(client => 
-                !FINAL_STATUSES.includes(client.status) &&
-                client.nome.toLowerCase().includes(searchTerm) &&
-                (statusFilter === '' || client.status === statusFilter) &&
-                (corretorFilter === '' || client.corretor === corretorFilter)
-            );
-
-            clientsTableBody.innerHTML = ''; // Limpa o loader
-            if (activeClients.length === 0) {
-                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`;
-                renderEmptyState(clientsTableBody, icon, 'Nenhum cliente encontrado', 'Tente ajustar seus filtros ou adicione um novo cliente.', 11);
-                return;
-            }
-
-            activeClients.forEach(client => {
-            const row = document.createElement('tr');
-            row.className = 'bg-white border-b';
-            const dayCounter = getDayCounter(client.createdAt);
-            
-            row.innerHTML = `
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
-                <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
-                <td class="px-6 py-4">${client.areaInteresse}</td>
-                <td class="px-6 py-4">${client.corretor}</td>
-                <td class="px-6 py-4">${client.responsavel || ''}</td>
-                <td class="px-6 py-4">${client.agencia || ''}</td>
-                <td class="px-6 py-4">${client.modalidade || ''}</td>
-                <td class="px-6 py-4">
-                    <div class="relative">
-                        <button data-id="${client.id}" class="status-badge text-xs font-medium px-3 py-1.5 rounded-full w-full text-left flex justify-between items-center">
-                            <span>${client.status}</span>
-                            <svg class="w-3 h-3 text-gray-500 ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                    </div>
-                </td>
-                <td class="px-6 py-4 text-center">
-                    <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
-                </td>
-                <td class="px-6 py-4">
-                    <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato || ''}">
-                </td>
-                <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
-                    <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
-                    <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
-                    <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Arquivar</button>
-                </td>
-            `;
-            clientsTableBody.appendChild(row);
-
-            const newBadge = row.querySelector('.status-badge');
-            updateStatusBadge(newBadge, client.status);
-        });
-        } catch (error) {
-            console.error("Erro ao renderizar tabela de clientes:", error);
-            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
-            renderEmptyState(clientsTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
-        }
+          const newBadge = row.querySelector('.status-badge');
+          updateStatusBadge(newBadge, client.status);
+      });
+      } catch (error) {
+          console.error("Erro ao renderizar tabela de clientes:", error);
+          const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+          renderEmptyState(clientsTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
+      }
     }
     
     async function renderArchivedTable() {
