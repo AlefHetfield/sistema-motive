@@ -171,6 +171,10 @@ const config = {
         "fromEnvVar": null,
         "value": "windows",
         "native": true
+      },
+      {
+        "fromEnvVar": null,
+        "value": "rhel-openssl-3.0.x"
       }
     ],
     "previewFeatures": [],
@@ -178,7 +182,7 @@ const config = {
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": "../../../.env",
+    "rootEnvPath": null,
     "schemaEnvPath": "../../../.env"
   },
   "relativePath": "../../../prisma",
@@ -188,17 +192,16 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
-        "fromEnvVar": "PRISMA_DATABASE_URL",
+        "fromEnvVar": "DATABASE_URL",
         "value": null
       }
     }
   },
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../api/generated/client\"\n}\n\ndatasource db {\n  provider  = \"postgresql\"\n  // Usa a URL do Accelerate para a aplicação e a directUrl para migrações\n  url       = env(\"PRISMA_DATABASE_URL\")\n  directUrl = env(\"DATABASE_URL\")\n}\n\n// =================================\n// MODELOS DA APLICAÇÃO\n// =================================\n\nmodel Client {\n  id                     Int       @id @default(autoincrement())\n  nome                   String?\n  cpf                    String?\n  areaInteresse          String?\n  corretor               String?\n  responsavel            String?\n  observacoes            String?\n  agencia                String?\n  modalidade             String?\n  status                 String?\n  createdAt              DateTime  @default(now()) @map(\"createdAt\")\n  ultimaAtualizacao      DateTime? @updatedAt @map(\"ultimaAtualizacao\")\n  dataAssinaturaContrato DateTime? @db.Date\n\n  @@map(\"clients\")\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  nome      String?\n  email     String?  @unique\n  role      String?\n  createdAt DateTime @default(now()) @map(\"createdAt\")\n\n  @@map(\"users\")\n}\n\nmodel Property {\n  id          Int     @id @default(autoincrement())\n  title       String\n  description String?\n  address     String\n  price       Float?\n  area        Float?\n  photoUrl    String?\n  // Campos para geolocalização\n  latitude    Float?\n  longitude   Float?\n\n  @@map(\"properties\")\n}\n",
-  "inlineSchemaHash": "f6777c08b956096707f7af8461b9681812ce8d4ce344b5faa212a26934abb267",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider      = \"prisma-client-js\"\n  // native: para seu ambiente local (Windows)\n  // rhel-openssl-3.0.x: para o ambiente Linux do Vercel\n  binaryTargets = [\"native\", \"rhel-openssl-3.0.x\"]\n  output        = \"../api/generated/client\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\n// =================================\n// MODELOS DA APLICAÇÃO\n// =================================\n\nmodel Client {\n  id                     Int       @id @default(autoincrement())\n  nome                   String?\n  cpf                    String?\n  areaInteresse          String?\n  corretor               String?\n  responsavel            String?\n  observacoes            String?\n  agencia                String?\n  modalidade             String?\n  status                 String?\n  createdAt              DateTime  @default(now()) @map(\"createdAt\")\n  ultimaAtualizacao      DateTime? @updatedAt @map(\"ultimaAtualizacao\")\n  dataAssinaturaContrato DateTime? @db.Date\n\n  @@map(\"clients\")\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  nome      String?\n  email     String?  @unique\n  role      String?\n  createdAt DateTime @default(now()) @map(\"createdAt\")\n\n  @@map(\"users\")\n}\n\nmodel Property {\n  id          Int     @id @default(autoincrement())\n  title       String\n  description String?\n  address     String\n  price       Float?\n  area        Float?\n  photoUrl    String?\n  // Campos para geolocalização\n  latitude    Float?\n  longitude   Float?\n\n  @@map(\"properties\")\n}\n",
+  "inlineSchemaHash": "f054071629a1171d2f9ea51589f22993921a5bdcb79f1ae474174e73393f6b2a",
   "copyEngine": true
 }
 config.dirname = '/'
@@ -210,7 +213,7 @@ config.compilerWasm = undefined
 
 config.injectableEdgeEnv = () => ({
   parsed: {
-    PRISMA_DATABASE_URL: typeof globalThis !== 'undefined' && globalThis['PRISMA_DATABASE_URL'] || typeof process !== 'undefined' && process.env && process.env.PRISMA_DATABASE_URL || undefined
+    DATABASE_URL: typeof globalThis !== 'undefined' && globalThis['DATABASE_URL'] || typeof process !== 'undefined' && process.env && process.env.DATABASE_URL || undefined
   }
 })
 

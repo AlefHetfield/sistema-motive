@@ -2,15 +2,16 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../api/generated/client"
+  provider      = "prisma-client-js"
+  // native: para seu ambiente local (Windows)
+  // rhel-openssl-3.0.x: para o ambiente Linux do Vercel
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  output        = "../api/generated/client"
 }
 
 datasource db {
-  provider  = "postgresql"
-  // Usa a URL do Accelerate para a aplicação e a directUrl para migrações
-  url       = env("PRISMA_DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // =================================
