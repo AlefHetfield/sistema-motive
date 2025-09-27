@@ -49,8 +49,13 @@ app.post('/api/clients', async (req, res) => {
     });
     res.status(201).json(newClient);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Não foi possível criar o cliente.' });
+    // Log detalhado do erro no servidor (Vercel Logs ou terminal local)
+    console.error("Erro ao criar cliente:", error);
+    // Envia uma resposta de erro mais específica para o frontend
+    res.status(400).json({ 
+        error: 'Dados inválidos para criar o cliente.',
+        details: error.message 
+    });
   }
 });
 

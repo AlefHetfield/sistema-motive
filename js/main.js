@@ -1332,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             agencia: document.getElementById('agencia').value.replace(/\D/g, ''),
             modalidade: document.getElementById('modalidade').value,
             observacoes: document.getElementById('observacoes').value,
+            status: 'Aprovado', // <<<< ADICIONE ESTA LINHA
         };
 
         if (id) {
