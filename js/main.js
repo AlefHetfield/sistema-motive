@@ -64,18 +64,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         'valinhos': '#4ADE80',               // Verde
         'default': '#E11D48'                 // Cor Padrão (Rosa)
     };
-
-    // Os dados dos clientes agora virão de um banco de dados através da API.
-    // Este array mockado não é mais a fonte principal de dados.
-    // let clients = [
-    //     { id: 1, nome: 'João da Silva', cpf: '11122233344', areaInteresse: 'Apartamento 3 quartos', corretor: 'Carlos Silva', responsavel: 'Ana Souza', observacoes: 'Cliente quer visitar imóveis no centro.', agencia: 101, modalidade: 'Financiamento', status: 'Aprovado', ultimaAtualizacao: '2025-08-28T10:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-04T10:00:00Z' },
-    //     { id: 2, nome: 'Maria Oliveira', cpf: '55566677788', areaInteresse: 'Casa com quintal', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Prefere bairros residenciais.', agencia: 205, modalidade: 'À Vista', status: 'Aprovado', ultimaAtualizacao: '2025-08-27T15:30:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-25T15:30:00Z' },
-    //     { id: 3, nome: 'Pedro Martins', cpf: '99988877766', areaInteresse: 'Cobertura', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Aguardando documentação do banco.', agencia: 101, modalidade: 'Consórcio', status: 'Engenharia', ultimaAtualizacao: '2025-08-29T11:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-15T11:00:00Z' },
-    //     { id: 4, nome: 'Juliana Costa', cpf: '12345678900', areaInteresse: 'Loft moderno', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Processo em fase final.', agencia: 311, modalidade: 'Financiamento', status: 'Finalização', ultimaAtualizacao: '2025-08-25T09:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-08-01T09:00:00Z' },
-    //     { id: 5, nome: 'Lucas Ferreira', cpf: '09876543211', areaInteresse: 'Terreno comercial', corretor: 'Fernanda Lima', responsavel: 'Carlos Silva', observacoes: 'Análise de conformidade em andamento.', agencia: 205, modalidade: 'Permuta', status: 'Conformidade', ultimaAtualizacao: '2025-08-29T14:20:00Z', dataAssinaturaContrato: null, createdAt: '2025-09-02T14:20:00Z' },
-    //     { id: 6, nome: 'Beatriz Almeida', cpf: '11223344556', areaInteresse: 'Apartamento 2 quartos', corretor: 'Carlos Silva', responsavel: 'Carlos Silva', observacoes: 'Contrato assinado com sucesso.', agencia: 101, modalidade: 'Financiamento', status: 'Assinado', ultimaAtualizacao: '2025-07-15T18:00:00Z', dataAssinaturaContrato: '2025-07-15', createdAt: '2025-06-10T18:00:00Z' },
-    //     { id: 7, nome: 'Roberto Nunes', cpf: '66554433221', areaInteresse: 'Sítio', corretor: 'Ricardo Alves', responsavel: 'Ana Souza', observacoes: 'Cliente desistiu da compra.', agencia: 311, modalidade: 'À Vista', status: 'Assinado', ultimaAtualizacao: '2025-06-20T12:00:00Z', dataAssinaturaContrato: null, createdAt: '2025-05-20T12:00:00Z' },
-    // ];
     
     let properties = [
         { id: 201, city: 'Sumaré', title: 'Casa Térrea no Jd. das Flores', address: 'Rua das Rosas, 123, Sumaré, SP', price: 650000, area: 200, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+1', lat: -22.8219, lng: -47.2662, description: 'Bela casa com 3 dormitórios, sendo 1 suíte. Amplo quintal com churrasqueira. Garagem para 2 carros.' },
@@ -98,6 +86,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
 
     const loginForm = document.getElementById('login-form');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('toggle-password');
     
     const appCardDashboard = document.getElementById('app-card-dashboard');
     const appCardMap = document.getElementById('app-card-map');
@@ -430,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const favHeader = document.createElement('h3');
             favHeader.className = 'text-xs font-bold uppercase text-yellow-800 bg-yellow-100 p-2 sticky top-0 flex items-center';
             favHeader.innerHTML = `
-                <svg class="w-4 h-4 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                <svg class="w-4 h-4 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                 Favoritos
             `;
             propertiesList.appendChild(favHeader);
@@ -1520,13 +1510,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.sidebar-text').forEach(text => text.classList.toggle('hidden'));
     });
 
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        // Remove a página de login do DOM em vez de apenas escondê-la.
-        // Isso evita que o gerenciador de senhas do navegador seja acionado em outras telas.
-        loginPage.remove();
-        appMenuView.classList.remove('hidden');
-    });
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = passwordInput.value;
+
+            // Credenciais fixas
+            const validEmail = 'motiveimoveis@gmail.com';
+            const validPassword = 'motive@sistema';
+
+            if (email === validEmail && password === validPassword) {
+                loginPage.remove();
+                appMenuView.classList.remove('hidden');
+            } else {
+                showToast('Credenciais inválidas. Tente novamente.', 'error');
+            }
+        });
+    }
+
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function () {
+            // toggle the type attribute
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            // toggle the eye slash icon
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
     
     // Função auxiliar para colapsar a sidebar.
     const collapseSidebar = () => {
