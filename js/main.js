@@ -146,6 +146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchArchivedInput = document.getElementById('search-archived-client');
     const filterArchivedStatus = document.getElementById('filter-archived-status');
     const filterArchivedCorretor = document.getElementById('filter-archived-corretor');
+    const filterArchiveMonth = document.getElementById('filter-archive-month');
+    const filterArchiveYear = document.getElementById('filter-archive-year');
 
     const clientFormModal = document.getElementById('client-form-modal');
     const clientForm = document.getElementById('client-form');

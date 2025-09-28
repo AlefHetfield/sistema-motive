@@ -1,5 +1,5 @@
 // Usar um caminho relativo permite que a API funcione tanto localmente (com 'vercel dev') quanto em produção.
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 /**
  * Busca todos os clientes do backend.

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
@@ -47,6 +48,8 @@ app.post('/api/clients', async (req, res) => {
     const newClient = await prisma.client.create({
       data: req.body,
     });
+    // Log para confirmar a criação no terminal
+    console.log('Novo cliente criado com sucesso:', newClient);
     res.status(201).json(newClient);
   } catch (error) {
     // Log detalhado do erro no servidor (Vercel Logs ou terminal local)
