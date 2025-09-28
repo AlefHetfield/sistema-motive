@@ -131,3 +131,17 @@ aside nav a {
 .toast-error {
     background-color: #EF4444; /* Tailwind red-500 */
 }
+
+/* Refinamento do botão de login */
+.btn-login {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Refinamento dos inputs de login */
+#login-page .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(91, 124, 153, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
