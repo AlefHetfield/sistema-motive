@@ -9,7 +9,8 @@
     "start": "node server.js",
     "dev": "nodemon api/server.js",
     "build": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma migrate deploy && prisma generate"
   },
   "repository": {
     "type": "git",
