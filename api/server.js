@@ -44,6 +44,16 @@ app.get('/api/clients/:id', async (req, res) => {
 
 // [CREATE] Criar um novo cliente
 app.post('/api/clients', async (req, res) => {
+  const { nome, corretor } = req.body;
+
+  // Validação básica no backend
+  if (!nome || !corretor) {
+    return res.status(400).json({ 
+      error: 'Dados inválidos.',
+      details: 'Os campos "Nome do Cliente" e "Corretor" são obrigatórios.' 
+    });
+  }
+
   try {
     const newClient = await prisma.client.create({
       data: req.body,

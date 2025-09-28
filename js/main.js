@@ -1157,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
               </td>
               <td class="px-6 py-4">
-                  <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato || ''}">
+                  <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato ? client.dataAssinaturaContrato.split('T')[0] : ''}">
               </td>
               <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
                   <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
@@ -1595,27 +1595,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     radiusSearchBtn.addEventListener('click', startRadiusSearch);
     radiusClearBtn.addEventListener('click', clearRadiusSearch);
 
-    clientsTableBody.addEventListener('blur', async (e) => {
-        if (e.target.classList.contains('signature-date-input')) {
-            const clientId = parseInt(e.target.dataset.id, 10);
-            const dateString = e.target.value; // Ex: "2025-09-05"
-            const archiveBtn = e.target.closest('tr').querySelector('.archive-btn');
+    // Função debounce para evitar chamadas excessivas à API ao digitar
+    const debounce = (func, delay) => {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
 
-            // Se a data for apagada, enviamos null. Se não, convertemos para o formato ISO.
-            // O 'T12:00:00.000Z' ajuda a evitar problemas de fuso horário (timezone).
-            const dateValue = dateString ? new Date(`${dateString}T12:00:00.000Z`).toISOString() : null;
+    // Handler debounced para salvar a data
+    const debouncedSaveDate = debounce(async (target) => {
+        const clientId = parseInt(target.dataset.id, 10);
+        const dateString = target.value;
 
-            try {
-                // Atualiza a data no backend
-                await saveClient({ id: clientId, dataAssinaturaContrato: dateValue });
-                showToast('Data de assinatura atualizada.', 'success');
-            } catch (error) {
-                console.error("Erro ao atualizar data:", error);
-                showToast('Falha ao salvar a data.', 'error');
-                e.target.value = e.target.dataset.originalValue || ''; // Reverte a mudança na UI
+        const dateValue = dateString ? new Date(`${dateString}T12:00:00.000Z`).toISOString() : null;
+
+        try {
+            await saveClient({ id: clientId, dataAssinaturaContrato: dateValue });
+            showToast('Data de assinatura atualizada.', 'success');
+            target.dataset.originalValue = dateString; // Atualiza o valor original
+        } catch (error) {
+            console.error("Erro ao atualizar data:", error);
+            showToast('Falha ao salvar a data.', 'error');
+            if (target.dataset.originalValue) {
+                target.value = target.dataset.originalValue;
             }
+        }
+    }, 800); // Atraso de 800ms
 
-            if (archiveBtn) archiveBtn.disabled = !dateString;
+    clientsTableBody.addEventListener('input', (e) => {
+        if (e.target.classList.contains('signature-date-input')) {
+            const archiveBtn = e.target.closest('tr').querySelector('.archive-btn');
+            // Habilita/desabilita o botão de arquivar imediatamente, sem esperar
+            if (archiveBtn) archiveBtn.disabled = !e.target.value;
+            // Chama a função debounced para salvar
+            debouncedSaveDate(e.target);
         }
     });
 
