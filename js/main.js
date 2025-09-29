@@ -1198,15 +1198,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Calcula a duração do processo (criação até assinatura)
                 let durationDays = 'N/A';
                 let durationColor = 'bg-gray-100 text-gray-800';
-                if (client.createdAt && client.dataAssinaturaContrato) {
-                    const created = new Date(client.createdAt);
-                    const signed = new Date(client.dataAssinaturaContrato);
-                    const diffTime = Math.abs(signed - created);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    durationDays = diffDays.toString().padStart(2, '0');
-                    if (diffDays < 30) durationColor = 'bg-green-100 text-green-800';
-                    else if (diffDays < 60) durationColor = 'bg-yellow-100 text-yellow-800';
-                    else durationColor = 'bg-red-100 text-red-800';
+                let signatureDateFormatted = 'N/A';
+
+                if (client.dataAssinaturaContrato) {
+                    const dateParts = client.dataAssinaturaContrato.split('T')[0].split('-');
+                    if (dateParts.length === 3) {
+                        const year = parseInt(dateParts[0], 10);
+                        const month = parseInt(dateParts[1], 10) - 1; // Mês é 0-indexed
+                        const day = parseInt(dateParts[2], 10);
+                        const signed = new Date(year, month, day);
+
+                        if (!isNaN(signed.getTime())) {
+                            signatureDateFormatted = signed.toLocaleDateString('pt-BR');
+                            
+                            if (client.createdAt) {
+                                const created = new Date(client.createdAt);
+                                if (!isNaN(created.getTime())) {
+                                    const diffTime = Math.abs(signed - created);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    
+                                    if (!isNaN(diffDays)) {
+                                        durationDays = diffDays.toString().padStart(2, '0');
+                                        if (diffDays < 30) durationColor = 'bg-green-100 text-green-800';
+                                        else if (diffDays < 60) durationColor = 'bg-yellow-100 text-yellow-800';
+                                        else durationColor = 'bg-red-100 text-red-800';
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 row.innerHTML = `
@@ -1225,10 +1245,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="px-6 py-4 text-center">
                         <span class="text-sm font-bold px-2.5 py-1 rounded-full ${durationColor}">${durationDays}</span>
                     </td>
-                    <td class="px-6 py-4">${client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}</td>
+                    <td class="px-6 py-4">${signatureDateFormatted}</td>
                     <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
                         <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
                         <button data-id="${client.id}" class="restore-client-btn font-medium text-green-600 hover:underline">Restaurar</button>
+                        <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
                         <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
                     </td>
                 `;
