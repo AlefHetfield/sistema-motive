@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appCardClients = document.getElementById('app-card-clients');
     const appCardCep = document.getElementById('app-card-cep');
     const appCardPdf = document.getElementById('app-card-pdf');
+    const appCardReceipt = document.getElementById('app-card-receipt');
     const appCardSettings = document.getElementById('app-card-settings');
 
     const mainContent = document.getElementById('main-content');
@@ -104,6 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         map: document.getElementById('map-view'),
         pdf: document.getElementById('pdf-editor-view'),
         cep: document.getElementById('cep-view'),
+        receipt: document.getElementById('receipt-view'),
         settings: document.getElementById('settings-view'),
     };
     
@@ -113,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         clients: document.getElementById('nav-clients'),
         map: document.getElementById('nav-map'),
         pdf: document.getElementById('nav-pdf'),
+        receipt: document.getElementById('nav-receipt'),
         cep: document.getElementById('nav-cep'),
         settings: document.getElementById('nav-settings'),
     };
@@ -205,6 +208,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savePdfBtn = document.getElementById('save-pdf-btn');
     const pdfPagesPreview = document.getElementById('pdf-pages-preview');
     const pdfStatus = document.getElementById('pdf-status');
+
+    // Seletores do Gerador de Recibos
+    const empresaCnpj = document.getElementById('empresa-cnpj');
+    const buscarCnpjBtn = document.getElementById('buscar-cnpj-btn');
+    const empresaNome = document.getElementById('empresa-nome');
+    const empresaEndereco = document.getElementById('empresa-endereco');
+    const empresaCidade = document.getElementById('empresa-cidade');
+    const empresaCep = document.getElementById('empresa-cep');
+    const socioNome = document.getElementById('socio-nome');
+    const socioFuncao = document.getElementById('socio-funcao');
+    const mesReferencia = document.getElementById('mes-referencia');
+    const salarioMinimo = document.getElementById('salario-minimo');
+    const prolaboreBruto = document.getElementById('prolabore-bruto');
+    const valorInss = document.getElementById('valor-inss');
+    const percInss = document.getElementById('perc-inss');
+    const valorIr = document.getElementById('valor-ir');
+    const percIr = document.getElementById('perc-ir');
+    const generatePdfBtn = document.getElementById('generate-pdf-btn');
+
 
     // =================================================================================
     // LÓGICA DO MAPA
@@ -831,42 +853,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // =================================================================================
+    // LÓGICA DO GERADOR DE RECIBOS
+    // =================================================================================
+    // --- LÓGICA DE CÁLCULO DE IMPOSTOS (VIGÊNCIA 2025) ---
+    const SALARIO_MINIMO_2025 = 1518.00;
+    const TETO_INSS_2025 = 8157.41;
+    const ALIQUOTA_INSS_PROLABORE = 0.11;
+
+    const TABELA_IRPF_2025 = [
+        { max: 2428.80, rate: 0, deduction: 0 },
+        { max: 2826.65, rate: 0.075, deduction: 182.16 },
+        { max: 3751.05, rate: 0.15, deduction: 394.16 },
+        { max: 4664.68, rate: 0.225, deduction: 675.49 },
+        { max: Infinity, rate: 0.275, deduction: 908.73 }
+    ];
+
+    const formatarMoeda = (valor) => {
+        if (typeof valor !== 'number' || isNaN(valor)) return '0,00';
+        return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const formatCNPJ = (cnpj) => {
+        return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    };
+
+    const calcularINSS = (baseCalculo) => {
+        const salarioMinimo = SALARIO_MINIMO_2025;
+        if (baseCalculo < salarioMinimo) {
+            // Se o pró-labore for menor que o mínimo, o INSS é sobre o mínimo
+            const valorINSS = salarioMinimo * ALIQUOTA_INSS_PROLABORE;
+            const aliquotaEfetiva = (baseCalculo > 0) ? (valorINSS / baseCalculo) * 100 : 0;
+            return { valor: valorINSS, aliquotaEfetiva: aliquotaEfetiva };
+        }
+        // Para valores acima do mínimo, calcula sobre o valor ou o teto
+        const baseContribuicao = Math.min(baseCalculo, TETO_INSS_2025);
+        const valorINSS = baseContribuicao * ALIQUOTA_INSS_PROLABORE;
+        // A alíquota efetiva é o valor do INSS dividido pelo pró-labore bruto
+        const aliquotaEfetiva = (baseCalculo > 0) ? (valorINSS / baseCalculo) * 100 : 0;
+        return { valor: valorINSS, aliquotaEfetiva: aliquotaEfetiva };
+    };
+
+    const calcularIR = (baseCalculoIR) => {
+        for (const faixa of TABELA_IRPF_2025) {
+            if (baseCalculoIR <= faixa.max) {
+                const valorIR = (baseCalculoIR * faixa.rate) - faixa.deduction;
+                return { valor: Math.max(0, valorIR), aliquota: faixa.rate * 100 };
+            }
+        }
+        return { valor: 0, aliquota: 0 };
+    };
+
+    const atualizarCalculos = () => {
+        const prolaboreBrutoValue = parseFloat(prolaboreBruto.value) || 0;
+        if (prolaboreBrutoValue <= 0) {
+            valorInss.value = ''; percInss.value = '';
+            valorIr.value = ''; percIr.value = '';
+            return;
+        }
+        const inss = calcularINSS(prolaboreBrutoValue);
+        const baseCalculoIR = prolaboreBrutoValue - inss.valor;
+        const ir = calcularIR(baseCalculoIR);
+        
+        valorInss.value = formatarMoeda(inss.valor);
+        percInss.value = `${formatarMoeda(inss.aliquotaEfetiva)}%`;
+        valorIr.value = formatarMoeda(ir.valor);
+        percIr.value = `${formatarMoeda(ir.aliquota)}%`;
+    };
+
+    const buscarDadosCNPJ = async () => {
+        const cnpj = empresaCnpj.value.replace(/\D/g, '');
+        if (cnpj.length !== 14) {
+            showToast('CNPJ inválido. Digite 14 números.', 'error');
+            return;
+        }
+
+        toggleButtonLoading(buscarCnpjBtn, true);
+        try {
+            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+            if (!response.ok) {
+                throw new Error('Não foi possível buscar os dados do CNPJ.');
+            }
+            const data = await response.json();
+            empresaNome.value = data.razao_social || '';
+            empresaEndereco.value = `${data.logradouro || ''}, ${data.numero || ''}`;
+            empresaCidade.value = `${data.municipio || ''} / ${data.uf || ''}`;
+            empresaCep.value = data.cep || '';
+            showToast('Dados da empresa preenchidos.', 'success');
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            toggleButtonLoading(buscarCnpjBtn, false);
+        }
+    };
+
+    const initReceiptGenerator = () => {
+        // Define o salário mínimo
+        salarioMinimo.value = formatarMoeda(SALARIO_MINIMO_2025);
+    
+        // Define Mês/Ano de referência
+        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const dataAtual = new Date();
+        const mes = meses[dataAtual.getMonth()];
+        const ano = dataAtual.getFullYear();
+        mesReferencia.value = `${mes}/${ano}`;
+    
+        // Dispara o cálculo inicial
+        atualizarCalculos();
+    };
+
+    // =================================================================================
     // FUNÇÕES GERAIS E DE RENDERIZAÇÃO
     // =================================================================================
-    
-    // Função de navegação atualizada para gerenciar o padding
-    function navigateTo(viewName) {
-        Object.values(views).forEach(v => v.classList.add('hidden'));
-        views[viewName].classList.remove('hidden');
-
-        pageTitle.textContent = {
-            dashboard: 'Dashboard',
-            clients: 'Clientes',
-            map: 'Mapa de Imóveis',
-            pdf: 'Editor de PDF',
-            cep: 'Buscador de CEP',
-            settings: 'Configurações'
-        }[viewName];
-        
-        Object.values(navLinks).forEach(link => link.classList.remove('bg-gray-700', 'text-white'));
-        const activeLink = navLinks[viewName];
-        if (activeLink) activeLink.classList.add('bg-gray-700', 'text-white');
-        
-        if (viewName === 'map') {
-            mainContent.classList.remove('p-6');
-            // Carrega o script da API (se ainda não foi carregado)
-            loadGoogleMapsScript();
-            // Chama a inicialização do mapa (que aguardará a API estar pronta)
-            initializeMap();
-        } else {
-            mainContent.classList.add('p-6');
-        }
-        
-        if (viewName === 'dashboard') renderDashboard();
-        if (viewName === 'clients') showActiveTab();
-        if (viewName === 'settings') renderUsersTable();
-    }
-    
     /**
      * Formata uma string de CPF para o padrão 000.000.000-00.
      * @param {string} cpf O CPF a ser formatado (pode conter ou não a máscara).
@@ -1589,6 +1686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     appCardClients.addEventListener('click', () => enterApplication('clients', populateFilters));
     appCardMap.addEventListener('click', () => enterApplication('map'));
     appCardPdf.addEventListener('click', () => enterApplication('pdf'));
+    appCardReceipt.addEventListener('click', () => enterApplication('receipt'));
     appCardCep.addEventListener('click', () => enterApplication('cep'));
     appCardSettings.addEventListener('click', () => enterApplication('settings', renderUsersTable));
 
@@ -1850,4 +1948,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     addMorePdfBtn.addEventListener('click', () => pdfFileInputAppend.click());
     clearPdfBtn.addEventListener('click', clearAllPdfPages);
     savePdfBtn.addEventListener('click', saveMergedPdf);
+
+    // Event Listeners do Gerador de Recibos
+    prolaboreBruto.addEventListener('input', atualizarCalculos);
+    buscarCnpjBtn.addEventListener('click', buscarDadosCNPJ);
+    generatePdfBtn.addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        
+        const nomeEmpresa = empresaNome.value;
+        const cnpjEmpresa = empresaCnpj.value;
+        const enderecoEmpresa = empresaEndereco.value;
+        const cidadeEmpresa = empresaCidade.value;
+        const cepEmpresa = empresaCep.value;
+        const nomeSocio = socioNome.value;
+        const funcaoSocio = socioFuncao.value;
+        const refMes = mesReferencia.value;
+        const salarioMinimoValor = SALARIO_MINIMO_2025;
+        const brutoProlabore = parseFloat(prolaboreBruto.value);
+    
+        // Recalcula os valores para garantir que estão corretos no momento da emissão
+        const inss = calcularINSS(brutoProlabore);
+        const baseCalculoIR = brutoProlabore - inss.valor;
+        const ir = calcularIR(baseCalculoIR);
+        const totalDescontos = inss.valor + ir.valor;
+        const valorLiquido = brutoProlabore - totalDescontos;
+        const salariosMinimos = (brutoProlabore / salarioMinimoValor).toFixed(1).replace('.', ',');
+        
+        // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF ---
+        const pageW = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = 20;
+    
+        // Cabeçalho da Empresa (canto superior esquerdo)
+        doc.setFont('helvetica', 'normal').setFontSize(9);
+        doc.text(nomeEmpresa, margin, y); y += 4;
+        doc.text(enderecoEmpresa, margin, y); y += 4;
+        doc.text(`${cepEmpresa}   ${cidadeEmpresa}`, margin, y); y += 4;
+        doc.text(`CNPJ: ${cnpjEmpresa}`, margin, y);
+        
+        // Mês de referência (canto superior direito)
+        let yDireita = 28; // Alinha com a segunda linha da esquerda
+        doc.setFont('helvetica', 'normal').setFontSize(9).text(`Referente ao mês: ${refMes}`, pageW - margin, yDireita, { align: 'right' });
+        
+        y += 10; // Espaçamento para a próxima seção
+    
+        // Dados do Sócio
+        doc.setFont('helvetica', 'bold').text(`Nome: ${nomeSocio}`, margin, y);
+        doc.setFont('helvetica', 'normal').text(`Função: ${funcaoSocio}`, margin, y + 5);
+        
+        // Dados da direita (removidos)
+        yDireita = y + 5;
+        y += 10;
+        
+        // Linha divisória
+        doc.setDrawColor(0).setLineWidth(0.2);
+        doc.line(margin, y, pageW - margin, y); y += 4;
+    
+        // Cabeçalho da Tabela
+        doc.setFont('helvetica', 'bold');
+        doc.text("CÓDIGO", margin, y);
+        doc.text("DESCRIÇÕES", 35, y);
+        doc.text("REFERÊNCIAS", 110, y);
+        doc.text("VENCIMENTOS", 145, y);
+        doc.text("DESCONTOS", pageW - margin, y, { align: 'right' });
+        y += 2;
+        doc.line(margin, y, pageW - margin, y); y += 5;
+    
+        // Corpo da Tabela
+        doc.setFont('helvetica', 'normal');
+        doc.text("35", margin, y);
+        doc.text("Honorário pro-labore", 35, y);
+        doc.text(formatarMoeda(brutoProlabore), 160, y, { align: 'right' }); y += 5;
+    
+        doc.text("91006", margin, y);
+        doc.text("INSS pro-labore", 35, y);
+        doc.text(`${formatarMoeda(inss.aliquotaEfetiva)}%`, 125, y, { align: 'right' });
+        doc.text(formatarMoeda(inss.valor), pageW - margin, y, { align: 'right' }); y += 5;
+    
+        doc.text("91506", margin, y);
+        doc.text("IR pro-labore", 35, y);
+        doc.text(`${formatarMoeda(ir.aliquota)}%`, 125, y, { align: 'right' });
+        doc.text(formatarMoeda(ir.valor), pageW - margin, y, { align: 'right' }); y += 10;
+        
+        // Seção de Totais
+        const boxStartX = 120;
+        doc.line(boxStartX, y, pageW - margin, y); y += 4;
+    
+        doc.setFontSize(9);
+        doc.text("Total", boxStartX + 2, y);
+        doc.text(formatarMoeda(brutoProlabore), 160, y, { align: 'right' });
+        doc.text("Total", 165, y);
+        doc.text(formatarMoeda(totalDescontos), pageW - margin, y, { align: 'right' }); y += 2;
+        doc.line(boxStartX, y, pageW - margin, y); y += 4;
+    
+        doc.setFont('helvetica', 'bold');
+        doc.text("LÍQUIDO ->", boxStartX + 2, y);
+        doc.text(`R$ ${formatarMoeda(valorLiquido)}`, pageW - margin, y, { align: 'right' }); y += 2;
+        doc.line(boxStartX, y, pageW - margin, y); y += 10;
+        
+        // Texto do Recibo
+        doc.setFont('helvetica', 'normal').setFontSize(10);
+        const textBody = `Recebi de ${nomeEmpresa} a importância de R$ ${formatarMoeda(valorLiquido)}, referente ao meu PRO LABORE de ${refMes}, com os descontos exigidos em Lei. Declaro, outrossim, que meu salário base para fins de desconto das contribuições ao INSS é equivalente a ${salariosMinimos} salário(s) mínimo(s).\nSalário mínimo vigente: R$ ${formatarMoeda(salarioMinimoValor)}`;
+        const splitText = doc.splitTextToSize(textBody, pageW - (margin * 2));
+        doc.text(splitText, margin, y); y += splitText.length * 4 + 20;
+    
+        // Assinatura
+        const signatureLineWidth = 70;
+        const signatureLineX = (pageW - signatureLineWidth) / 2;
+        doc.line(signatureLineX, y, signatureLineX + signatureLineWidth, y); y += 4;
+        
+        doc.text("Local", margin, y);
+        doc.text("Data", (pageW / 2), y, { align: 'center' });
+        doc.text("Assinatura", pageW - margin, y, { align: 'right' });
+    
+        doc.save(`recibo_prolabore_${nomeSocio.split(' ')[0]}_${refMes.replace('/', '-')}.pdf`);
+    });
+    empresaCnpj.addEventListener('input', (e) => e.target.value = formatCNPJ(e.target.value.replace(/\D/g, '')));
+
 });

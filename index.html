@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Novas bibliotecas para o Editor de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -63,7 +64,7 @@
             <img src="assets/logo-dark.png" alt="Logo Motive" class="w-48 mb-6">
             <h1 class="text-3xl font-bold text-secondary mb-2">Bem-vindo(a) ao Sistema Motive</h1>
             <p class="text-text-secondary mb-10">Selecione uma ferramenta para começar</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
                 
                 <!-- Card Dashboard -->
                 <div id="app-card-dashboard" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
@@ -123,6 +124,16 @@
                     <h3 class="text-lg font-bold text-secondary">Configurações</h3>
                     <p class="text-text-secondary text-sm mt-2">Gerencie usuários, permissões e outras configurações do sistema.</p>
                 </div>
+
+                <!-- Card Gerador de Recibos -->
+                <div id="app-card-receipt" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
+                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-secondary">Gerador de Recibos</h3>
+                    <p class="text-text-secondary text-sm mt-2">Crie recibos de pró-labore com cálculo de impostos.</p>
+                </div>
+
             </div>
         </div>
 
@@ -154,6 +165,10 @@
                     <a href="#" id="nav-pdf" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         <span class="sidebar-text">Editor de PDF</span>
+                    </a>
+                    <a href="#" id="nav-receipt" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="sidebar-text">Gerador de Recibos</span>
                     </a>
                      <a href="#" id="nav-cep" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -616,6 +631,105 @@
                          </div>
                     </div>
 
+                    <!-- View: Gerador de Recibos -->
+                    <div id="receipt-view" class="hidden fade-in">
+                        <div class="bg-white rounded-lg shadow-lg p-8">
+                            <h1 class="text-2xl font-bold text-gray-800 mb-2">Gerador de Recibo de Pró-Labore</h1>
+                            <p class="text-gray-600 mb-8">Preencha os campos abaixo para gerar o documento em PDF.</p>
+                
+                            <!-- Dados da Empresa -->
+                            <div class="form-section p-6 rounded-lg mb-6">
+                                <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Dados da Empresa</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="empresa-cnpj" class="block text-sm font-medium text-gray-600">CNPJ</label>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <input type="text" id="empresa-cnpj" class="form-input block w-full rounded-md" value="" maxlength="18">
+                                            <button id="buscar-cnpj-btn" class="py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-secondary whitespace-nowrap">Buscar</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="empresa-nome" class="block text-sm font-medium text-gray-600">Razão Social</label>
+                                        <input type="text" id="empresa-nome" class="form-input mt-1 block w-full rounded-md" value="">
+                                    </div>
+                                    <div>
+                                        <label for="empresa-endereco" class="block text-sm font-medium text-gray-600">Endereço</label>
+                                        <input type="text" id="empresa-endereco" class="form-input mt-1 block w-full rounded-md" value="">
+                                    </div>
+                                    <div>
+                                        <label for="empresa-cidade" class="block text-sm font-medium text-gray-600">Cidade / UF</label>
+                                        <input type="text" id="empresa-cidade" class="form-input mt-1 block w-full rounded-md" value="">
+                                    </div>
+                                     <div>
+                                        <label for="empresa-cep" class="block text-sm font-medium text-gray-600">CEP</label>
+                                        <input type="text" id="empresa-cep" class="form-input mt-1 block w-full rounded-md" value="">
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <!-- Dados do Sócio -->
+                            <div class="form-section p-6 rounded-lg mb-6">
+                                <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Dados do Sócio</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="socio-nome" class="block text-sm font-medium text-gray-600">Nome Completo</label>
+                                        <input type="text" id="socio-nome" class="form-input mt-1 block w-full rounded-md" value="">
+                                    </div>
+                                    <div>
+                                        <label for="socio-funcao" class="block text-sm font-medium text-gray-600">Função</label>
+                                        <input type="text" id="socio-funcao" class="form-input mt-1 block w-full rounded-md" value="Sócio(a) Administrador(a)">
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <!-- Dados do Recibo -->
+                            <div class="form-section p-6 rounded-lg mb-6">
+                                <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Valores e Referência</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="mes-referencia" class="block text-sm font-medium text-gray-600">Mês/Ano de Referência</label>
+                                        <input type="text" id="mes-referencia" class="form-input mt-1 block w-full rounded-md">
+                                    </div>
+                                    <div>
+                                        <label for="salario-minimo" class="block text-sm font-medium text-gray-600">Salário Mínimo Vigente (R$)</label>
+                                        <input type="text" id="salario-minimo" class="form-input display-field mt-1 block w-full rounded-md" readonly>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="prolabore-bruto" class="block text-sm font-medium text-gray-600">Valor do Pró-Labore Bruto (R$)</label>
+                                        <input type="number" step="0.01" id="prolabore-bruto" class="form-input mt-1 block w-full rounded-md text-lg" value="">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                         <div>
+                                            <label for="valor-inss" class="block text-sm font-medium text-gray-600">Valor INSS (R$)</label>
+                                            <input type="text" id="valor-inss" class="form-input display-field mt-1 block w-full rounded-md" readonly>
+                                        </div>
+                                        <div>
+                                           <label for="perc-inss" class="block text-sm font-medium text-gray-600">Alíquota INSS (%)</label>
+                                            <input type="text" id="perc-inss" class="form-input display-field mt-1 block w-full rounded-md" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="valor-ir" class="block text-sm font-medium text-gray-600">Valor IR (R$)</label>
+                                            <input type="text" id="valor-ir" class="form-input display-field mt-1 block w-full rounded-md" readonly>
+                                        </div>
+                                        <div>
+                                             <label for="perc-ir" class="block text-sm font-medium text-gray-600">Alíquota IR (%)</label>
+                                            <input type="text" id="perc-ir" class="form-input display-field mt-1 block w-full rounded-md" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <!-- Ação -->
+                            <div class="mt-8 text-center">
+                                <button id="generate-pdf-btn" class="btn-primary font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                                    Gerar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Rodapé da Aplicação -->
@@ -694,6 +808,7 @@
     
     <!-- Scripts -->
     <script src="js/config.js"></script> <!-- Carrega a chave de API primeiro -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Alterado para type="module" para permitir import/export -->
     <script type="module" src="js/main.js" defer></script>
 
