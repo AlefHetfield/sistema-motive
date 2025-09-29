@@ -1130,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           row.innerHTML = `
               <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
               <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
-              <td class="px-6 py-4">${client.areaInteresse}</td>
+              <td class="px-6 py-4">${client.imovel}</td>
               <td class="px-6 py-4">${client.corretor}</td>
               <td class="px-6 py-4">${client.responsavel || ''}</td>
               <td class="px-6 py-4">${client.agencia || ''}</td>
@@ -1233,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
                     <td class="px-6 py-4">${client.corretor}</td>
                     <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
-                    <td class="px-6 py-4">${client.areaInteresse}</td>
+                    <td class="px-6 py-4">${client.imovel}</td>
                     <td class="px-6 py-4">${client.responsavel || ''}</td>
                     <td class="px-6 py-4">${client.agencia || ''}</td>
                     <td class="px-6 py-4">${client.modalidade || ''}</td>
@@ -1311,7 +1311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('client-id').value = client.id;
                 document.getElementById('nome').value = client.nome;            
                 document.getElementById('cpf').value = formatCPF(client.cpf || '');
-                document.getElementById('areaInteresse').value = client.areaInteresse;
+                document.getElementById('imovel').value = client.imovel;
                 document.getElementById('corretor').value = client.corretor;
                 document.getElementById('responsavel').value = client.responsavel;
                 document.getElementById('agencia').value = client.agencia || '';
@@ -1341,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const clientData = {
             nome: document.getElementById('nome').value,
             cpf: cpfValue || null, // Envia null se a string for vazia
-            areaInteresse: document.getElementById('areaInteresse').value,
+            imovel: document.getElementById('imovel').value,
             corretor: document.getElementById('corretor').value,
             responsavel: document.getElementById('responsavel').value,
             agencia: agenciaValue || null, // Envia null se a string for vazia

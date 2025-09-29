@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -12,24 +9,20 @@ datasource db {
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
-// =================================
-// MODELOS DA APLICAÇÃO
-// =================================
-
 model Client {
-  id                      Int       @id @default(autoincrement())
-  nome                    String?
-  cpf                     String?
-  areaInteresse           String?
-  corretor                String?
-  responsavel             String?
-  observacoes             String?
-  agencia                 String?
-  modalidade              String?
-  status                  String?
-  createdAt               DateTime  @default(now()) @map("createdAt")
-  ultimaAtualizacao       DateTime? @updatedAt @map("ultimaAtualizacao")
-  dataAssinaturaContrato  DateTime? @db.Date
+  id                     Int       @id @default(autoincrement())
+  nome                   String?
+  cpf                    String?
+  imovel                 String?
+  corretor               String?
+  responsavel            String?
+  observacoes            String?
+  agencia                String?
+  modalidade             String?
+  status                 String?
+  createdAt              DateTime  @default(now()) @map("createdAt")
+  ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
+  dataAssinaturaContrato DateTime? @db.Date
 
   @@map("clients")
 }
@@ -52,7 +45,6 @@ model Property {
   price       Float?
   area        Float?
   photoUrl    String?
-  // Campos para geolocalização
   latitude    Float?
   longitude   Float?
 
