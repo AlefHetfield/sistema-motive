@@ -964,44 +964,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================================
     // FUNÇÕES GERAIS E DE RENDERIZAÇÃO
     // =================================================================================
-    /**
-     * Formata uma string de CPF para o padrão 000.000.000-00.
-     * @param {string} cpf O CPF a ser formatado (pode conter ou não a máscara).
-     * @returns {string} O CPF formatado.
-     */
-    function formatCPF(cpf) {
-        if (!cpf) return '';
-        let value = cpf.toString().replace(/\D/g, ''); // Remove tudo que não é dígito
-        value = value.substring(0, 11); // Limita a 11 caracteres
+    // Função de navegação atualizada para gerenciar o padding
+    function navigateTo(viewName) {
+        Object.values(views).forEach(v => v.classList.add('hidden'));
+        views[viewName].classList.remove('hidden');
 
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
-        value = value.replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-        return value;
+        pageTitle.textContent = {
+            dashboard: 'Dashboard',
+            clients: 'Clientes',
+            map: 'Mapa de Imóveis',
+            pdf: 'Editor de PDF',
+            cep: 'Buscador de CEP',
+            receipt: 'Gerador de Recibos',
+            settings: 'Configurações'
+        }[viewName];
+        
+        Object.values(navLinks).forEach(link => link.classList.remove('bg-gray-700', 'text-white'));
+        const activeLink = navLinks[viewName];
+        if (activeLink) activeLink.classList.add('bg-gray-700', 'text-white');
+        
+        if (viewName === 'map') {
+            mainContent.classList.remove('p-6');
+            // Carrega o script da API (se ainda não foi carregado)
+            loadGoogleMapsScript();
+            // Chama a inicialização do mapa (que aguardará a API estar pronta)
+            initializeMap();
+        } else {
+            mainContent.classList.add('p-6');
+        }
+        
+        if (viewName === 'dashboard') renderDashboard();
+        if (viewName === 'clients') showActiveTab();
+        if (viewName === 'settings') renderUsersTable();
+        if (viewName === 'receipt') initReceiptGenerator();
     }
-
-    // O resto das suas funções (renderDashboard, updateStatusBadge, etc.)
-    // continuam aqui...
-    function logActivity(clientName, action) {
-        activityLog.unshift({ clientName, action, timestamp: new Date() });
-        if (activityLog.length > 10) activityLog.pop();
-    }
-
-    function formatTimeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + " anos atrás";
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + " meses atrás";
-        interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + " dias atrás";
-        interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + " horas atrás";
-        interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + " minutos atrás";
-        return "agora mesmo";
-    }
-
+    
     async function renderDashboard() {
         let statusCounts = {};
         try {
@@ -1052,6 +1049,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             recentActivityList.innerHTML += item;
         });
+    }
+
+    /**
+     * Formata uma string de CPF para o padrão 000.000.000-00.
+     * @param {string} cpf O CPF a ser formatado (pode conter ou não a máscara).
+     * @returns {string} O CPF formatado.
+     */
+    function formatCPF(cpf) {
+        if (!cpf) return '';
+        let value = cpf.toString().replace(/\D/g, ''); // Remove tudo que não é dígito
+        value = value.substring(0, 11); // Limita a 11 caracteres
+
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
+        value = value.replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        return value;
+    }
+
+    // O resto das suas funções (renderDashboard, updateStatusBadge, etc.)
+    // continuam aqui...
+    function logActivity(clientName, action) {
+        activityLog.unshift({ clientName, action, timestamp: new Date() });
+        if (activityLog.length > 10) activityLog.pop();
+    }
+
+    function formatTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " anos atrás";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " meses atrás";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " dias atrás";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " horas atrás";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " minutos atrás";
+        return "agora mesmo";
     }
 
     async function renderStatusPieChart() {
