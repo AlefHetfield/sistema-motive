@@ -134,11 +134,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const searchInput = document.getElementById('search-client');
     const filterStatus = document.getElementById('filter-status');
-    const filterCorretor = document.getElementById('filter-corretor');
+    const filterProfessional = document.getElementById('filter-professional');
     // Novos seletores para os filtros da aba de arquivados
     const searchArchivedInput = document.getElementById('search-archived-client');
-    const filterArchivedStatus = document.getElementById('filter-archived-status');
-    const filterArchivedCorretor = document.getElementById('filter-archived-corretor');
+
+    const filterProfessionalArchived = document.getElementById('filter-professional-archived');
     const filterArchiveMonth = document.getElementById('filter-archive-month');
     const filterArchiveYear = document.getElementById('filter-archive-year');
 
@@ -1178,14 +1178,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         try {
             const allClients = await fetchClients();
-            filterCorretor.innerHTML = '<option value="">Todos os Corretores</option>';
-            // Filtra para pegar apenas corretores não nulos ou vazios
-            const corretores = [...new Set(allClients.map(c => c.corretor).filter(Boolean))];
-            corretores.forEach(corretor => {
+            
+            // Lógica para popular o filtro unificado de profissionais (Corretor + Responsável)
+            const corretores = allClients.map(c => c.corretor).filter(Boolean);
+            const responsaveis = allClients.map(c => c.responsavel).filter(Boolean);
+            const allProfessionals = [...new Set([...corretores, ...responsaveis])].sort();
+
+            // Popula os dois selects (ativos e arquivados)
+            filterProfessional.innerHTML = '<option value="">Todos os Profissionais</option>';
+            filterProfessionalArchived.innerHTML = '<option value="">Todos os Profissionais</option>';
+
+            allProfessionals.forEach(professional => {
                 const option = document.createElement('option');
-                option.value = corretor;
-                option.textContent = corretor;
-                filterCorretor.appendChild(option);
+                option.value = professional;
+                option.textContent = professional;
+                filterProfessional.appendChild(option.cloneNode(true));
+                filterProfessionalArchived.appendChild(option.cloneNode(true));
             });
 
             // Reutiliza os dados dos clientes para os filtros de arquivados
@@ -1209,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (error) {
             console.error("Erro ao popular filtros:", error);
-            filterCorretor.innerHTML = '<option value="">Falha ao carregar</option>';
+            filterProfessional.innerHTML = '<option value="">Falha ao carregar</option>';
         }
     }
 
@@ -1238,13 +1246,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           const allClients = await fetchClients();
           const searchTerm = searchInput.value.toLowerCase();
           const statusFilter = filterStatus.value;
-          const corretorFilter = filterCorretor.value;
+          const professionalFilter = filterProfessional.value;
   
           const activeClients = allClients.filter(client => 
-              !FINAL_STATUSES.includes(client.status) &&
-              client.nome.toLowerCase().includes(searchTerm) &&
-              (statusFilter === '' || client.status === statusFilter) &&
-              (corretorFilter === '' || client.corretor === corretorFilter)
+              !FINAL_STATUSES.includes(client.status) && // Mantém apenas clientes ativos
+              ( // Condição de busca: Nome OU CPF
+                  client.nome.toLowerCase().includes(searchTerm) ||
+                  (searchTerm.replace(/\D/g, '').length > 0 && client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))
+              ) && (statusFilter === '' || client.status === statusFilter) &&
+              // Nova lógica de filtro para profissional (corretor OU responsável)
+              (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter)
           );
   
           clientsTableBody.innerHTML = ''; // Limpa o loader
@@ -1300,23 +1311,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function renderArchivedTable() {
-        renderSkeletonLoader(archivedTableBody, 11); // Agora com 11 colunas
+        renderSkeletonLoader(archivedTableBody, 11);
 
         try {
             const allClients = await fetchClients();
-            // Utiliza os novos filtros
             const searchTerm = searchArchivedInput.value.toLowerCase();
-            const statusFilter = filterArchivedStatus.value;
-            const corretorFilter = filterArchivedCorretor.value;
+            const professionalFilter = filterProfessionalArchived.value;
+            const monthFilter = filterArchiveMonth.value;
+            const yearFilter = filterArchiveYear.value;
 
             const archivedClients = allClients.filter(client => {
-                return FINAL_STATUSES.includes(client.status) &&
-                       client.nome.toLowerCase().includes(searchTerm) &&
-                       (statusFilter === '' || client.status === statusFilter) &&
-                       (corretorFilter === '' || client.corretor === corretorFilter);
+                const signatureDate = client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato) : null;
+                
+                const isMatch = FINAL_STATUSES.includes(client.status) &&
+                    (client.nome.toLowerCase().includes(searchTerm) || (client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))) &&
+                    (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter) &&
+                    (monthFilter === '' || (signatureDate && signatureDate.getMonth() + 1 == monthFilter)) &&
+                    (yearFilter === '' || (signatureDate && signatureDate.getFullYear() == yearFilter));
+
+                return isMatch;
             });
 
-            archivedTableBody.innerHTML = ''; // Limpa o loader
+            archivedTableBody.innerHTML = '';
             if (archivedClients.length === 0) {
                 const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>`;
                 renderEmptyState(archivedTableBody, icon, 'Nenhum cliente arquivado encontrado', 'Ajuste os filtros ou verifique se há clientes com status final.', 11);
@@ -1327,7 +1343,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row = document.createElement('tr');
                 row.className = 'bg-white border-b';
 
-                // Calcula a duração do processo (criação até assinatura)
                 let durationDays = 'N/A';
                 let durationColor = 'bg-gray-100 text-gray-800';
                 let signatureDateFormatted = 'N/A';
@@ -1336,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const dateParts = client.dataAssinaturaContrato.split('T')[0].split('-');
                     if (dateParts.length === 3) {
                         const year = parseInt(dateParts[0], 10);
-                        const month = parseInt(dateParts[1], 10) - 1; // Mês é 0-indexed
+                        const month = parseInt(dateParts[1], 10) - 1;
                         const day = parseInt(dateParts[2], 10);
                         const signed = new Date(year, month, day);
 
@@ -1381,7 +1396,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
                         <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
                         <button data-id="${client.id}" class="restore-client-btn font-medium text-green-600 hover:underline">Restaurar</button>
-                        <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
                         <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
                     </td>
                 `;
@@ -1749,14 +1763,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     cepTabByCep.addEventListener('click', showCepByCepTab);
     cepTabByAddress.addEventListener('click', showCepByAddressTab);
 
-    searchInput.addEventListener('input', () => renderClientsTable());
-    filterStatus.addEventListener('change', () => renderClientsTable());
-    filterCorretor.addEventListener('change', renderClientsTable);
+    searchInput.addEventListener('input', renderClientsTable);
+    filterStatus.addEventListener('change', renderClientsTable);
+    filterProfessional.addEventListener('change', renderClientsTable);
     
     // Adiciona listeners para os novos filtros da aba de arquivados
     searchArchivedInput.addEventListener('input', renderArchivedTable);
-    filterArchivedStatus.addEventListener('change', renderArchivedTable);
-    filterArchivedCorretor.addEventListener('change', renderArchivedTable);
+
+    filterProfessionalArchived.addEventListener('change', renderArchivedTable);
+    filterArchiveMonth.addEventListener('change', renderArchivedTable);
+    filterArchiveYear.addEventListener('change', renderArchivedTable);
 
     orderByProperty.addEventListener('change', () => renderPropertiesList(properties));
     radiusSearchBtn.addEventListener('click', startRadiusSearch);
