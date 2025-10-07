@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         { id: 205, city: 'Campinas', title: 'Kitnet Próxima à Unicamp', address: 'Rua Roxo Moreira, 123, Campinas, SP', price: 250000, area: 40, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+5', lat: -22.8164, lng: -47.0725, description: '' }
     ];
 
-    let activityLog = [];
+    let activityLog = JSON.parse(localStorage.getItem('activityLog')) || [];
 
     // =================================================================================
     // SELETORES DE ELEMENTOS DOM
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         propertiesToRender.forEach(prop => {
             // Define a cor do pino com base na cidade
-            const normalizedCity = prop.city.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedCity = prop.city.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
             const pinColor = cityPinColors[normalizedCity] || cityPinColors['default'];
 
             // Mantém a diferenciação do ícone interno (casa vs. prédio)
@@ -1070,12 +1070,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // O resto das suas funções (renderDashboard, updateStatusBadge, etc.)
     // continuam aqui...
     function logActivity(clientName, action) {
-        activityLog.unshift({ clientName, action, timestamp: new Date() });
-        if (activityLog.length > 10) activityLog.pop();
+        activityLog.unshift({ clientName, action, timestamp: new Date().toISOString() });
+        activityLog = activityLog.slice(0, 5);
+        localStorage.setItem('activityLog', JSON.stringify(activityLog));
     }
 
     function formatTimeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
+        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        const seconds = Math.floor((new Date() - dateObj) / 1000);
         let interval = seconds / 31536000;
         if (interval > 1) return Math.floor(interval) + " anos atrás";
         interval = seconds / 2592000;
@@ -1419,7 +1421,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             usersTableBody.innerHTML = '';
 
             if (users.length === 0) {
-                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
+                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>`;
                 renderEmptyState(usersTableBody, icon, 'Nenhum usuário cadastrado', 'Adicione o primeiro usuário da sua equipe clicando no botão acima.', 4);
                 return;
             }
