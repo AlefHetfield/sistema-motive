@@ -225,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const percInss = document.getElementById('perc-inss');
     const valorIr = document.getElementById('valor-ir');
     const percIr = document.getElementById('perc-ir');
+    const valorLiquido = document.getElementById('valor-liquido');
     const generatePdfBtn = document.getElementById('generate-pdf-btn');
 
 
@@ -908,16 +909,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (prolaboreBrutoValue <= 0) {
             valorInss.value = ''; percInss.value = '';
             valorIr.value = ''; percIr.value = '';
+            valorLiquido.value = '';
             return;
         }
         const inss = calcularINSS(prolaboreBrutoValue);
         const baseCalculoIR = prolaboreBrutoValue - inss.valor;
         const ir = calcularIR(baseCalculoIR);
+        const liquido = prolaboreBrutoValue - inss.valor - ir.valor;
         
         valorInss.value = formatarMoeda(inss.valor);
         percInss.value = `${formatarMoeda(inss.aliquotaEfetiva)}%`;
         valorIr.value = formatarMoeda(ir.valor);
         percIr.value = `${formatarMoeda(ir.aliquota)}%`;
+        valorLiquido.value = formatarMoeda(liquido);
     };
 
     const buscarDadosCNPJ = async () => {
