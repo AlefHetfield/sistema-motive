@@ -2032,77 +2032,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         const valorLiquido = brutoProlabore - totalDescontos;
         const salariosMinimos = (brutoProlabore / salarioMinimoValor).toFixed(1).replace('.', ',');
         
-        // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF ---
+        // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF (COM MELHORIAS VISUAIS) ---
         const pageW = doc.internal.pageSize.getWidth();
         const margin = 15;
         let y = 20;
     
+        // Título do Documento
+        doc.setFont('helvetica', 'bold').setFontSize(14);
+        doc.text("Recibo de Pagamento de Pró-Labore", pageW / 2, y, { align: 'center' });
+        y += 10;
+
         // Cabeçalho da Empresa (canto superior esquerdo)
-        doc.setFont('helvetica', 'normal').setFontSize(9);
+        doc.setFont('helvetica', 'bold').setFontSize(10);
         doc.text(nomeEmpresa, margin, y); y += 4;
+        doc.setFont('helvetica', 'normal').setFontSize(9);
         doc.text(enderecoEmpresa, margin, y); y += 4;
         doc.text(`${cepEmpresa}   ${cidadeEmpresa}`, margin, y); y += 4;
         doc.text(`CNPJ: ${cnpjEmpresa}`, margin, y);
         
         // Mês de referência (canto superior direito)
-        let yDireita = 28; // Alinha com a segunda linha da esquerda
-        doc.setFont('helvetica', 'normal').setFontSize(9).text(`Referente ao mês: ${refMes}`, pageW - margin, yDireita, { align: 'right' });
+        let yDireita = 30; // Posição inicial Y para o bloco da direita
+        doc.setFont('helvetica', 'bold').setFontSize(9).text(`Referente ao mês: ${refMes}`, pageW - margin, yDireita, { align: 'right' });
         
-        y += 10; // Espaçamento para a próxima seção
+        y += 12; // Espaçamento para a próxima seção
     
         // Dados do Sócio
+        doc.setFont('helvetica', 'bold').setFontSize(10);
         doc.setFont('helvetica', 'bold').text(`Nome: ${nomeSocio}`, margin, y);
-        doc.setFont('helvetica', 'normal').text(`Função: ${funcaoSocio}`, margin, y + 5);
+        doc.setFont('helvetica', 'normal').setFontSize(9).text(`Função: ${funcaoSocio}`, margin, y + 5);
         
-        // Dados da direita (removidos)
-        yDireita = y + 5;
-        y += 10;
+        y += 12;
         
         // Linha divisória
-        doc.setDrawColor(0).setLineWidth(0.2);
-        doc.line(margin, y, pageW - margin, y); y += 4;
+        doc.setDrawColor(200).setLineWidth(0.2); // Cinza claro
+        doc.line(margin, y, pageW - margin, y); y += 5;
     
         // Cabeçalho da Tabela
+        doc.setFillColor(240, 240, 240); // Fundo cinza claro para o cabeçalho
+        doc.rect(margin, y - 4, pageW - (margin * 2), 7, 'F');
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(50); // Texto mais escuro
         doc.text("CÓDIGO", margin, y);
         doc.text("DESCRIÇÕES", 35, y);
         doc.text("REFERÊNCIAS", 110, y);
         doc.text("VENCIMENTOS", 145, y);
         doc.text("DESCONTOS", pageW - margin, y, { align: 'right' });
-        y += 2;
-        doc.line(margin, y, pageW - margin, y); y += 5;
+        y += 6;
     
         // Corpo da Tabela
         doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0); // Volta para texto preto
         doc.text("35", margin, y);
         doc.text("Honorário pro-labore", 35, y);
         doc.text(formatarMoeda(brutoProlabore), 160, y, { align: 'right' }); y += 5;
     
         doc.text("91006", margin, y);
         doc.text("INSS pro-labore", 35, y);
-        doc.text(`${formatarMoeda(inss.aliquotaEfetiva)}%`, 125, y, { align: 'right' });
+        doc.text(`${formatarMoeda(inss.aliquotaEfetiva)}%`, 128, y, { align: 'right' });
         doc.text(formatarMoeda(inss.valor), pageW - margin, y, { align: 'right' }); y += 5;
     
         doc.text("91506", margin, y);
         doc.text("IR pro-labore", 35, y);
-        doc.text(`${formatarMoeda(ir.aliquota)}%`, 125, y, { align: 'right' });
+        doc.text(`${formatarMoeda(ir.aliquota)}%`, 128, y, { align: 'right' });
         doc.text(formatarMoeda(ir.valor), pageW - margin, y, { align: 'right' }); y += 10;
         
         // Seção de Totais
-        const boxStartX = 120;
+        const boxStartX = 115;
+        doc.setDrawColor(200);
         doc.line(boxStartX, y, pageW - margin, y); y += 4;
     
         doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
         doc.text("Total", boxStartX + 2, y);
         doc.text(formatarMoeda(brutoProlabore), 160, y, { align: 'right' });
-        doc.text("Total", 165, y);
         doc.text(formatarMoeda(totalDescontos), pageW - margin, y, { align: 'right' }); y += 2;
         doc.line(boxStartX, y, pageW - margin, y); y += 4;
     
         doc.setFont('helvetica', 'bold');
-        doc.text("LÍQUIDO ->", boxStartX + 2, y);
+        doc.text("VALOR LÍQUIDO", boxStartX + 2, y);
         doc.text(`R$ ${formatarMoeda(valorLiquido)}`, pageW - margin, y, { align: 'right' }); y += 2;
-        doc.line(boxStartX, y, pageW - margin, y); y += 10;
+        doc.line(boxStartX, y, pageW - margin, y); y += 15;
         
         // Texto do Recibo
         doc.setFont('helvetica', 'normal').setFontSize(10);
@@ -2115,9 +2124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const signatureLineX = (pageW - signatureLineWidth) / 2;
         doc.line(signatureLineX, y, signatureLineX + signatureLineWidth, y); y += 4;
         
-        doc.text("Local", margin, y);
-        doc.text("Data", (pageW / 2), y, { align: 'center' });
-        doc.text("Assinatura", pageW - margin, y, { align: 'right' });
+        doc.text(nomeSocio, pageW / 2, y, { align: 'center' });
     
         doc.save(`recibo_prolabore_${nomeSocio.split(' ')[0]}_${refMes.replace('/', '-')}.pdf`);
     });
