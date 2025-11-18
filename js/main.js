@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================================
 
     const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
-    const FINAL_STATUSES = ["Assinado"];
+    const FINAL_STATUSES = ["Assinado", "Arquivado"];
 
     const statusColorMap = {
         "Aprovado": "status-aprovado",
@@ -124,12 +124,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const recentActivityList = document.getElementById('recent-activity-list');
     
     const clientsTableBody = document.getElementById('clients-table-body');
+    const signedTableBody = document.getElementById('signed-table-body');
     const archivedTableBody = document.getElementById('archived-table-body');
     const usersTableBody = document.getElementById('users-table-body');
     
     const tabActive = document.getElementById('tab-active');
+    const tabSigned = document.getElementById('tab-signed');
     const tabArchived = document.getElementById('tab-archived');
     const activeClientsContent = document.getElementById('active-clients-content');
+    const signedClientsContent = document.getElementById('signed-clients-content');
     const archivedClientsContent = document.getElementById('archived-clients-content');
 
     const searchInput = document.getElementById('search-client');
@@ -1155,21 +1158,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function showActiveTab() {
         activeClientsContent.classList.remove('hidden');
+        signedClientsContent.classList.add('hidden');
         archivedClientsContent.classList.add('hidden');
         tabActive.classList.add('border-primary', 'text-primary');
         tabActive.classList.remove('border-transparent', 'text-gray-500');
+        tabSigned.classList.add('border-transparent', 'text-gray-500');
+        tabSigned.classList.remove('border-primary', 'text-primary');
         tabArchived.classList.add('border-transparent', 'text-gray-500');
         tabArchived.classList.remove('border-primary', 'text-primary');
         await renderClientsTable();
     }
 
+    async function showSignedTab() {
+        activeClientsContent.classList.add('hidden');
+        signedClientsContent.classList.remove('hidden');
+        archivedClientsContent.classList.add('hidden');
+        tabActive.classList.remove('border-primary', 'text-primary');
+        tabActive.classList.add('border-transparent', 'text-gray-500');
+        tabSigned.classList.add('border-primary', 'text-primary');
+        tabSigned.classList.remove('border-transparent', 'text-gray-500');
+        tabArchived.classList.add('border-transparent', 'text-gray-500');
+        tabArchived.classList.remove('border-primary', 'text-primary');
+        await renderSignedTable();
+    }
+
     async function showArchivedTab() {
         activeClientsContent.classList.add('hidden');
+        signedClientsContent.classList.add('hidden');
         archivedClientsContent.classList.remove('hidden');
         tabArchived.classList.add('border-primary', 'text-primary');
         tabArchived.classList.remove('border-transparent', 'text-gray-500');
         tabActive.classList.add('border-transparent', 'text-gray-500');
         tabActive.classList.remove('border-primary', 'text-primary');
+        tabSigned.classList.add('border-transparent', 'text-gray-500');
+        tabSigned.classList.remove('border-primary', 'text-primary');
         await renderArchivedTable();
     }
     
@@ -1255,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const professionalFilter = filterProfessional.value;
   
           const activeClients = allClients.filter(client => 
-              !FINAL_STATUSES.includes(client.status) && // Mantém apenas clientes ativos
+              !FINAL_STATUSES.includes(client.status) && client.status !== 'Assinado' &&
               ( // Condição de busca: Nome OU CPF
                   client.nome.toLowerCase().includes(searchTerm) ||
                   (searchTerm.replace(/\D/g, '').length > 0 && client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))
@@ -1301,7 +1323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
                   <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
                   <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
-                  <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Arquivar</button>
+                  <button data-id="${client.id}" class="sign-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Assinado</button>
               </td>
           `;
           clientsTableBody.appendChild(row);
@@ -1314,6 +1336,58 @@ document.addEventListener('DOMContentLoaded', async () => {
           const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
           renderEmptyState(clientsTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
       }
+    }
+
+    async function renderSignedTable() {
+        renderSkeletonLoader(signedTableBody, 11);
+
+        try {
+            const allClients = await fetchClients();
+            const signedClients = allClients.filter(client => client.status === 'Assinado');
+
+            signedTableBody.innerHTML = '';
+            if (signedClients.length === 0) {
+                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+                renderEmptyState(signedTableBody, icon, 'Nenhum cliente assinado', 'Clientes com data de assinatura preenchida aparecerão aqui.', 11);
+                return;
+            }
+
+            signedClients.forEach(client => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b';
+                const dayCounter = getDayCounter(client.createdAt);
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+                    <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
+                    <td class="px-6 py-4">${client.imovel}</td>
+                    <td class="px-6 py-4">${client.corretor}</td>
+                    <td class="px-6 py-4">${client.responsavel || ''}</td>
+                    <td class="px-6 py-4">${client.agencia || ''}</td>
+                    <td class="px-6 py-4">${client.modalidade || ''}</td>
+                    <td class="px-6 py-4">
+                        <span class="status-badge text-xs font-medium px-3 py-1.5 rounded-full">
+                            <span>${client.status}</span>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
+                    </td>
+                    <td class="px-6 py-4">${client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato).toLocaleDateString('pt-BR') : ''}</td>
+                    <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
+                        <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
+                        <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary">Arquivar</button>
+                    </td>
+                `;
+                signedTableBody.appendChild(row);
+                const newBadge = row.querySelector('.status-badge');
+                updateStatusBadge(newBadge, client.status);
+            });
+        } catch (error) {
+            console.error("Erro ao renderizar tabela de assinados:", error);
+            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            renderEmptyState(signedTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
+        }
     }
     
     async function renderArchivedTable() {
@@ -1329,7 +1403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const archivedClients = allClients.filter(client => {
                 const signatureDate = client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato) : null;
                 
-                const isMatch = FINAL_STATUSES.includes(client.status) &&
+                const isMatch = client.status === 'Arquivado' &&
                     (client.nome.toLowerCase().includes(searchTerm) || (client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))) &&
                     (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter) &&
                     (monthFilter === '' || (signatureDate && signatureDate.getMonth() + 1 == monthFilter)) &&
@@ -1764,6 +1838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     tabActive.addEventListener('click', () => showActiveTab());
+    tabSigned.addEventListener('click', () => showSignedTab());
     tabArchived.addEventListener('click', () => showArchivedTab());
     
     cepTabByCep.addEventListener('click', showCepByCepTab);
@@ -1815,10 +1890,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     clientsTableBody.addEventListener('input', (e) => {
         if (e.target.classList.contains('signature-date-input')) {
-            const archiveBtn = e.target.closest('tr').querySelector('.archive-btn');
-            // Habilita/desabilita o botão de arquivar imediatamente, sem esperar
-            if (archiveBtn) archiveBtn.disabled = !e.target.value;
-            // Chama a função debounced para salvar
+            const signBtn = e.target.closest('tr').querySelector('.sign-btn');
+            if (signBtn) signBtn.disabled = !e.target.value;
             debouncedSaveDate(e.target);
         }
     });
@@ -1854,12 +1927,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (e.target.classList.contains('edit-btn')) {
             await openFormModal(parseInt(e.target.dataset.id));
-        } else if (e.target.classList.contains('archive-btn')) {
-            confirmArchiveBtn.dataset.clientId = parseInt(e.target.dataset.id, 10);
-            archiveConfirmModal.classList.remove('hidden');
+        } else if (e.target.classList.contains('sign-btn')) {
+            const clientId = parseInt(e.target.dataset.id, 10);
+            try {
+                await saveClient({ id: clientId, status: 'Assinado' });
+                showToast('Cliente movido para Assinados.', 'success');
+                await renderClientsTable();
+            } catch (error) {
+                showToast('Falha ao mover o cliente.', 'error');
+            }
         } else if (e.target.classList.contains('delete-client-btn')) {
             confirmDeleteClientBtn.dataset.clientId = parseInt(e.target.dataset.id, 10);
             deleteClientConfirmModal.classList.remove('hidden');
+        }
+    });
+
+    signedTableBody.addEventListener('click', async e => {
+        if (e.target.classList.contains('edit-btn')) {
+            await openFormModal(parseInt(e.target.dataset.id));
+        } else if (e.target.classList.contains('archive-btn')) {
+            confirmArchiveBtn.dataset.clientId = parseInt(e.target.dataset.id, 10);
+            archiveConfirmModal.classList.remove('hidden');
         }
     });
 
@@ -1952,10 +2040,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         archiveConfirmModal.classList.add('hidden');
 
         try {
-            const updatedClient = await saveClient({ id: clientId, status: 'Assinado' });
+            const updatedClient = await saveClient({ id: clientId, status: 'Arquivado' });
             logActivity(updatedClient.nome, 'Cliente arquivado');
             showToast('Cliente arquivado com sucesso!', 'success');
-            await renderClientsTable();
+            await showSignedTab();
         } catch (error) {
             console.error("Erro ao arquivar cliente:", error);
             showToast('Falha ao arquivar o cliente.', 'error');

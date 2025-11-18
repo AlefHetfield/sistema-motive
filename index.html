@@ -238,6 +238,9 @@
                                 <button id="tab-active" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-primary text-primary">
                                     Processos Ativos
                                 </button>
+                                <button id="tab-signed" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                    Assinados
+                                </button>
                                 <button id="tab-archived" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
                                     Arquivados
                                 </button>
@@ -287,6 +290,30 @@
                                         </tr>
                                     </thead>
                                     <tbody id="clients-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Conteúdo para Assinados -->
+                        <div id="signed-clients-content" class="hidden">
+                            <div class="bg-surface rounded-lg shadow-md overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Nome do Cliente</th>
+                                            <th scope="col" class="px-6 py-3">CPF</th>
+                                            <th scope="col" class="px-6 py-3">Imóvel</th>
+                                            <th scope="col" class="px-6 py-3">Corretor</th>
+                                            <th scope="col" class="px-6 py-3">Responsável</th>
+                                            <th scope="col" class="px-6 py-3">Agência</th>
+                                            <th scope="col" class="px-6 py-3">Modalidade</th>
+                                            <th scope="col" class="px-6 py-3">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-center">Dias</th>
+                                            <th scope="col" class="px-6 py-3">Data Assinatura</th>
+                                            <th scope="col" class="px-6 py-3 text-center whitespace-nowrap">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="signed-table-body"></tbody>
                                 </table>
                             </div>
                         </div>
