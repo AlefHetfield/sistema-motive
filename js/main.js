@@ -1267,162 +1267,167 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    async function renderClientsTable() {
-      renderSkeletonLoader(clientsTableBody, 11); // Mostra o esqueleto de carregamento
-  
-      try {
-          const allClients = await fetchClients();
-          const searchTerm = searchInput.value.toLowerCase();
-          const statusFilter = filterStatus.value;
-          const professionalFilter = filterProfessional.value;
-  
-          const activeClients = allClients.filter(client => 
-              !FINAL_STATUSES.includes(client.status) && client.status !== 'Assinado' &&
-              ( // Condição de busca: Nome OU CPF
-                  client.nome.toLowerCase().includes(searchTerm) ||
-                  (searchTerm.replace(/\D/g, '').length > 0 && client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))
-              ) && (statusFilter === '' || client.status === statusFilter) &&
-              // Nova lógica de filtro para profissional (corretor OU responsável)
-              (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter)
-          );
-  
-          clientsTableBody.innerHTML = ''; // Limpa o loader
-          if (activeClients.length === 0) {
-              const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`;
-              renderEmptyState(clientsTableBody, icon, 'Nenhum cliente encontrado', 'Tente ajustar seus filtros ou adicione um novo cliente.', 11);
-              return;
-          }
-  
-          activeClients.forEach(client => {
-          const row = document.createElement('tr');
-          row.className = 'bg-white border-b';
-          const dayCounter = getDayCounter(client.createdAt);
-          
-          row.innerHTML = `
-              <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
-              <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
-              <td class="px-6 py-4">${client.imovel}</td>
-              <td class="px-6 py-4">${client.corretor}</td>
-              <td class="px-6 py-4">${client.responsavel || ''}</td>
-              <td class="px-6 py-4">${client.agencia || ''}</td>
-              <td class="px-6 py-4">${client.modalidade || ''}</td>
-              <td class="px-6 py-4">
-                  <div class="relative">
-                      <button data-id="${client.id}" class="status-badge text-xs font-medium px-3 py-1.5 rounded-full w-full text-left flex justify-between items-center">
-                          <span>${client.status}</span>
-                          <svg class="w-3 h-3 text-gray-500 ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                      </button>
-                  </div>
-              </td>
-              <td class="px-6 py-4 text-center">
-                  <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
-              </td>
-              <td class="px-6 py-4">
-                  <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato ? client.dataAssinaturaContrato.split('T')[0] : ''}">
-              </td>
-              <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
-                  <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
-                  <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
-                  <button data-id="${client.id}" class="sign-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Assinado</button>
-              </td>
-          `;
-          clientsTableBody.appendChild(row);
+    /**
+     * Função genérica para renderizar tabelas de clientes.
+     * @param {object} config - Objeto de configuração.
+     * @param {HTMLElement} config.tbody - O elemento tbody da tabela.
+     * @param {function(object[]): object[]} config.filterFn - Função que recebe todos os clientes e retorna os filtrados.
+     * @param {function(object): string} config.rowBuilderFn - Função que recebe um cliente e retorna o HTML da linha (tr).
+     * @param {object} config.emptyState - Objeto com { icon, title, subtitle } para o estado vazio.
+     * @param {number} config.columns - Número de colunas para o skeleton loader.
+     */
+    async function renderGenericClientTable(config) {
+        const { tbody, filterFn, rowBuilderFn, emptyState, columns } = config;
 
-          const newBadge = row.querySelector('.status-badge');
-          updateStatusBadge(newBadge, client.status);
-      });
-      } catch (error) {
-          console.error("Erro ao renderizar tabela de clientes:", error);
-          const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
-          renderEmptyState(clientsTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
-      }
-    }
-
-    async function renderSignedTable() {
-        renderSkeletonLoader(signedTableBody, 11);
+        renderSkeletonLoader(tbody, columns);
 
         try {
             const allClients = await fetchClients();
-            const signedClients = allClients.filter(client => client.status === 'Assinado');
+            const filteredClients = filterFn(allClients);
 
-            signedTableBody.innerHTML = '';
-            if (signedClients.length === 0) {
-                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
-                renderEmptyState(signedTableBody, icon, 'Nenhum cliente assinado', 'Clientes com data de assinatura preenchida aparecerão aqui.', 11);
+            tbody.innerHTML = '';
+            if (filteredClients.length === 0) {
+                renderEmptyState(tbody, emptyState.icon, emptyState.title, emptyState.subtitle, columns);
                 return;
             }
 
-            signedClients.forEach(client => {
+            filteredClients.forEach(client => {
                 const row = document.createElement('tr');
                 row.className = 'bg-white border-b';
-                const dayCounter = getDayCounter(client.createdAt);
+                row.innerHTML = rowBuilderFn(client);
+                tbody.appendChild(row);
 
-                row.innerHTML = `
-                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
-                    <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
-                    <td class="px-6 py-4">${client.imovel}</td>
-                    <td class="px-6 py-4">${client.corretor}</td>
-                    <td class="px-6 py-4">${client.responsavel || ''}</td>
-                    <td class="px-6 py-4">${client.agencia || ''}</td>
-                    <td class="px-6 py-4">${client.modalidade || ''}</td>
-                    <td class="px-6 py-4">
-                        <span class="status-badge text-xs font-medium px-3 py-1.5 rounded-full">
-                            <span>${client.status}</span>
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
-                    </td>
-                    <td class="px-6 py-4">${client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato).toLocaleDateString('pt-BR') : ''}</td>
-                    <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
-                        <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
-                        <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary">Arquivar</button>
-                    </td>
-                `;
-                signedTableBody.appendChild(row);
-                const newBadge = row.querySelector('.status-badge');
-                updateStatusBadge(newBadge, client.status);
+                // Atualiza o badge de status se ele existir na linha
+                const statusBadge = row.querySelector('.status-badge');
+                if (statusBadge) {
+                    updateStatusBadge(statusBadge, client.status);
+                }
             });
         } catch (error) {
-            console.error("Erro ao renderizar tabela de assinados:", error);
+            console.error(`Erro ao renderizar tabela (${tbody.id}):`, error);
             const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
-            renderEmptyState(signedTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
+            renderEmptyState(tbody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', columns);
         }
+    }
+
+    async function renderClientsTable() {
+        const filterFn = (allClients) => {
+            const searchTerm = searchInput.value.toLowerCase();
+          const statusFilter = filterStatus.value;
+          const professionalFilter = filterProfessional.value;
+            return allClients.filter(client =>
+                !FINAL_STATUSES.includes(client.status) && client.status !== 'Assinado' &&
+                (client.nome.toLowerCase().includes(searchTerm) || (searchTerm.replace(/\D/g, '').length > 0 && client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))) &&
+                (statusFilter === '' || client.status === statusFilter) &&
+                (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter)
+            );
+        };
+
+        const rowBuilderFn = (client) => {
+            const dayCounter = getDayCounter(client.createdAt);
+            return `
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+                <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
+                <td class="px-6 py-4">${client.imovel}</td>
+                <td class="px-6 py-4">${client.corretor}</td>
+                <td class="px-6 py-4">${client.responsavel || ''}</td>
+                <td class="px-6 py-4">${client.agencia || ''}</td>
+                <td class="px-6 py-4">${client.modalidade || ''}</td>
+                <td class="px-6 py-4">
+                    <div class="relative">
+                        <button data-id="${client.id}" class="status-badge text-xs font-medium px-3 py-1.5 rounded-full w-full text-left flex justify-between items-center">
+                            <span>${client.status}</span>
+                            <svg class="w-3 h-3 text-gray-500 ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <input type="date" data-id="${client.id}" class="signature-date-input form-input text-xs p-1 rounded-md" value="${client.dataAssinaturaContrato ? client.dataAssinaturaContrato.split('T')[0] : ''}">
+                </td>
+                <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
+                    <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
+                    <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
+                    <button data-id="${client.id}" class="sign-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary disabled:bg-gray-300 disabled:cursor-not-allowed" ${!client.dataAssinaturaContrato ? 'disabled' : ''}>Assinado</button>
+                </td>
+            `;
+        };
+
+        await renderGenericClientTable({
+            tbody: clientsTableBody,
+            filterFn,
+            rowBuilderFn,
+            emptyState: {
+                icon: `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`,
+                title: 'Nenhum cliente encontrado',
+                subtitle: 'Tente ajustar seus filtros ou adicione um novo cliente.'
+            },
+            columns: 11
+        });
+    }
+
+    async function renderSignedTable() {
+        const filterFn = (allClients) => allClients.filter(client => client.status === 'Assinado');
+
+        const rowBuilderFn = (client) => {
+            const dayCounter = getDayCounter(client.createdAt);
+            return `
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
+                <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
+                <td class="px-6 py-4">${client.imovel}</td>
+                <td class="px-6 py-4">${client.corretor}</td>
+                <td class="px-6 py-4">${client.responsavel || ''}</td>
+                <td class="px-6 py-4">${client.agencia || ''}</td>
+                <td class="px-6 py-4">${client.modalidade || ''}</td>
+                <td class="px-6 py-4">
+                    <span class="status-badge text-xs font-medium px-3 py-1.5 rounded-full">
+                        <span>${client.status}</span>
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="text-sm font-bold px-2.5 py-1 rounded-full ${dayCounter.color}">${dayCounter.days}</span>
+                </td>
+                <td class="px-6 py-4">${client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato).toLocaleDateString('pt-BR') : ''}</td>
+                <td class="px-6 py-4 text-center space-x-3 whitespace-nowrap">
+                    <button data-id="${client.id}" class="edit-btn font-medium text-primary hover:underline">Detalhes</button>
+                    <button data-id="${client.id}" class="archive-btn py-1 px-3 rounded-md shadow-sm text-xs font-medium btn-primary">Arquivar</button>
+                </td>
+            `;
+        };
+
+        await renderGenericClientTable({
+            tbody: signedTableBody,
+            filterFn,
+            rowBuilderFn,
+            emptyState: {
+                icon: `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                title: 'Nenhum cliente assinado',
+                subtitle: 'Clientes com data de assinatura preenchida aparecerão aqui.'
+            },
+            columns: 11
+        });
     }
     
     async function renderArchivedTable() {
-        renderSkeletonLoader(archivedTableBody, 11);
-
-        try {
-            const allClients = await fetchClients();
+        const filterFn = (allClients) => {
             const searchTerm = searchArchivedInput.value.toLowerCase();
             const professionalFilter = filterProfessionalArchived.value;
             const monthFilter = filterArchiveMonth.value;
             const yearFilter = filterArchiveYear.value;
 
-            const archivedClients = allClients.filter(client => {
+            return allClients.filter(client => {
                 const signatureDate = client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato) : null;
-                
-                const isMatch = client.status === 'Arquivado' &&
+                return client.status === 'Arquivado' &&
                     (client.nome.toLowerCase().includes(searchTerm) || (client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))) &&
                     (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter) &&
                     (monthFilter === '' || (signatureDate && signatureDate.getMonth() + 1 == monthFilter)) &&
                     (yearFilter === '' || (signatureDate && signatureDate.getFullYear() == yearFilter));
-
-                return isMatch;
             });
+        };
 
-            archivedTableBody.innerHTML = '';
-            if (archivedClients.length === 0) {
-                const icon = `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>`;
-                renderEmptyState(archivedTableBody, icon, 'Nenhum cliente arquivado encontrado', 'Ajuste os filtros ou verifique se há clientes com status final.', 11);
-                return;
-            }
-
-            archivedClients.forEach(client => {
-                const row = document.createElement('tr');
-                row.className = 'bg-white border-b';
-
+        const rowBuilderFn = (client) => {
                 let durationDays = 'N/A';
                 let durationColor = 'bg-gray-100 text-gray-800';
                 let signatureDateFormatted = 'N/A';
@@ -1456,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-                row.innerHTML = `
+                return `
                     <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${client.nome}</td>
                     <td class="px-6 py-4">${client.corretor}</td>
                     <td class="px-6 py-4">${formatCPF(client.cpf || '')}</td>
@@ -1479,16 +1484,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button data-id="${client.id}" class="delete-client-btn font-medium text-red-600 hover:underline">Excluir</button>
                     </td>
                 `;
-                archivedTableBody.appendChild(row);
+        };
 
-                const newBadge = row.querySelector('.status-badge');
-                updateStatusBadge(newBadge, client.status);
-            });
-        } catch (error) {
-            console.error("Erro ao renderizar tabela de arquivados:", error);
-            const icon = `<svg class="w-16 h-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
-            renderEmptyState(archivedTableBody, icon, 'Falha ao carregar dados', 'Verifique a conexão com o servidor e tente novamente.', 11);
-        }
+        await renderGenericClientTable({
+            tbody: archivedTableBody,
+            filterFn,
+            rowBuilderFn,
+            emptyState: {
+                icon: `<svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>`,
+                title: 'Nenhum cliente arquivado encontrado',
+                subtitle: 'Ajuste os filtros ou verifique se há clientes com status final.'
+            },
+            columns: 11
+        });
     }
     
     async function renderUsersTable() {
