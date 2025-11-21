@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =================================================================================
 
     const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
-    const FINAL_STATUSES = ["Assinado", "Arquivado"];
+    const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
     const statusColorMap = {
         "Aprovado": "status-aprovado",
@@ -1316,7 +1316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const statusFilter = filterStatus.value;
           const professionalFilter = filterProfessional.value;
             return allClients.filter(client =>
-                !FINAL_STATUSES.includes(client.status) && client.status !== 'Assinado' &&
+                !FINAL_STATUSES.includes(client.status) &&
                 (client.nome.toLowerCase().includes(searchTerm) || (searchTerm.replace(/\D/g, '').length > 0 && client.cpf && client.cpf.includes(searchTerm.replace(/\D/g, '')))) &&
                 (statusFilter === '' || client.status === statusFilter) &&
                 (professionalFilter === '' || client.corretor === professionalFilter || client.responsavel === professionalFilter)
@@ -1369,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderSignedTable() {
-        const filterFn = (allClients) => allClients.filter(client => client.status === 'Assinado');
+        const filterFn = (allClients) => allClients.filter(client => client.status === 'Assinado-Movido');
 
         const rowBuilderFn = (client) => {
             const dayCounter = getDayCounter(client.createdAt);
@@ -1383,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-6 py-4">${client.modalidade || ''}</td>
                 <td class="px-6 py-4">
                     <span class="status-badge text-xs font-medium px-3 py-1.5 rounded-full">
-                        <span>${client.status}</span>
+                        <span>Assinado</span>
                     </span>
                 </td>
                 <td class="px-6 py-4 text-center">
@@ -1938,7 +1938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (e.target.classList.contains('sign-btn')) {
             const clientId = parseInt(e.target.dataset.id, 10);
             try {
-                await saveClient({ id: clientId, status: 'Assinado' });
+                await saveClient({ id: clientId, status: 'Assinado-Movido' });
                 showToast('Cliente movido para Assinados.', 'success');
                 await renderClientsTable();
             } catch (error) {
