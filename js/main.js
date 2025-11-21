@@ -1,38 +1,3 @@
-// Criamos uma Promise que será resolvida quando a API do Google Maps carregar.
-const googleMapsApiReady = new Promise(resolve => {
-    // A função initMap agora está no escopo global e sua única responsabilidade
-    // é sinalizar que a API está pronta, resolvendo a Promise.
-    window.initMap = () => resolve();
-});
-
-// Flag para garantir que o script seja solicitado apenas uma vez.
-let isGoogleMapsScriptRequested = false;
-
-/**
- * Carrega o script da API do Google Maps sob demanda.
- * A função é idempotente, ou seja, só adiciona o script uma vez.
- */
-function loadGoogleMapsScript() {
-    if (isGoogleMapsScriptRequested) {
-        return;
-    }
-    isGoogleMapsScriptRequested = true;
-
-    // VERIFICAÇÃO DE SEGURANÇA: Garante que a chave de API foi definida.
-    if (typeof GOOGLE_MAPS_API_KEY === 'undefined' || !GOOGLE_MAPS_API_KEY) {
-        console.error("Chave da API do Google Maps não foi encontrada. Verifique se o arquivo 'js/config.js' existe e está configurado corretamente.");
-        showToast('Configuração da API do Google Maps ausente.', 'error');
-        // Impede a criação da tag script sem a chave.
-        return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=marker`;
-    script.async = true;
-    script.onerror = () => showToast('Falha ao carregar a API do Google Maps.', 'error');
-    document.head.appendChild(script);
-}
-
 import { fetchClients, fetchClient, saveClient, deleteClient, fetchUsers, saveUser, deleteUser } from './api.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -52,27 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         "Assinado": "status-assinado"
     };
 
-    const cityPinColors = {
-        'sumare': '#5B7C99',                 // Azul
-        'hortolandia': '#FBBF24',            // Amarelo
-        'santa barbara d\'oeste': '#4ADE80', // Verde
-        'campinas': '#343E48',               // Preto/Grafite
-        'nova odessa': '#A855F7',            // Roxo
-        'americana': '#881337',              // Vinho
-        'paulinia': '#9CA3AF',               // Cinza
-        'monte mor': '#F97316',              // Laranja
-        'valinhos': '#4ADE80',               // Verde
-        'default': '#E11D48'                 // Cor Padrão (Rosa)
-    };
-    
-    let properties = [
-        { id: 201, city: 'Sumaré', title: 'Casa Térrea no Jd. das Flores', address: 'Rua das Rosas, 123, Sumaré, SP', price: 650000, area: 200, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+1', lat: -22.8219, lng: -47.2662, description: 'Bela casa com 3 dormitórios, sendo 1 suíte. Amplo quintal com churrasqueira. Garagem para 2 carros.' },
-        { id: 202, city: 'Sumaré', title: 'Apartamento com Varanda Gourmet', address: 'Avenida Rebouças, 900, Sumaré, SP', price: 480000, area: 90, photoUrl: 'https://placehold.co/300x200/343E48/FFFFFF?text=Im%C3%B3vel+2', lat: -22.8258, lng: -47.2715, description: 'Apartamento novo, nunca habitado. Condomínio com lazer completo.' },
-        { id: 203, city: 'Campinas', title: 'Cobertura Duplex no Cambuí', address: 'Rua Coronel Quirino, 1500, Campinas, SP', price: 1200000, area: 250, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+3', lat: -22.8935, lng: -47.0497, description: '' },
-        { id: 204, city: 'Paulínia', title: 'Casa em Condomínio Fechado', address: 'Avenida José Paulino, 2500, Paulínia, SP', price: 850000, area: 300, photoUrl: 'https://placehold.co/300x200/343E48/FFFFFF?text=Im%C3%B3vel+4', lat: -22.7633, lng: -47.1536, description: '' },
-        { id: 205, city: 'Campinas', title: 'Kitnet Próxima à Unicamp', address: 'Rua Roxo Moreira, 123, Campinas, SP', price: 250000, area: 40, photoUrl: 'https://placehold.co/300x200/5B7C99/FFFFFF?text=Im%C3%B3vel+5', lat: -22.8164, lng: -47.0725, description: '' }
-    ];
-
     let activityLog = JSON.parse(localStorage.getItem('activityLog')) || [];
 
     // =================================================================================
@@ -90,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const togglePasswordBtn = document.getElementById('toggle-password');
     
     const appCardDashboard = document.getElementById('app-card-dashboard');
-    const appCardMap = document.getElementById('app-card-map');
     const appCardClients = document.getElementById('app-card-clients');
     const appCardCep = document.getElementById('app-card-cep');
     const appCardPdf = document.getElementById('app-card-pdf');
@@ -102,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const views = {
         dashboard: document.getElementById('dashboard-view'),
         clients: document.getElementById('clients-view'),
-        map: document.getElementById('map-view'),
         pdf: document.getElementById('pdf-editor-view'),
         cep: document.getElementById('cep-view'),
         receipt: document.getElementById('receipt-view'),
@@ -113,7 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         appMenu: document.getElementById('nav-app-menu'),
         dashboard: document.getElementById('nav-dashboard'),
         clients: document.getElementById('nav-clients'),
-        map: document.getElementById('nav-map'),
         pdf: document.getElementById('nav-pdf'),
         receipt: document.getElementById('nav-receipt'),
         cep: document.getElementById('nav-cep'),
@@ -159,13 +100,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeUserModalBtn = document.getElementById('close-user-modal-btn');
     const cancelUserFormBtn = document.getElementById('cancel-user-form-btn');
 
-    const propertyFormModal = document.getElementById('property-form-modal');
-    const propertyForm = document.getElementById('property-form');
-    const propertyFormTitle = document.getElementById('property-form-title');
-    const addPropertyBtn = document.getElementById('add-property-btn');
-    const closePropertyModalBtn = document.getElementById('close-property-modal-btn');
-    const cancelPropertyFormBtn = document.getElementById('cancel-property-form-btn');
-
     const archiveConfirmModal = document.getElementById('archive-confirm-modal');
     const cancelArchiveBtn = document.getElementById('cancel-archive-btn');
     const confirmArchiveBtn = document.getElementById('confirm-archive-btn');
@@ -174,22 +108,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelDeleteUserBtn = document.getElementById('cancel-delete-user-btn');
     const confirmDeleteUserBtn = document.getElementById('confirm-delete-user-btn');
 
-    const deletePropertyConfirmModal = document.getElementById('delete-property-confirm-modal');
-    const cancelDeletePropertyBtn = document.getElementById('cancel-delete-property-btn');
-    const confirmDeletePropertyBtn = document.getElementById('confirm-delete-property-btn');
-
     const deleteClientConfirmModal = document.getElementById('delete-client-confirm-modal');
     const cancelDeleteClientBtn = document.getElementById('cancel-delete-client-btn');
     const confirmDeleteClientBtn = document.getElementById('confirm-delete-client-btn');
 
     const statusDropdownMenu = document.getElementById('status-dropdown-menu');
-    
-    const propertiesList = document.getElementById('properties-list');
-    const orderByProperty = document.getElementById('order-by-property');
-    const radiusSelect = document.getElementById('radius-select');
-    const radiusSearchBtn = document.getElementById('radius-search-btn');
-    const radiusClearBtn = document.getElementById('radius-clear-btn');
-    const mapContainer = document.getElementById('map-container');
     
     const cepTabByCep = document.getElementById('cep-tab-by-cep');
     const cepTabByAddress = document.getElementById('cep-tab-by-address');
@@ -232,382 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const generatePdfBtn = document.getElementById('generate-pdf-btn');
 
 
-    // =================================================================================
-    // LÓGICA DO MAPA
-    // =================================================================================
-    let map;
-    let geocoder;
-    let mapMarkers = [];
-    let activeInfoWindow = null;
-    let radiusCircle = null;
-    let isMapInitialized = false;
-
-    // Esta função agora é chamada internamente, depois de garantirmos que a API e o DOM estão prontos.
-    async function initializeMap() {
-        if (map) return; // Evita reinicialização
-
-        // Espera a API do Google Maps estar pronta antes de prosseguir.
-        await googleMapsApiReady;
-
-        const sumare = { lat: -22.8219, lng: -47.2662 };
-        map = new google.maps.Map(document.getElementById("map"), {
-            zoom: 12,
-            center: sumare,
-            mapId: "MOTIVE_MAP_ID",
-        });
-        geocoder = new google.maps.Geocoder();
-        isMapInitialized = true;
-        
-        renderPropertiesOnMap(properties);
-        renderPropertiesList(properties);
-    }
-    
-    // Função para calcular distância entre duas coordenadas (essencial para a busca por raio)
-    function haversineDistance(coords1, coords2) {
-        function toRad(x) {
-            return x * Math.PI / 180;
-        }
-
-        const R = 6371; // Raio da Terra em km
-        const dLat = toRad(coords2.lat - coords1.lat);
-        const dLon = toRad(coords2.lng - coords1.lng);
-        const lat1 = toRad(coords1.lat);
-        const lat2 = toRad(coords2.lat);
-
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    function renderPropertiesOnMap(propertiesToRender) {
-        if (!map) return;
-        // Limpa marcadores antigos (a nova API usa marker.map = null)
-        mapMarkers.forEach(marker => marker.map = null);
-        mapMarkers = [];
-        
-        propertiesToRender.forEach(prop => {
-            // Define a cor do pino com base na cidade
-            const normalizedCity = prop.city.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-            const pinColor = cityPinColors[normalizedCity] || cityPinColors['default'];
-
-            // Mantém a diferenciação do ícone interno (casa vs. prédio)
-            const isApartment = prop.title.toLowerCase().includes('apartamento');
-            const iconElement = document.createElement('i');
-            iconElement.className = isApartment ? 'fa-solid fa-building' : 'fa-solid fa-house';
-
-            // Cria o pino no estilo "Google My Maps"
-            const pinGlyph = new google.maps.marker.PinElement({
-                glyph: iconElement,
-                glyphColor: 'white',
-                background: pinColor,
-                borderColor: pinColor, // Mesma cor do fundo para "remover" a borda
-            });
-
-            const marker = new google.maps.marker.AdvancedMarkerElement({
-                position: { lat: prop.lat, lng: prop.lng },
-                map: map,
-                title: prop.title,
-                content: pinGlyph.element, // Define o pino como o conteúdo do marcador
-            });
-
-            const priceFormatted = prop.price ? `R$ ${prop.price.toLocaleString('pt-BR')}` : 'Preço a consultar';
-            const areaFormatted = prop.area ? `${prop.area} m²` : '';
-
-            const descriptionHTML = prop.description ? `<p class="text-xs text-gray-600 mt-2 border-t pt-2">${prop.description}</p>` : '';
-
-            const contentString = `
-                <div class="w-64">
-                    <img src="${prop.photoUrl}" alt="${prop.title}" class="w-full h-32 object-cover">
-                    <div class="p-3">
-                        <h3 class="font-bold text-md text-secondary">${prop.title}</h3>
-                        <p class="text-sm text-text-secondary mt-1">${prop.address}</p>
-                        ${descriptionHTML}
-                        <div class="flex justify-between items-center mt-3">
-                            <p class="font-semibold text-primary text-lg">${priceFormatted}</p>
-                            <p class="text-sm text-gray-500">${areaFormatted}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            const infowindow = new google.maps.InfoWindow({ content: contentString });
-
-            marker.addListener("click", () => {
-                if (activeInfoWindow) activeInfoWindow.close();
-                infowindow.open(map, marker);
-                activeInfoWindow = infowindow;
-            });
-            
-            marker.propertyId = prop.id;
-            mapMarkers.push(marker);
-        });
-    }
-    
-    function renderPropertiesList(propertiesToRender) {
-        propertiesList.innerHTML = '';
-        if (propertiesToRender.length === 0) {
-            propertiesList.innerHTML = '<p class="p-4 text-center text-sm text-gray-500">Nenhum imóvel encontrado.</p>';
-            return;
-        }
-        
-        const sortOrder = orderByProperty.value;
-        const sortedProperties = [...propertiesToRender].sort((a, b) => {
-            if (sortOrder === 'price-asc') {
-                return (a.price || Infinity) - (b.price || Infinity);
-            } else {
-                return (b.price || 0) - (a.price || 0);
-            }
-        });
-
-        // Separa favoritos dos demais
-        const favoriteProperties = sortedProperties.filter(p => p.isFavorite);
-        const otherProperties = sortedProperties.filter(p => !p.isFavorite);
-
-        // Agrupa os imóveis restantes por cidade
-        const groupedByCity = otherProperties.reduce((acc, prop) => {
-            const city = prop.city;
-            if (!acc[city]) {
-                acc[city] = [];
-            }
-            acc[city].push(prop);
-            return acc;
-        }, {});
-        
-        // Função auxiliar para criar um item da lista de imóvel
-        const createPropertyItem = (prop) => {
-            const item = document.createElement('div');
-            item.className = 'flex justify-between items-center p-3 hover:bg-gray-100 border-b gap-2';
-            item.dataset.propertyId = prop.id;
-
-            const starIcon = prop.isFavorite 
-                ? `<svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.31h5.418a.562.562 0 01.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.07a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988h5.418a.563.563 0 00.475-.31L11.48 3.5z"/></svg>`
-                : `<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.31h5.418a.562.562 0 01.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.07a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988h5.418a.563.563 0 00.475-.31L11.48 3.5z"/></svg>`;
-
-            const priceFormatted = prop.price ? `R$ ${prop.price.toLocaleString('pt-BR')}` : 'Preço a consultar';
-
-            item.innerHTML = `
-                <div class="flex-grow cursor-pointer pr-2 overflow-hidden">
-                    <h4 class="font-semibold text-sm text-secondary truncate">${prop.title}</h4>
-                    <p class="text-xs text-text-secondary truncate">${prop.address}</p>
-                    <p class="text-sm font-semibold text-primary mt-1">${priceFormatted}</p>
-                </div>
-                <div class="flex items-center shrink-0">
-                    <button class="favorite-btn p-2 rounded-full hover:bg-yellow-100 transition-colors">
-                        ${starIcon}
-                    </button>
-                    <button class="edit-property-btn p-2 rounded-full hover:bg-blue-100 transition-colors">
-                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L13.196 5.2z"></path></svg>
-                    </button>
-                    <button class="delete-property-btn p-2 rounded-full hover:bg-red-100 transition-colors">
-                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </button>
-                </div>
-            `;
-
-            // Evento para clicar na área de texto e focar no mapa
-            item.querySelector('.flex-grow').addEventListener('click', () => {
-                const marker = mapMarkers.find(m => m.propertyId === prop.id);
-                if (marker) {
-                    map.panTo(marker.position);
-                    map.setZoom(16);
-                    google.maps.event.trigger(marker, 'click');
-                }
-            });
-
-            // Evento para clicar no botão de favoritar
-            item.querySelector('.favorite-btn').addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede que o clique se propague para o item pai
-                const property = properties.find(p => p.id === prop.id);
-                if (property) {
-                    property.isFavorite = !property.isFavorite;
-                    // Re-renderiza a lista para refletir a mudança (mover para/de favoritos)
-                    renderPropertiesList(properties);
-                }
-            });
-
-            // Evento para clicar no botão de deletar
-            item.querySelector('.delete-property-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                confirmDeletePropertyBtn.dataset.propertyId = prop.id;
-                deletePropertyConfirmModal.classList.remove('hidden');
-            });
-
-            // Evento para clicar no botão de editar
-            item.querySelector('.edit-property-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                openPropertyFormModal(prop.id);
-            });
-
-            return item;
-        };
-
-        // 1. Renderiza a seção de Favoritos
-        if (favoriteProperties.length > 0) {
-            const favHeader = document.createElement('h3');
-            favHeader.className = 'text-xs font-bold uppercase text-yellow-800 bg-yellow-100 p-2 sticky top-0 flex items-center';
-            favHeader.innerHTML = `
-                <svg class="w-4 h-4 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                Favoritos
-            `;
-            propertiesList.appendChild(favHeader);
-            favoriteProperties.forEach(prop => propertiesList.appendChild(createPropertyItem(prop)));
-        }
-
-        // 2. Ordena as cidades: Sumaré primeiro, depois o resto em ordem alfabética
-        const sortedCities = Object.keys(groupedByCity).sort((a, b) => {
-            if (a === 'Sumaré') return -1;
-            if (b === 'Sumaré') return 1;
-            return a.localeCompare(b);
-        });
-
-        // 3. Renderiza as cidades ordenadas
-        sortedCities.forEach(city => {
-            const cityHeader = document.createElement('h3');
-            cityHeader.className = 'text-xs font-bold uppercase text-gray-500 bg-gray-100 p-2 sticky top-0';
-            cityHeader.textContent = city;
-            propertiesList.appendChild(cityHeader);
-            groupedByCity[city].forEach(prop => propertiesList.appendChild(createPropertyItem(prop)));
-        });
-    }
-
-    function startRadiusSearch() {
-        if (!map) return;
-        mapContainer.style.cursor = 'crosshair';
-        radiusSearchBtn.textContent = 'Clique no mapa...';
-        radiusSearchBtn.disabled = true;
-
-        const listener = map.addListener('click', (e) => {
-            const center = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-            const radiusKm = parseFloat(radiusSelect.value);
-
-            if (radiusCircle) radiusCircle.setMap(null);
-            radiusCircle = new google.maps.Circle({
-                strokeColor: '#5B7C99',
-                strokeOpacity: 0.8,
-                strokeWeight: 2,
-                fillColor: '#5B7C99',
-                fillOpacity: 0.2,
-                map,
-                center,
-                radius: radiusKm * 1000, // Raio em metros
-            });
-
-            const propertiesInRadius = properties.filter(prop => {
-                const propCoords = { lat: prop.lat, lng: prop.lng };
-                const distance = haversineDistance(center, propCoords);
-                return distance <= radiusKm;
-            });
-
-            renderPropertiesOnMap(propertiesInRadius);
-            renderPropertiesList(propertiesInRadius);
-
-            mapContainer.style.cursor = '';
-            radiusSearchBtn.textContent = 'Buscar';
-            radiusSearchBtn.disabled = false;
-            radiusClearBtn.classList.remove('hidden');
-
-            google.maps.event.removeListener(listener);
-        });
-    }
-    
-    function clearRadiusSearch() {
-        if (radiusCircle) radiusCircle.setMap(null);
-        radiusCircle = null;
-        renderPropertiesOnMap(properties);
-        renderPropertiesList(properties);
-        radiusClearBtn.classList.add('hidden');
-    }
-
-    function openPropertyFormModal(propertyId = null) {
-        propertyForm.reset();
-        document.getElementById('property-id').value = '';
-
-        if (propertyId) {
-            const property = properties.find(p => p.id === propertyId);
-            if (property) {
-                propertyFormTitle.textContent = 'Editar Imóvel';
-                document.getElementById('property-id').value = property.id;
-                document.getElementById('property-title').value = property.title;
-                document.getElementById('property-description').value = property.description || '';
-                document.getElementById('property-address').value = property.address;
-                document.getElementById('property-price').value = property.price;
-                document.getElementById('property-area').value = property.area;
-                document.getElementById('property-photo').value = property.photoUrl;
-            }
-        } else {
-            propertyFormTitle.textContent = 'Adicionar Novo Imóvel';
-        }
-        propertyFormModal.classList.remove('hidden');
-    }
-
-    function closePropertyFormModal() {
-        propertyFormModal.classList.add('hidden');
-    }
-
-    function handlePropertyFormSubmit(event) {
-        event.preventDefault();
-        const submitButton = propertyForm.querySelector('button[type="submit"]');
-        const propertyId = document.getElementById('property-id').value;
-        const address = document.getElementById('property-address').value;
-
-        if (!geocoder) { // Função atualizada para lidar com Edição
-            showToast('Serviço de mapa não inicializado.', 'error');
-            return;
-        }
-
-        const processData = (location, city) => {
-            const propertyData = {
-                title: document.getElementById('property-title').value,
-                description: document.getElementById('property-description').value,
-                address: address,
-                price: parseFloat(document.getElementById('property-price').value) || null,
-                area: parseFloat(document.getElementById('property-area').value) || null,
-                photoUrl: document.getElementById('property-photo').value || 'https://placehold.co/300x200/cccccc/FFFFFF?text=Sem+Foto',
-                lat: location.lat(),
-                lng: location.lng(),
-                city: city,
-            };
-
-            if (propertyId) { // Atualiza imóvel existente
-                const index = properties.findIndex(p => p.id == propertyId);
-                if (index !== -1) {
-                    properties[index] = { ...properties[index], ...propertyData };
-                }
-            } else { // Cria novo imóvel
-                propertyData.id = Date.now();
-                properties.push(propertyData);
-            }
-            clearRadiusSearch();
-            closePropertyFormModal();
-            showToast('Imóvel salvo com sucesso!', 'success');
-            // Após salvar, renderiza novamente o mapa e a lista
-            renderPropertiesOnMap(properties);
-            renderPropertiesList(properties);
-        };
-
-        const existingProperty = propertyId ? properties.find(p => p.id == propertyId) : null;
-        const addressChanged = !existingProperty || existingProperty.address !== address;
-
-        if (addressChanged) {
-            toggleButtonLoading(submitButton, true);
-            geocoder.geocode({ 'address': address }, (results, status) => {
-                toggleButtonLoading(submitButton, false);
-                if (status !== 'OK') {
-                    showToast('Endereço não encontrado. Verifique os dados.', 'error');
-                    return;
-                }
-
-                const location = results[0].geometry.location;
-                const cityComponent = results[0].address_components.find(c => c.types.includes('administrative_area_level_2'));
-                const city = cityComponent ? cityComponent.long_name : 'Não informada';
-                processData(location, city);
-            });
-        } else {
-            const location = { lat: () => existingProperty.lat, lng: () => existingProperty.lng };
-            processData(location, existingProperty.city);
-        }
-    }
-    
     // =================================================================================
     // FUNÇÕES DE UI/UX (User Interface / User Experience)
     // =================================================================================
@@ -979,7 +526,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageTitle.textContent = {
             dashboard: 'Dashboard',
             clients: 'Clientes',
-            map: 'Mapa de Imóveis',
             pdf: 'Editor de PDF',
             cep: 'Buscador de CEP',
             receipt: 'Gerador de Recibos',
@@ -990,15 +536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const activeLink = navLinks[viewName];
         if (activeLink) activeLink.classList.add('bg-gray-700', 'text-white');
         
-        if (viewName === 'map') {
-            mainContent.classList.remove('p-6');
-            // Carrega o script da API (se ainda não foi carregado)
-            loadGoogleMapsScript();
-            // Chama a inicialização do mapa (que aguardará a API estar pronta)
-            initializeMap();
-        } else {
-            mainContent.classList.add('p-6');
-        }
+        mainContent.classList.add('p-6');
         
         if (viewName === 'dashboard') renderDashboard();
         if (viewName === 'clients') showActiveTab();
@@ -1821,7 +1359,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     appCardDashboard.addEventListener('click', () => enterApplication('dashboard'));
     appCardClients.addEventListener('click', () => enterApplication('clients', populateFilters));
-    appCardMap.addEventListener('click', () => enterApplication('map'));
     appCardPdf.addEventListener('click', () => enterApplication('pdf'));
     appCardReceipt.addEventListener('click', () => enterApplication('receipt'));
     appCardCep.addEventListener('click', () => enterApplication('cep'));
@@ -1862,10 +1399,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     filterProfessionalArchived.addEventListener('change', renderArchivedTable);
     filterArchiveMonth.addEventListener('change', renderArchivedTable);
     filterArchiveYear.addEventListener('change', renderArchivedTable);
-
-    orderByProperty.addEventListener('change', () => renderPropertiesList(properties));
-    radiusSearchBtn.addEventListener('click', startRadiusSearch);
-    radiusClearBtn.addEventListener('click', clearRadiusSearch);
 
     // Função debounce para evitar chamadas excessivas à API ao digitar
     const debounce = (func, delay) => {
@@ -2029,11 +1562,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelUserFormBtn.addEventListener('click', closeUserFormModal);
     userForm.addEventListener('submit', handleUserFormSubmit);
     
-    addPropertyBtn.addEventListener('click', () => openPropertyFormModal());
-    closePropertyModalBtn.addEventListener('click', closePropertyFormModal);
-    cancelPropertyFormBtn.addEventListener('click', closePropertyFormModal);
-    propertyForm.addEventListener('submit', handlePropertyFormSubmit);
-    
     cepInput.addEventListener('input', (e) => {
         let value = e.target.value.replace(/\D/g, '');
         if (value.length > 5) value = value.replace(/^(\d{5})(\d)/, '$1-$2');
@@ -2069,16 +1597,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             showToast('Falha ao excluir o usuário.', 'error');
         }
-    });
-
-    cancelDeletePropertyBtn.addEventListener('click', () => deletePropertyConfirmModal.classList.add('hidden'));
-    confirmDeletePropertyBtn.addEventListener('click', () => {
-        const propertyId = parseInt(confirmDeletePropertyBtn.dataset.propertyId, 10);
-        properties = properties.filter(p => p.id !== propertyId);
-        deletePropertyConfirmModal.classList.add('hidden');
-        showToast('Imóvel excluído com sucesso.', 'success');
-        renderPropertiesOnMap(properties);
-        renderPropertiesList(properties);
     });
 
     cancelDeleteClientBtn.addEventListener('click', () => deleteClientConfirmModal.classList.add('hidden'));

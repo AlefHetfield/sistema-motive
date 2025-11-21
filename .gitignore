@@ -5,4 +5,3 @@ node_modules
 /generated/prisma
 
 .vercel
-js/config.js

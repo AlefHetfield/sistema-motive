@@ -89,15 +89,6 @@
                     <p class="text-text-secondary text-sm mt-2">Gerencie os processos de clientes ativos e arquivados.</p>
                 </div>
 
-                <!-- Card Mapa -->
-                <div id="app-card-map" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
-                    <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-secondary">Mapa de Imóveis</h3>
-                    <p class="text-text-secondary text-sm mt-2">Cadastre e visualize a localização dos seus imóveis no mapa.</p>
-                </div>
-
                 <!-- Card Editor de PDF -->
                 <div id="app-card-pdf" class="bg-surface p-6 rounded-xl shadow-md cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center">
                     <div class="p-4 rounded-full bg-primary/10 text-primary mb-4">
@@ -157,10 +148,6 @@
                     <a href="#" id="nav-clients" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         <span class="sidebar-text">Clientes</span>
-                    </a>
-                    <a href="#" id="nav-map" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <span class="sidebar-text">Mapa de Imóveis</span>
                     </a>
                     <a href="#" id="nav-pdf" class="flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -365,54 +352,6 @@
                         </div>
                     </div>
 
-                     <!-- View: Mapa de Imóveis -->
-                    <div id="map-view" class="hidden fade-in flex flex-col lg:flex-row h-full">
-                        <!-- Sidebar do Mapa -->
-                        <aside class="w-full lg:w-1/3 xl:w-1/4 bg-surface flex flex-col h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-gray-200">
-                            <div class="p-4 border-b shrink-0">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <h2 class="text-lg font-semibold text-secondary">Imóveis Cadastrados</h2>
-                                        <p class="text-sm text-text-secondary">Agrupados por cidade</p>
-                                    </div>
-                                    <div class="relative shrink-0 ml-2">
-                                        <select id="order-by-property" class="form-select text-xs p-1 rounded-md">
-                                            <option value="price-asc">Menor Valor</option>
-                                            <option value="price-desc">Maior Valor</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="properties-list" class="flex-1 overflow-y-auto no-scrollbar">
-                                <!-- A nova lista agrupada será inserida aqui -->
-                            </div>
-                            <div class="p-4 border-t shrink-0">
-                                <button id="add-property-btn" class="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary">
-                                    + Adicionar Imóvel
-                                </button>
-                            </div>
-                        </aside>
-
-                        <!-- Conteúdo do Mapa -->
-                        <main id="map-container" class="w-full lg:flex-1 h-1/2 lg:h-full relative">
-                            <div id="map"></div>
-                            <!-- NOVO PAINEL DE BUSCA POR RAIO -->
-                            <div id="radius-search-container" class="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg flex flex-col gap-2">
-                                <h4 class="text-sm font-semibold text-secondary text-center">Busca por Raio</h4>
-                                <div class="flex items-center gap-2">
-                                    <select id="radius-select" class="form-select text-xs p-1 rounded-md">
-                                        <option value="1">1 km</option>
-                                        <option value="2">2 km</option>
-                                        <option value="5">5 km</option>
-                                        <option value="10">10 km</option>
-                                    </select>
-                                    <button id="radius-search-btn" class="py-1 px-3 btn-primary rounded-md text-xs">Buscar</button>
-                                </div>
-                                <button id="radius-clear-btn" class="hidden py-1 px-3 bg-gray-200 text-gray-700 rounded-md text-xs hover:bg-gray-300">Limpar Busca</button>
-                            </div>
-                        </main>
-                    </div>
-                    
                     <!-- View: Buscador de CEP -->
                     <div id="cep-view" class="hidden fade-in max-w-4xl mx-auto">
                         <div class="border-b border-gray-200 mb-6">
@@ -620,51 +559,6 @@
                          </div>
                     </div>
 
-                    <!-- Modal/Form para Adicionar/Editar Imóvel -->
-                    <div id="property-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col fade-in">
-                            <div class="flex justify-between items-center p-4 border-b">
-                                <h3 id="property-form-title" class="text-lg font-semibold text-secondary">Adicionar Novo Imóvel</h3>
-                                <button id="close-property-modal-btn" class="text-gray-400 hover:text-gray-600">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                            </div>
-                            <form id="property-form" class="p-6 space-y-4">
-                                <input type="hidden" id="property-id">
-                                <div>
-                                    <label for="property-title" class="block text-sm font-medium text-gray-700">Título do Imóvel</label>
-                                    <input type="text" id="property-title" class="form-input mt-1 block w-full" required placeholder="Ex: Casa com 3 quartos em Sumaré">
-                                </div>
-                                <div>
-                                    <label for="property-description" class="block text-sm font-medium text-gray-700">Descrição</label>
-                                    <textarea id="property-description" rows="3" class="form-input mt-1 block w-full" placeholder="Detalhes sobre o imóvel, diferenciais, etc."></textarea>
-                                </div>
-                                <div>
-                                    <label for="property-address" class="block text-sm font-medium text-gray-700">Endereço Completo</label>
-                                    <input type="text" id="property-address" class="form-input mt-1 block w-full" required placeholder="Rua, Número, Bairro, Cidade, Estado" autocomplete="off">
-                                </div>
-                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="property-price" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
-                                        <input type="number" id="property-price" class="form-input mt-1 block w-full" placeholder="500000">
-                                    </div>
-                                     <div>
-                                        <label for="property-area" class="block text-sm font-medium text-gray-700">Área (m²)</label>
-                                        <input type="number" id="property-area" class="form-input mt-1 block w-full" placeholder="150">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="property-photo" class="block text-sm font-medium text-gray-700">URL da Foto</label>
-                                    <input type="url" id="property-photo" class="form-input mt-1 block w-full" placeholder="https://...">
-                                </div>
-                                <div class="pt-4 flex justify-end gap-3">
-                                    <button type="button" id="cancel-property-form-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
-                                    <button type="submit" class="py-2 px-4 btn-primary rounded-md">Salvar Imóvel</button>
-                                </div>
-                            </form>
-                         </div>
-                    </div>
-
                     <!-- View: Gerador de Recibos -->
                     <div id="receipt-view" class="hidden fade-in">
                         <div class="bg-white rounded-lg shadow-lg p-8">
@@ -825,25 +719,12 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmação para Deletar Imóvel -->
-    <div id="delete-property-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 fade-in">
-            <h3 class="text-lg font-semibold text-red-700">Confirmar Exclusão</h3>
-            <p class="mt-2 text-sm text-gray-600">Você tem certeza que deseja excluir este imóvel? Esta ação é permanente e não pode ser desfeita.</p>
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button" id="cancel-delete-property-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancelar</button>
-                <button type="button" id="confirm-delete-property-btn" class="py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar Exclusão</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Custom Status Dropdown Menu -->
     <div id="status-dropdown-menu" class="hidden absolute z-20 bg-white rounded-md shadow-lg border w-36 py-1 text-sm">
         <!-- Status options will be populated via JS -->
     </div>
     
     <!-- Scripts -->
-    <script src="js/config.js"></script> <!-- Carrega a chave de API primeiro -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Alterado para type="module" para permitir import/export -->
     <script type="module" src="js/main.js" defer></script>

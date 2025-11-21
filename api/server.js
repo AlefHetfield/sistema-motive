@@ -99,6 +99,64 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 });
 
+// --- ROTAS PARA USUÁRIOS (Users) ---
+
+// [READ] Listar todos os usuários
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: {
+        nome: 'asc',
+      },
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Não foi possível buscar os usuários.' });
+  }
+});
+
+// [CREATE] Criar um novo usuário
+app.post('/api/users', async (req, res) => {
+  try {
+    const newUser = await prisma.user.create({
+      data: req.body,
+    });
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error("Erro ao criar usuário:", error);
+    res.status(400).json({ 
+        error: 'Dados inválidos para criar o usuário.',
+        details: error.message 
+    });
+  }
+});
+
+// [UPDATE] Atualizar um usuário por ID
+app.put('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: req.body,
+    });
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ error: 'Não foi possível atualizar o usuário.' });
+  }
+});
+
+// [DELETE] Deletar um usuário por ID
+app.delete('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.user.delete({
+      where: { id: parseInt(id) },
+    });
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Não foi possível deletar o usuário.' });
+  }
+});
 
 // Exporta o app para a Vercel
 export default app;
