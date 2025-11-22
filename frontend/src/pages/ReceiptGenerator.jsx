@@ -438,7 +438,11 @@ const ReceiptGenerator = () => {
                                                 <label className="block text-sm font-medium text-gray-500 mb-1">CNPJ</label>
                                                 <div className="flex gap-2">
                                                     <InputField id="empresa-cnpj" label="" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
-                                                    <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md flex items-center gap-2" disabled={isCnpjLoading}>
+                                                    <button
+                                                        onClick={handleCnpjSearch}
+                                                        className="py-2 px-4 rounded-md flex items-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        disabled={isCnpjLoading}
+                                                    >
                                                         {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
                                                     </button>
                                                 </div>
