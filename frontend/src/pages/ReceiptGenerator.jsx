@@ -7,7 +7,7 @@ import {
     SALARIO_MINIMO_2025,
     TETO_INSS_2025
 } from '../utils/taxCalculations';
-import { Building, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit } from 'lucide-react';
+import { Building, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Loader2 } from 'lucide-react';
 import ReceiptPreview from '../components/ReceiptPreview';
 
 
@@ -25,9 +25,31 @@ const getMesReferenciaAtual = () => {
 };
 
 const ReceiptGenerator = () => {
+    // InputField component: reusable internal input with left icon and focus ring
+    const InputField = ({ id, label, Icon, type = 'text', value, onChange, placeholder, className = '', inputClass = '', disabled = false }) => (
+        <div className={`w-full ${className}`}>
+            {label && <label htmlFor={id} className="block text-sm font-medium text-gray-500 mb-1">{label}</label>}
+            <div className="relative">
+                {Icon && (
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <Icon size={18} />
+                    </div>
+                )}
+                <input
+                    id={id}
+                    type={type}
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    className={`block w-full rounded-2xl border border-gray-200 bg-white/60 py-2 pr-3 ${Icon ? 'pl-10' : 'pl-4'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition-shadow ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${inputClass}`}
+                />
+            </div>
+        </div>
+    );
     // Estados para os dados da empresa e sócio
     const [empresaNome, setEmpresaNome] = useState('MOTIVE SOLUCOES IMOBILIARIAS LTDA');
-    const [empresaCnpj, setEmpresaCnpj] = useState('53.834.731/0001-2');
+    const [empresaCnpj, setEmpresaCnpj] = useState('48.503.810/0001-97');
     const [empresaEndereco, setEmpresaEndereco] = useState('SCIA QUADRA 14 CONJUNTO 2, LOTE 12');
     const [empresaCidade, setEmpresaCidade] = useState('Brasília/DF');
     const [empresaCep, setEmpresaCep] = useState('71250-110');
@@ -228,7 +250,7 @@ const ReceiptGenerator = () => {
     ];
 
     return (
-        <div id="receipt-view" className="fade-in p-4 md:p-6 bg-gray-50 min-h-full">
+        <div id="receipt-view" className="fade-in p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-full">
             <div className="max-w-screen-2xl mx-auto"> {/* Increased max-width for better preview visibility */}
                 <header className="mb-8 flex items-start justify-between">
                     <div>
@@ -252,97 +274,104 @@ const ReceiptGenerator = () => {
                     <main className="lg:col-span-2 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Two cards side-by-side on md+ */}
                             {/* Input Card */}
-                            <div className="bg-white rounded-xl shadow-md p-6">
-                                <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-4">
-                                    <CircleDollarSign size={20} className="text-blue-500"/>
-                                    Entrada
-                                </h2>
+                            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-md p-6 border border-white/30">
+                                <div className="space-y-6">
+                                    <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                                        <CircleDollarSign size={20} className="text-blue-500"/>
+                                        Entrada
+                                    </h2>
 
-                                <p className="text-sm text-gray-600 mb-3">Informe o valor bruto do pró-labore para calcular os descontos.</p>
+                                    <p className="text-sm text-gray-600">Informe o valor bruto do pró-labore para calcular os descontos.</p>
 
-                                <div className="mb-3"> {/* Sugestões acima do input */}
-                                    <p className="text-sm font-medium text-gray-600 mb-2">Sugestões Rápidas</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {suggestions.map(s => (
-                                            <button 
-                                                key={s.label}
-                                                onClick={() => handleSuggestionClick(s.value)}
-                                                className="bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
-                                            >
-                                                {s.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mb-4">
-                                    <label htmlFor="prolabore-bruto" className="block text-sm font-medium text-gray-600 mb-2">Pró-labore Bruto</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <CircleDollarSign size={20} className="text-gray-400" />
-                                            <span className="sr-only">R$</span>
+                                    <div> {/* Sugestões acima do input */}
+                                        <p className="text-sm font-medium text-gray-600 mb-2">Sugestões Rápidas</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {suggestions.map(s => (
+                                                <button 
+                                                    key={s.label}
+                                                    onClick={() => handleSuggestionClick(s.value)}
+                                                    className="bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            ))}
                                         </div>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            id="prolabore-bruto"
-                                            className={`form-input block w-full rounded-xl text-3xl p-4 pl-14 border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${inputError ? 'border-red-400' : ''}`}
-                                            value={prolaboreBruto}
-                                            onChange={handleProlaboreChange}
-                                            placeholder="3000.00"
-                                        />
                                     </div>
-                                    {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
-                                </div>
 
-                                <div className="mt-6">
-                                    <button 
-                                        id="generate-pdf-btn" 
-                                        onClick={handleGeneratePdf}
-                                        disabled={!isFormValid}
-                                        className="w-full btn-primary font-bold py-3 px-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
-                                    >
-                                        <FileDown size={18}/>
-                                        Gerar Recibo em PDF
-                                    </button>
+                                    <div>
+                                        <label htmlFor="prolabore-bruto" className="block text-sm font-medium text-gray-600 mb-2">Pró-labore Bruto</label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <CircleDollarSign size={20} className="text-gray-400" />
+                                                <span className="sr-only">R$</span>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                id="prolabore-bruto"
+                                                className={`form-input block w-full rounded-2xl text-3xl p-4 pl-14 border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${inputError ? 'border-red-400' : ''}`}
+                                                value={prolaboreBruto}
+                                                onChange={handleProlaboreChange}
+                                                placeholder="3000.00"
+                                            />
+                                        </div>
+                                        {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
+                                    </div>
+
+                                    <div className="mt-2">
+                                        <button 
+                                            id="generate-pdf-btn" 
+                                            onClick={handleGeneratePdf}
+                                            disabled={!isFormValid}
+                                            className="group w-full font-bold py-3 px-6 rounded-2xl shadow transition-all duration-200 transform hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                                        >
+                                            <span className="transition-transform duration-300 group-hover:animate-bounce">
+                                                <FileDown size={18} />
+                                            </span>
+                                            Gerar Recibo em PDF
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Results Card */}
-                            <div className="bg-slate-50 rounded-xl shadow-md p-6 flex flex-col justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-4">
+                            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-md p-6 flex flex-col justify-between border border-white/30">
+                                <div className="space-y-6">
+                                    <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                                         <Wallet size={18} className="text-gray-600"/> Cálculos
                                     </h3>
 
-                                    <div className="text-center mb-4">
+                                    <div className="text-center">
                                         <p className="text-sm font-medium text-gray-600">LÍQUIDO A RECEBER</p>
                                         <p className="text-3xl font-bold text-green-600 tracking-tight my-2">{formatarMoeda(liquidoValue)}</p>
+
+                                        {/* Barra de Progresso: Impostos vs Líquido */}
+                                        <div className="mx-auto w-full max-w-md mt-3">
+                                            <div className="h-3 bg-gray-200 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-red-400 transition-all duration-300" style={{ width: `${percentualDescontos}%` }} />
+                                                <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${percentualLiquido}%` }} />
+                                            </div>
+                                            <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                                <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full" /> Líquido {percentualLiquido.toFixed(1)}%</span>
+                                                <span className="flex items-center gap-2"><span className="w-2 h-2 bg-red-400 rounded-full" /> Impostos {percentualDescontos.toFixed(1)}%</span>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     {brutoValue > 0 && !inputError && (
                                         <>
-                                            <div className="w-full mb-4">
-                                                <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="absolute left-0 top-0 bottom-0 bg-green-500 transition-all duration-500"
-                                                        style={{ width: `${percentualLiquido}%` }}
-                                                    />
-                                                    <div
-                                                        className="absolute right-0 top-0 bottom-0 bg-red-400 transition-all duration-500"
-                                                        style={{ width: `${percentualDescontos}%`, left: `${percentualLiquido}%` }}
-                                                    />
-                                                </div>
-                                                <div className="flex justify-between text-xs mt-2 text-gray-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                        <span>Líquido ({percentualLiquido.toFixed(1)}%)</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-red-400"></span>
-                                                        <span>Impostos ({percentualDescontos.toFixed(1)}%)</span>
-                                                    </div>
-                                                </div>
+                                            <div className="mb-4">
+                                                <InputField
+                                                    id="prolabore-bruto"
+                                                    label="Pró-labore Bruto"
+                                                    Icon={CircleDollarSign}
+                                                    type="number"
+                                                    value={prolaboreBruto}
+                                                    onChange={handleProlaboreChange}
+                                                    placeholder="3000.00"
+                                                    inputClass={`text-3xl font-semibold ${inputError ? 'border-red-400' : ''}`}
+                                                />
+                                                {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
                                             </div>
 
                                             <div className="space-y-3 text-sm">
@@ -373,44 +402,37 @@ const ReceiptGenerator = () => {
                                     <span className="text-sm text-blue-600 font-medium">{isEditingEmitter ? 'Fechar' : 'Editar'}</span>
                                 </summary>
                                 <div className="px-6 pb-6 border-t border-gray-200">
-                                     <div className="mt-6 space-y-4">
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="mt-6 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="md:col-span-2">
-                                                <label htmlFor="empresa-nome" className="block text-sm font-medium text-gray-600">Nome da Empresa</label>
-                                                <input type="text" id="empresa-nome" value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} />
                                             </div>
                                             <div>
-                                                <label htmlFor="empresa-cnpj" className="block text-sm font-medium text-gray-600">CNPJ</label>
-                                                <div className="flex gap-2 mt-1">
-                                                    <input type="text" id="empresa-cnpj" value={empresaCnpj} onChange={e => setEmpresaCnpj(e.target.value)} className="form-input w-full" placeholder="00.000.000/0000-00"/>
-                                                    <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md" disabled={isCnpjLoading}>
-                                                        {isCnpjLoading ? '...' : 'Buscar'}
+                                                <label className="block text-sm font-medium text-gray-500 mb-1">CNPJ</label>
+                                                <div className="flex gap-2">
+                                                    <InputField id="empresa-cnpj" label="" Icon={Building} value={empresaCnpj} onChange={e => setEmpresaCnpj(e.target.value)} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
+                                                    <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md flex items-center gap-2" disabled={isCnpjLoading}>
+                                                        {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
                                                     </button>
                                                 </div>
                                             </div>
                                              <div>
-                                                <label htmlFor="socio-nome" className="block text-sm font-medium text-gray-600">Nome do Sócio</label>
-                                                <input type="text" id="socio-nome" value={socioNome} onChange={e => setSocioNome(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={e => setSocioNome(e.target.value)} />
                                             </div>
                                             <div>
-                                                <label htmlFor="socio-funcao" className="block text-sm font-medium text-gray-600">Função</label>
-                                                <input type="text" id="socio-funcao" value={socioFuncao} onChange={e => setSocioFuncao(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="socio-funcao" label="Função" Icon={User} value={socioFuncao} onChange={e => setSocioFuncao(e.target.value)} />
                                             </div>
                                             <div>
-                                                <label htmlFor="mes-referencia" className="block text-sm font-medium text-gray-600">Mês de Referência</label>
-                                                <input type="text" id="mes-referencia" value={mesReferencia} onChange={e => setMesReferencia(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={e => setMesReferencia(e.target.value)} />
                                             </div>
                                             <div className="md:col-span-2">
-                                                <label htmlFor="empresa-endereco" className="block text-sm font-medium text-gray-600">Endereço</label>
-                                                <input type="text" id="empresa-endereco" value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="empresa-endereco" label="Endereço" Icon={Building} value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} />
                                             </div>
                                             <div>
-                                                <label htmlFor="empresa-cep" className="block text-sm font-medium text-gray-600">CEP</label>
-                                                <input type="text" id="empresa-cep" value={empresaCep} onChange={e => setEmpresaCep(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="empresa-cep" label="CEP" Icon={Building} value={empresaCep} onChange={e => setEmpresaCep(e.target.value)} />
                                             </div>
                                             <div>
-                                                <label htmlFor="empresa-cidade" className="block text-sm font-medium text-gray-600">Cidade/UF</label>
-                                                <input type="text" id="empresa-cidade" value={empresaCidade} onChange={e => setEmpresaCidade(e.target.value)} className="form-input mt-1" />
+                                                <InputField id="empresa-cidade" label="Cidade/UF" Icon={Building} value={empresaCidade} onChange={e => setEmpresaCidade(e.target.value)} />
                                             </div>
                                         </div>
                                     </div>
