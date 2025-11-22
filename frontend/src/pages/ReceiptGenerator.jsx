@@ -4,9 +4,11 @@ import {
     calcularINSS,
     calcularIR,
     formatarMoeda,
-    SALARIO_MINIMO_2025
+    SALARIO_MINIMO_2025,
+    TETO_INSS_2025
 } from '../utils/taxCalculations';
-import { Building, User, Calendar, Download } from 'lucide-react';
+import { Building, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit } from 'lucide-react';
+import ReceiptPreview from '../components/ReceiptPreview';
 
 
 const initialTaxes = {
@@ -25,7 +27,7 @@ const getMesReferenciaAtual = () => {
 const ReceiptGenerator = () => {
     // Estados para os dados da empresa e sócio
     const [empresaNome, setEmpresaNome] = useState('MOTIVE SOLUCOES IMOBILIARIAS LTDA');
-    const [empresaCnpj, setEmpresaCnpj] = useState('53.834.731/0001-2 Motive');
+    const [empresaCnpj, setEmpresaCnpj] = useState('53.834.731/0001-2');
     const [empresaEndereco, setEmpresaEndereco] = useState('SCIA QUADRA 14 CONJUNTO 2, LOTE 12');
     const [empresaCidade, setEmpresaCidade] = useState('Brasília/DF');
     const [empresaCep, setEmpresaCep] = useState('71250-110');
@@ -34,10 +36,13 @@ const ReceiptGenerator = () => {
     const [mesReferencia, setMesReferencia] = useState(getMesReferenciaAtual());
 
     // Estados para o cálculo
-    const [prolaboreBruto, setProlaboreBruto] = useState('1518.00');
+    const [prolaboreBruto, setProlaboreBruto] = useState(SALARIO_MINIMO_2025.toFixed(2));
     const [calculatedTaxes, setCalculatedTaxes] = useState(initialTaxes);
+    const [inputError, setInputError] = useState('');
+    const [isEditingEmitter, setIsEditingEmitter] = useState(false);
 
-    const isFormValid = prolaboreBruto > 0 && empresaNome && empresaCnpj && socioNome && mesReferencia;
+
+    const isFormValid = prolaboreBruto > 0 && !inputError && empresaNome && empresaCnpj && socioNome && mesReferencia;
 
     const [isCnpjLoading, setIsCnpjLoading] = useState(false);
 
@@ -71,7 +76,8 @@ const ReceiptGenerator = () => {
     useEffect(() => {
         const brutoValue = parseFloat(prolaboreBruto) || 0;
 
-        if (brutoValue <= 0) {
+        // If brutoValue is invalid or there's an input error, reset taxes and stop calculations
+        if (brutoValue <= 0 || inputError) {
             setCalculatedTaxes(initialTaxes);
             return;
         }
@@ -87,7 +93,22 @@ const ReceiptGenerator = () => {
             liquido: liquidoResult,
         });
 
-    }, [prolaboreBruto]);
+    }, [prolaboreBruto, inputError]); // Depend on inputError to recalculate or reset when validation changes
+
+    const handleProlaboreChange = (e) => {
+        const value = e.target.value;
+        if (parseFloat(value) < 0) {
+            setInputError('O valor não pode ser negativo.');
+        } else {
+            setInputError('');
+        }
+        setProlaboreBruto(value);
+    };
+
+    const handleSuggestionClick = (value) => {
+        setProlaboreBruto(value);
+        setInputError('');
+    };
 
     const handleGeneratePdf = () => {
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -192,128 +213,229 @@ const ReceiptGenerator = () => {
         doc.save(`recibo_prolabore_${socioNome.split(' ')[0]}_${mesReferencia.replace('/', '-')}.pdf`);
     };
 
+    const brutoValue = parseFloat(prolaboreBruto) || 0;
+    const totalDescontos = calculatedTaxes.inss.valor + calculatedTaxes.ir.valor;
+    const liquidoValue = calculatedTaxes.liquido;
+
+    const percentualDescontos = brutoValue > 0 ? (totalDescontos / brutoValue) * 100 : 0;
+    const percentualLiquido = brutoValue > 0 ? (liquidoValue / brutoValue) * 100 : 0;
+    
+    const suggestions = [
+        { label: '1 Salário Mínimo', value: SALARIO_MINIMO_2025.toFixed(2) },
+        { label: 'R$ 2.000', value: '2000.00' },
+        { label: 'R$ 5.000', value: '5000.00' },
+        { label: 'Teto INSS', value: TETO_INSS_2025.toFixed(2) },
+    ];
+
     return (
-        <div id="receipt-view" className="fade-in p-6">
-            <div className="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
-                <h1 className="text-2xl font-bold text-gray-800 mb-2">Gerador de Recibo de Pró-Labore</h1>
-                <p className="text-gray-600 mb-8">Preencha os campos para gerar o recibo de pagamento.</p>
-                
-                {/* Seção Dados da Empresa */}
-                <div className="form-section p-6 rounded-lg mb-6 border border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4 flex items-center gap-2"><Building size={20}/> Dados da Empresa</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label htmlFor="empresa-nome" className="block text-sm font-medium text-gray-600">Nome da Empresa</label>
-                            <input type="text" id="empresa-nome" value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} className="form-input mt-1" />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label htmlFor="empresa-cnpj" className="block text-sm font-medium text-gray-600">CNPJ</label>
-                            <div className="flex gap-2 mt-1">
-                                <input 
-                                    type="text" 
-                                    id="empresa-cnpj" 
-                                    value={empresaCnpj} 
-                                    onChange={e => {
-                                        const formatted = e.target.value.replace(/\D/g, '')
-                                            .replace(/^(\d{2})(\d)/, '$1.$2')
-                                            .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-                                            .replace(/\.(\d{3})(\d)/, '.$1/$2')
-                                            .replace(/(\d{4})(\d)/, '$1-$2');
-                                        setEmpresaCnpj(formatted.slice(0, 18));
-                                    }} 
-                                    className="form-input w-full" 
-                                    placeholder="00.000.000/0000-00"
-                                />
-                                <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md" disabled={isCnpjLoading}>
-                                    {isCnpjLoading ? 'Buscando...' : 'Buscar'}
-                                </button>
+        <div id="receipt-view" className="fade-in p-4 md:p-6 bg-gray-50 min-h-full">
+            <div className="max-w-screen-2xl mx-auto"> {/* Increased max-width for better preview visibility */}
+                <header className="mb-8 flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">Gerador de Recibo de Pró-Labore</h1>
+                        <p className="text-gray-600 mt-1">Preencha os dados para calcular e gerar o recibo.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsEditingEmitter(v => !v)}
+                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${isEditingEmitter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                            <Edit size={16} />
+                            {isEditingEmitter ? 'Fechar Dados do Emissor' : 'Editar Dados do Emissor'}
+                        </button>
+                    </div>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Main layout: form (2) + preview (1) */}
+                    {/* Coluna Principal - Inputs e Resultados */}
+                    <main className="lg:col-span-2 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Two cards side-by-side on md+ */}
+                            {/* Input Card */}
+                            <div className="bg-white rounded-xl shadow-md p-6">
+                                <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-4">
+                                    <CircleDollarSign size={20} className="text-blue-500"/>
+                                    Entrada
+                                </h2>
+
+                                <p className="text-sm text-gray-600 mb-3">Informe o valor bruto do pró-labore para calcular os descontos.</p>
+
+                                <div className="mb-3"> {/* Sugestões acima do input */}
+                                    <p className="text-sm font-medium text-gray-600 mb-2">Sugestões Rápidas</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {suggestions.map(s => (
+                                            <button 
+                                                key={s.label}
+                                                onClick={() => handleSuggestionClick(s.value)}
+                                                className="bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+                                            >
+                                                {s.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <label htmlFor="prolabore-bruto" className="block text-sm font-medium text-gray-600 mb-2">Pró-labore Bruto</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <CircleDollarSign size={20} className="text-gray-400" />
+                                            <span className="sr-only">R$</span>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            id="prolabore-bruto"
+                                            className={`form-input block w-full rounded-xl text-3xl p-4 pl-14 border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${inputError ? 'border-red-400' : ''}`}
+                                            value={prolaboreBruto}
+                                            onChange={handleProlaboreChange}
+                                            placeholder="3000.00"
+                                        />
+                                    </div>
+                                    {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
+                                </div>
+
+                                <div className="mt-6">
+                                    <button 
+                                        id="generate-pdf-btn" 
+                                        onClick={handleGeneratePdf}
+                                        disabled={!isFormValid}
+                                        className="w-full btn-primary font-bold py-3 px-6 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
+                                    >
+                                        <FileDown size={18}/>
+                                        Gerar Recibo em PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Results Card */}
+                            <div className="bg-slate-50 rounded-xl shadow-md p-6 flex flex-col justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-4">
+                                        <Wallet size={18} className="text-gray-600"/> Cálculos
+                                    </h3>
+
+                                    <div className="text-center mb-4">
+                                        <p className="text-sm font-medium text-gray-600">LÍQUIDO A RECEBER</p>
+                                        <p className="text-3xl font-bold text-green-600 tracking-tight my-2">{formatarMoeda(liquidoValue)}</p>
+                                    </div>
+
+                                    {brutoValue > 0 && !inputError && (
+                                        <>
+                                            <div className="w-full mb-4">
+                                                <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="absolute left-0 top-0 bottom-0 bg-green-500 transition-all duration-500"
+                                                        style={{ width: `${percentualLiquido}%` }}
+                                                    />
+                                                    <div
+                                                        className="absolute right-0 top-0 bottom-0 bg-red-400 transition-all duration-500"
+                                                        style={{ width: `${percentualDescontos}%`, left: `${percentualLiquido}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between text-xs mt-2 text-gray-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                        <span>Líquido ({percentualLiquido.toFixed(1)}%)</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                                                        <span>Impostos ({percentualDescontos.toFixed(1)}%)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3 text-sm">
+                                                <div className="flex justify-between items-center">
+                                                    <p className="text-gray-600 flex items-center gap-2"><TrendingDown size={14} /> Total de Descontos</p>
+                                                    <p className="font-semibold text-red-600">{formatarMoeda(totalDescontos)}</p>
+                                                </div>
+                                                <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
+                                                    <p className="text-gray-500">INSS ({!inputError ? calculatedTaxes.inss.aliquotaEfetiva.toFixed(2) : '0.00'}%)</p>
+                                                    <p className="font-medium text-gray-700">{!inputError ? formatarMoeda(calculatedTaxes.inss.valor) : '0,00'}</p>
+                                                </div>
+                                                <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
+                                                    <p className="text-gray-500">IRRF ({!inputError ? calculatedTaxes.ir.aliquota.toFixed(2) : '0.00'}%)</p>
+                                                    <p className="font-medium text-gray-700">{!inputError ? formatarMoeda(calculatedTaxes.ir.valor) : '0,00'}</p>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label htmlFor="empresa-cep" className="block text-sm font-medium text-gray-600">CEP</label>
-                            <input type="text" id="empresa-cep" value={empresaCep} onChange={e => setEmpresaCep(e.target.value)} className="form-input mt-1" />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label htmlFor="empresa-endereco" className="block text-sm font-medium text-gray-600">Endereço</label>
-                            <input type="text" id="empresa-endereco" value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} className="form-input mt-1" />
-                        </div>
-                         <div>
-                            <label htmlFor="empresa-cidade" className="block text-sm font-medium text-gray-600">Cidade/UF</label>
-                            <input type="text" id="empresa-cidade" value={empresaCidade} onChange={e => setEmpresaCidade(e.target.value)} className="form-input mt-1" />
-                        </div>
-                    </div>
-                </div>
 
-                 {/* Seção Dados do Sócio */}
-                 <div className="form-section p-6 rounded-lg mb-6 border border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4 flex items-center gap-2"><User size={20}/> Dados do Sócio</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label htmlFor="socio-nome" className="block text-sm font-medium text-gray-600">Nome do Sócio</label>
-                            <input type="text" id="socio-nome" value={socioNome} onChange={e => setSocioNome(e.target.value)} className="form-input mt-1" />
+                        {/* Card de Dados Adicionais */}
+                        <div className="bg-white rounded-xl shadow-md">
+                             <details open={isEditingEmitter} onToggle={(e) => setIsEditingEmitter(e.currentTarget.open)}>
+                                <summary className="p-6 text-lg font-semibold text-gray-700 cursor-pointer flex justify-between items-center">
+                                    <span className="flex items-center gap-2"><Edit size={20}/> Dados do Emissor e Sócio</span>
+                                    <span className="text-sm text-blue-600 font-medium">{isEditingEmitter ? 'Fechar' : 'Editar'}</span>
+                                </summary>
+                                <div className="px-6 pb-6 border-t border-gray-200">
+                                     <div className="mt-6 space-y-4">
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label htmlFor="empresa-nome" className="block text-sm font-medium text-gray-600">Nome da Empresa</label>
+                                                <input type="text" id="empresa-nome" value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="empresa-cnpj" className="block text-sm font-medium text-gray-600">CNPJ</label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <input type="text" id="empresa-cnpj" value={empresaCnpj} onChange={e => setEmpresaCnpj(e.target.value)} className="form-input w-full" placeholder="00.000.000/0000-00"/>
+                                                    <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md" disabled={isCnpjLoading}>
+                                                        {isCnpjLoading ? '...' : 'Buscar'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                             <div>
+                                                <label htmlFor="socio-nome" className="block text-sm font-medium text-gray-600">Nome do Sócio</label>
+                                                <input type="text" id="socio-nome" value={socioNome} onChange={e => setSocioNome(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="socio-funcao" className="block text-sm font-medium text-gray-600">Função</label>
+                                                <input type="text" id="socio-funcao" value={socioFuncao} onChange={e => setSocioFuncao(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="mes-referencia" className="block text-sm font-medium text-gray-600">Mês de Referência</label>
+                                                <input type="text" id="mes-referencia" value={mesReferencia} onChange={e => setMesReferencia(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label htmlFor="empresa-endereco" className="block text-sm font-medium text-gray-600">Endereço</label>
+                                                <input type="text" id="empresa-endereco" value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="empresa-cep" className="block text-sm font-medium text-gray-600">CEP</label>
+                                                <input type="text" id="empresa-cep" value={empresaCep} onChange={e => setEmpresaCep(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="empresa-cidade" className="block text-sm font-medium text-gray-600">Cidade/UF</label>
+                                                <input type="text" id="empresa-cidade" value={empresaCidade} onChange={e => setEmpresaCidade(e.target.value)} className="form-input mt-1" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
-                        <div>
-                            <label htmlFor="socio-funcao" className="block text-sm font-medium text-gray-600">Função</label>
-                             <input type="text" id="socio-funcao" value={socioFuncao} onChange={e => setSocioFuncao(e.target.value)} className="form-input mt-1" />
-                        </div>
-                         <div>
-                            <label htmlFor="mes-referencia" className="block text-sm font-medium text-gray-600">Mês de Referência</label>
-                            <input type="text" id="mes-referencia" value={mesReferencia} onChange={e => setMesReferencia(e.target.value)} className="form-input mt-1" />
-                        </div>
-                    </div>
-                </div>
+                    </main>
 
-                {/* Seção de Valores */}
-                <div className="form-section p-6 rounded-lg mb-6 border border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4 flex items-center gap-2"><Calendar size={20}/> Cálculo do Pró-Labore</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label htmlFor="prolabore-bruto" className="block text-sm font-medium text-gray-600">Valor do Pró-Labore Bruto (R$)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="prolabore-bruto"
-                                className="form-input mt-1 block w-full rounded-md text-lg"
-                                value={prolaboreBruto}
-                                onChange={(e) => setProlaboreBruto(e.target.value)}
-                                placeholder="Digite o valor bruto"
+                    {/* Coluna Lateral - Live Preview */}
+                    <aside className="lg:col-span-1 flex justify-center"> {/* Centered for better A4 display */}
+                        <div className="sticky top-6">
+                            <ReceiptPreview
+                                empresaNome={empresaNome}
+                                empresaCnpj={empresaCnpj}
+                                empresaEndereco={empresaEndereco}
+                                empresaCidade={empresaCidade}
+                                empresaCep={empresaCep}
+                                socioNome={socioNome}
+                                socioFuncao={socioFuncao}
+                                mesReferencia={mesReferencia}
+                                calculatedTaxes={calculatedTaxes}
+                                prolaboreBruto={prolaboreBruto}
                             />
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:col-span-2">
-                            <div>
-                                <label htmlFor="valor-inss" className="block text-sm font-medium text-gray-600">Valor INSS (R$)</label>
-                                <input type="text" id="valor-inss" value={formatarMoeda(calculatedTaxes.inss.valor)} className="form-input display-field mt-1" readOnly />
-                            </div>
-                            <div>
-                               <label htmlFor="perc-inss" className="block text-sm font-medium text-gray-600">Alíquota INSS (%)</label>
-                                <input type="text" id="perc-inss" value={`${formatarMoeda(calculatedTaxes.inss.aliquotaEfetiva)}%`} className="form-input display-field mt-1" readOnly />
-                            </div>
-                            <div>
-                                <label htmlFor="valor-ir" className="block text-sm font-medium text-gray-600">Valor IR (R$)</label>
-                                <input type="text" id="valor-ir" value={formatarMoeda(calculatedTaxes.ir.valor)} className="form-input display-field mt-1" readOnly />
-                            </div>
-                            <div>
-                                 <label htmlFor="perc-ir" className="block text-sm font-medium text-gray-600">Alíquota IR (%)</label>
-                                <input type="text" id="perc-ir" value={`${formatarMoeda(calculatedTaxes.ir.aliquota)}%`} className="form-input display-field mt-1" readOnly />
-                            </div>
-                            <div>
-                                <label htmlFor="valor-liquido" className="block text-sm font-medium text-gray-600">Valor Líquido (R$)</label>
-                                <input type="text" id="valor-liquido" value={formatarMoeda(calculatedTaxes.liquido)} className="form-input display-field mt-1" readOnly />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-    
-                <div className="mt-8 text-center">
-                    <button 
-                        id="generate-pdf-btn" 
-                        onClick={handleGeneratePdf}
-                        disabled={!isFormValid}
-                        className="btn-primary font-bold py-3 px-8 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
-                    >
-                        <Download size={20}/>
-                        Gerar e Baixar PDF
-                    </button>
+                    </aside>
                 </div>
             </div>
         </div>
