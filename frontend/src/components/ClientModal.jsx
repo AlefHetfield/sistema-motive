@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
-import { X } from 'lucide-react';
+import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check } from 'lucide-react';
+import ModernInput, { ModernTextArea } from './ModernInput';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
 const formatCPF = (cpf) => {
@@ -54,6 +55,18 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
         }
     }, [isOpen, clientToEdit]);
 
+    // control modal entry animation mounted state (must be declared unconditionally)
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            // trigger entry animation
+            requestAnimationFrame(() => setMounted(true));
+        } else {
+            setMounted(false);
+        }
+    }, [isOpen]);
+
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         if (id === 'cpf') {
@@ -103,6 +116,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
         }
     };
 
+
     if (!isOpen) {
         return null;
     }
@@ -110,13 +124,12 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
     // A lista de status para o dropdown do formulário
     const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado", "Assinado-Movido", "Arquivado"];
 
-
     return (
         <div id="client-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-full flex flex-col fade-in">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 id="form-title" className="text-lg font-semibold text-secondary">
-                        {clientToEdit ? 'Editar Cliente' : 'Adicionar Novo Cliente'}
+            <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-full flex flex-col overflow-hidden transform transition-all duration-200 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+                <div className="flex justify-between items-center p-6">
+                    <h3 id="form-title" className="text-2xl font-bold text-secondary">
+                        {clientToEdit ? 'Editar Cliente' : 'Dados do Emissor'}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={24} />
@@ -124,23 +137,18 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                 </div>
                 <form id="client-form" className="p-6 space-y-4 overflow-y-auto" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label htmlFor="nome" className="block text-sm font-medium text-gray-700">Nome do Cliente</label>
-                            <input type="text" id="nome" value={formData.nome} onChange={handleInputChange} className="form-input mt-1 block w-full" required />
-                        </div>
-                        <div>
-                            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">CPF</label>
-                            <input type="text" id="cpf" value={formData.cpf} onChange={handleInputChange} className="form-input mt-1 block w-full" placeholder="000.000.000-00" maxLength="14" />
-                        </div>
-                         {/* Campo de Status (visível apenas na edição) */}
-                         {clientToEdit && (
+                        <ModernInput id="nome" label="Nome do Cliente" Icon={User} value={formData.nome} onChange={handleInputChange} required />
+                        <ModernInput id="cpf" label="CPF" Icon={FileText} value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
+
+                        {/* Campo de Status (visível apenas na edição) */}
+                        {clientToEdit && (
                             <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+                                <div className="text-xs text-gray-600 mb-1">Status</div>
                                 <select
                                     id="status"
                                     value={formData.status}
                                     onChange={handleInputChange}
-                                    className="form-select mt-1 block w-full"
+                                    className="block w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 outline-none"
                                 >
                                     {STATUS_OPTIONS.map(status => (
                                         <option key={status} value={status}>{status}</option>
@@ -148,36 +156,33 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                                 </select>
                             </div>
                         )}
-                        <div>
-                            <label htmlFor="imovel" className="block text-sm font-medium text-gray-700">Imóvel</label>
-                            <input type="text" id="imovel" value={formData.imovel} onChange={handleInputChange} className="form-input mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <label htmlFor="corretor" className="block text-sm font-medium text-gray-700">Corretor</label>
-                            <input type="text" id="corretor" value={formData.corretor} onChange={handleInputChange} className="form-input mt-1 block w-full" required />
-                        </div>
-                        <div>
-                            <label htmlFor="responsavel" className="block text-sm font-medium text-gray-700">Responsável</label>
-                            <input type="text" id="responsavel" value={formData.responsavel} onChange={handleInputChange} className="form-input mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <label htmlFor="agencia" className="block text-sm font-medium text-gray-700">Agência (Nº)</label>
-                            <input type="text" id="agencia" value={formData.agencia} onChange={handleInputChange} className="form-input mt-1 block w-full" placeholder="Apenas números" />
-                        </div>
+
+                        <ModernInput id="imovel" label="Imóvel" Icon={Home} value={formData.imovel} onChange={handleInputChange} />
+                        <ModernInput id="corretor" label="Corretor" Icon={Briefcase} value={formData.corretor} onChange={handleInputChange} required />
+                        <ModernInput id="responsavel" label="Responsável" Icon={User} value={formData.responsavel} onChange={handleInputChange} />
+                        <ModernInput id="agencia" label="Agência (Nº)" Icon={Hash} value={formData.agencia} onChange={handleInputChange} placeholder="Apenas números" />
                         <div className="md:col-span-3">
-                            <label htmlFor="modalidade" className="block text-sm font-medium text-gray-700">Modalidade</label>
-                            <input type="text" id="modalidade" value={formData.modalidade} onChange={handleInputChange} className="form-input mt-1 block w-full" placeholder="Ex: Financiamento, À Vista..." />
+                            <ModernInput id="modalidade" label="Modalidade" value={formData.modalidade} onChange={handleInputChange} placeholder="Ex: Financiamento, À Vista..." />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700">Observações</label>
-                        <textarea id="observacoes" value={formData.observacoes} onChange={handleInputChange} rows="4" className="form-input mt-1 block w-full"></textarea>
+                        <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={4} />
                     </div>
-                    <div className="pt-4 flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    <div className="flex justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="py-2 px-4 text-gray-800 font-semibold rounded-md bg-transparent hover:bg-gray-100 transition"
+                        >
                             Cancelar
                         </button>
-                        <button type="submit" className="py-2 px-4 btn-primary rounded-md" disabled={isSaving}>
+
+                        <button
+                            type="submit"
+                            className={`inline-flex items-center gap-2 py-2 px-4 text-white rounded-md shadow-lg shadow-blue-500/30 transform transition-all duration-200 ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'} bg-gradient-to-r from-primary to-blue-600`}
+                            disabled={isSaving}
+                        >
+                            <Check size={16} />
                             {isSaving ? 'Salvando...' : 'Salvar Cliente'}
                         </button>
                     </div>
