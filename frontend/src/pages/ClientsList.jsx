@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchClients } from '../services/api';
+import { fetchClients, deleteClient } from '../services/api';
+import useActivityLog from '../hooks/useActivityLog';
 import { FilePenLine, Trash2, PlusCircle } from 'lucide-react';
-import ClientModal from '../components/ClientModal'; // Importar o modal
+import ClientModal from '../components/ClientModal';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
@@ -60,6 +61,7 @@ const ClientsList = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const { logActivity } = useActivityLog();
     
     const loadClients = async () => {
         setIsLoading(true);
@@ -90,6 +92,19 @@ const ClientsList = () => {
     const handleSaveSuccess = () => {
         handleCloseModal();
         loadClients(); // Recarrega os dados para exibir as atualizações
+    };
+
+    const handleDelete = async (client) => {
+        if (window.confirm(`Tem certeza que deseja excluir o cliente '${client.nome}'?`)) {
+            try {
+                await deleteClient(client.id);
+                logActivity(`Cliente '${client.nome}' excluído.`);
+                loadClients(); // Recarrega a lista
+            } catch (error) {
+                console.error("Erro ao excluir cliente:", error);
+                // Adicionar um toast de erro aqui seria uma boa prática
+            }
+        }
     };
 
     const filteredClients = useMemo(() => {
@@ -176,7 +191,7 @@ const ClientsList = () => {
                                             <button onClick={() => handleOpenModal(client)} className="p-1 text-primary hover:text-blue-800" title="Editar">
                                                 <FilePenLine size={18} />
                                             </button>
-                                            <button className="p-1 text-red-600 hover:text-red-800" title="Excluir">
+                                            <button onClick={() => handleDelete(client)} className="p-1 text-red-600 hover:text-red-800" title="Excluir">
                                                 <Trash2 size={18} />
                                             </button>
                                         </td>

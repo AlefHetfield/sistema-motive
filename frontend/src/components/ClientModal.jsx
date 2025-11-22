@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { saveClient } from '../services/api';
+import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 import { X } from 'lucide-react';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
@@ -27,6 +28,7 @@ const initialFormData = {
 const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
     const [formData, setFormData] = useState(initialFormData);
     const [isSaving, setIsSaving] = useState(false);
+    const { logActivity } = useActivityLog(); // Usar o hook de log
 
     useEffect(() => {
         // Popula o formulário quando um cliente é passado para edição,
@@ -43,6 +45,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                     agencia: clientToEdit.agencia || '',
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
+                    // Mantém o status existente ao editar
+                    status: clientToEdit.status 
                 });
             } else {
                 setFormData(initialFormData);
@@ -63,25 +67,37 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
         e.preventDefault();
         setIsSaving(true);
 
+        const isNewClient = !formData.id;
+
         const clientPayload = {
             ...formData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
             agencia: formData.agencia.replace(/\D/g, '') || null,
         };
 
-        // Adiciona status 'Aprovado' para novos clientes, como no script original
-        if (!clientPayload.id) {
+        // Adiciona status 'Aprovado' para novos clientes
+        if (isNewClient) {
             clientPayload.status = 'Aprovado';
         }
 
         try {
-            await saveClient(clientPayload);
+            const savedClient = await saveClient(clientPayload);
+            
+            // Log de atividade
+            if (isNewClient) {
+                logActivity(`Cliente '${savedClient.nome}' adicionado.`);
+            } else {
+                logActivity(`Cliente '${savedClient.nome}' atualizado.`);
+                // Se o status foi alterado, loga também
+                if (clientToEdit && clientToEdit.status !== savedClient.status) {
+                    logActivity(`Status de '${savedClient.nome}' alterado para '${savedClient.status}'.`);
+                }
+            }
+
             onSave(); // Recarrega a lista no componente pai
             onClose(); // Fecha o modal
-            // No futuro, podemos chamar uma função de toast aqui: showToast('Cliente salvo!')
         } catch (error) {
             console.error("Erro ao salvar cliente:", error);
-            // showToast('Falha ao salvar cliente.', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -90,6 +106,10 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
     if (!isOpen) {
         return null;
     }
+
+    // A lista de status para o dropdown do formulário
+    const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado", "Assinado-Movido", "Arquivado"];
+
 
     return (
         <div id="client-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -112,6 +132,22 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                             <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">CPF</label>
                             <input type="text" id="cpf" value={formData.cpf} onChange={handleInputChange} className="form-input mt-1 block w-full" placeholder="000.000.000-00" maxLength="14" />
                         </div>
+                         {/* Campo de Status (visível apenas na edição) */}
+                         {clientToEdit && (
+                            <div>
+                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+                                <select
+                                    id="status"
+                                    value={formData.status}
+                                    onChange={handleInputChange}
+                                    className="form-select mt-1 block w-full"
+                                >
+                                    {STATUS_OPTIONS.map(status => (
+                                        <option key={status} value={status}>{status}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="imovel" className="block text-sm font-medium text-gray-700">Imóvel</label>
                             <input type="text" id="imovel" value={formData.imovel} onChange={handleInputChange} className="form-input mt-1 block w-full" />

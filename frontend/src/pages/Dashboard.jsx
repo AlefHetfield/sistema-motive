@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { fetchClients } from '../services/api';
+import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 
 // Registrar os elementos do Chart.js que serão usados
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -31,6 +32,7 @@ const Dashboard = () => {
     const [stats, setStats] = useState({});
     const [chartData, setChartData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { activities } = useActivityLog(); // Usar o hook
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -133,12 +135,23 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Coluna de Atividades Recentes (Placeholder) */}
+                {/* Coluna de Atividades Recentes */}
                 <div>
                     <h2 className="text-lg font-semibold text-secondary mb-4">Atividades Recentes</h2>
                     <div className="bg-surface rounded-lg shadow-md">
                         <ul id="recent-activity-list" className="divide-y divide-gray-200">
-                           <li className="p-4 text-center text-gray-500">Funcionalidade a ser migrada.</li>
+                            {activities.length > 0 ? (
+                                activities.map(activity => (
+                                    <li key={activity.id} className="p-4">
+                                        <p className="text-sm text-text-primary">{activity.description}</p>
+                                        <p className="text-xs text-text-secondary mt-1">
+                                            {new Date(activity.date).toLocaleString()}
+                                        </p>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="p-4 text-center text-gray-500">Nenhuma atividade recente.</li>
+                            )}
                         </ul>
                     </div>
                 </div>
