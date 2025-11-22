@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, LayoutDashboard, Users, FileText, Calculator, MapPin, Settings as SettingsIcon } from 'lucide-react';
+import logoLight from '../assets/logo-light.png';
 
 const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,7 +35,7 @@ const AppLayout = () => {
             {/* Sidebar (Menu Lateral) */}
             <aside id="sidebar" className="w-64 bg-secondary text-white flex flex-col shrink-0">
                 <div className="h-16 flex items-center justify-center border-b border-gray-700 px-4">
-                     <img src="/assets/logo-light.png" alt="Logo Motive" className="h-10" />
+                     <img src={logoLight} alt="Logo Motive" className="h-10" />
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
                     {navItems.map(item => (

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import logoDark from '../assets/logo-dark.png';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -40,7 +41,7 @@ const Login = () => {
             <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
                 <div className="text-center">
                     {/* A logo pode ser importada ou usada diretamente do /public */}
-                    <img src="/assets/logo-dark.png" alt="Logo Motive" className="w-48 mx-auto mb-4" />
+                    <img src={logoDark} alt="Logo Motive" className="w-48 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-secondary">Acesse o Sistema</h2>
                     <p className="text-text-secondary">Bem-vindo(a) de volta!</p>
                 </div>
