@@ -1,19 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
-const statusBadgeMap = {
-    Aprovado: 'bg-green-100 text-green-700',
-    Engenharia: 'bg-yellow-100 text-yellow-800',
-    'Finalização': 'bg-indigo-100 text-indigo-700',
-    Conformidade: 'bg-orange-100 text-orange-800',
-    Assinado: 'bg-sky-100 text-sky-700',
+const statusConfig = {
+    Aprovado: { style: 'bg-emerald-50 text-emerald-700 border border-emerald-100', icon: CheckCircle2 },
+    Assinado: { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: CheckCircle2 },
+    Engenharia: { style: 'bg-amber-50 text-amber-700 border border-amber-100', icon: Clock },
+    'Finalização': { style: 'bg-purple-50 text-purple-700 border border-purple-100', icon: FileCheck },
+    Conformidade: { style: 'bg-orange-50 text-orange-700 border border-orange-100', icon: AlertCircle },
+    default: { style: 'bg-gray-50 text-gray-600 border border-gray-100', icon: CheckCircle2 }
 };
 
 const statusDotMap = {
@@ -180,38 +181,65 @@ const SkeletonRow = ({ columns }) => (
     </tr>
 );
 
-// Sub-componente StatusSelect — seletor estilizado em forma de "badge" (pill)
-const StatusSelect = ({ currentStatus, clientId, onChange }) => {
+// Sub-componente StatusSelect — custom select que mostra o StatusBadge com um select invisível sobreposto
+const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loading = false }) => {
     const handleChange = (e) => {
         const newStatus = e.target.value;
         if (onChange) onChange(newStatus);
     };
 
-    const badgeClass = statusBadgeMap[currentStatus] || 'bg-gray-100 text-gray-700';
-
     return (
-        <select
-            value={currentStatus}
-            onChange={handleChange}
-            className={`appearance-none px-3 py-1 rounded-full text-xs font-bold uppercase cursor-pointer ${badgeClass} border-0 focus:outline-none`}
-            aria-label={`Status do cliente ${clientId}`}
-        >
-            {STATUS_OPTIONS.map(opt => (
-                <option key={opt} value={opt} className="text-xs font-bold">{opt}</option>
-            ))}
-        </select>
+        <div className="relative group cursor-pointer inline-block">
+            {/* visual bonito */}
+            <StatusBadge status={currentStatus} loading={loading} />
+
+            {/* select nativo invisível sobreposto para abrir menu do SO */}
+            <select
+                value={currentStatus}
+                onChange={handleChange}
+                disabled={disabled}
+                className={`absolute inset-0 w-full h-full opacity-0 cursor-pointer ${disabled ? 'pointer-events-none' : ''}`}
+                aria-label={`Alterar status do cliente ${clientId}`}
+            >
+                {STATUS_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                ))}
+            </select>
+        </div>
+    );
+};
+
+// Sub-componente StatusBadge — exibe ícone + texto com estilo do statusConfig
+const StatusBadge = ({ status, loading = false }) => {
+    const cfg = statusConfig[status] || statusConfig.default;
+    const Icon = cfg.icon || statusConfig.default.icon;
+    return (
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.style}`} title={status} aria-busy={loading} role="status">
+            {loading ? (
+                <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+            ) : (
+                <Icon size={14} aria-hidden className="shrink-0" />
+            )}
+            <span>{status}</span>
+        </div>
     );
 };
 
 const ClientsList = () => {
     const [allClients, setAllClients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [toasts, setToasts] = useState([]);
+    const toastTimersRef = useRef({});
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [activeTab, setActiveTab] = useState('active');
     const [viewMode, setViewMode] = useState('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const [updatingStatusMap, setUpdatingStatusMap] = useState({});
     const { logActivity } = useActivityLog();
     
     const loadClients = async () => {
@@ -224,6 +252,43 @@ const ClientsList = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        return () => {
+            // cleanup any pending toast timers
+            const timers = toastTimersRef.current || {};
+            Object.values(timers).forEach(t => clearTimeout(t));
+            toastTimersRef.current = {};
+        };
+    }, []);
+
+    const addToast = (message, type = 'info', duration = 3000) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+        const toast = { id, message, type, visible: false };
+        setToasts(prev => [...prev, toast]);
+
+        // trigger enter animation on next tick
+        requestAnimationFrame(() => {
+            setToasts(prev => prev.map(t => t.id === id ? { ...t, visible: true } : t));
+        });
+
+        // schedule removal
+        toastTimersRef.current[id] = setTimeout(() => {
+            // start exit animation
+            setToasts(prev => prev.map(t => t.id === id ? { ...t, visible: false } : t));
+            // remove after animation
+            setTimeout(() => {
+                setToasts(prev => prev.filter(t => t.id !== id));
+                delete toastTimersRef.current[id];
+            }, 220);
+        }, duration);
+    };
+
+    const clearAllToasts = () => {
+        Object.values(toastTimersRef.current).forEach(t => clearTimeout(t));
+        toastTimersRef.current = {};
+        setToasts([]);
     };
 
     useEffect(() => {
@@ -283,15 +348,33 @@ const ClientsList = () => {
         });
     }, [allClients, searchTerm, statusFilter, activeTab]);
 
-    // Atualização rápida de status: salva no backend e recarrega a lista
+    // Atualização rápida de status com UI otimista: atualiza localmente e tenta persistir no backend
     const handleQuickStatusUpdate = async (clientId, newStatus) => {
+        const prevClients = allClients;
+        const prevClient = prevClients.find(c => c.id === clientId);
+        const prevStatus = prevClient ? prevClient.status : null;
+
+        // marca como atualizando (para UX, desabilitar select se necessário)
+        setUpdatingStatusMap(m => ({ ...m, [clientId]: true }));
+
+        // atualização otimista no estado local
+        setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: newStatus } : c));
+
         try {
             await saveClient({ id: clientId, status: newStatus });
             logActivity && logActivity(`Status do cliente ${clientId} alterado para ${newStatus}`);
-            await loadClients();
+            addToast('Status atualizado com sucesso.', 'success');
         } catch (error) {
+            // reverte para o estado anterior em caso de falha
             console.error('Erro ao atualizar status:', error);
-            // opcional: exibir toast/alerta para o usuário
+            setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: prevStatus } : c));
+            addToast('Erro ao atualizar status.', 'error');
+        } finally {
+            setUpdatingStatusMap(m => {
+                const copy = { ...m };
+                delete copy[clientId];
+                return copy;
+            });
         }
     };
 
@@ -426,7 +509,9 @@ const ClientsList = () => {
                                             <td className="px-6 py-4 text-gray-700">{client.responsavel || client.corretor}</td>
                                             <td className="px-6 py-4 text-gray-700">{client.agencia || '-'}</td>
                                             <td className="px-6 py-4">
-                                                <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} />
+                                                <div className="flex items-center">
+                                                    <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} disabled={!!updatingStatusMap[client.id]} loading={!!updatingStatusMap[client.id]} />
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {client.dataAssinaturaContrato ? (
@@ -473,6 +558,30 @@ const ClientsList = () => {
                 onSave={handleSaveSuccess}
                 clientToEdit={editingClient}
             />
+            {/* Toasts empilhados com animação */}
+            <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2" aria-live="polite">
+                {toasts.map(t => (
+                    <div key={t.id} className={`transform transition-all duration-200 ${t.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                        {t.type === 'success' && (
+                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
+                                <CheckCircle2 size={16} className="text-emerald-600" />
+                                <div className="text-sm">{t.message}</div>
+                            </div>
+                        )}
+                        {t.type === 'error' && (
+                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-red-200 bg-red-50 text-red-700 shadow-sm">
+                                <AlertCircle size={16} className="text-red-600" />
+                                <div className="text-sm">{t.message}</div>
+                            </div>
+                        )}
+                        {t.type !== 'success' && t.type !== 'error' && (
+                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-gray-200 bg-white text-gray-800 shadow-sm">
+                                <div className="text-sm">{t.message}</div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };
