@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import {
     calcularINSS,
@@ -24,9 +24,9 @@ const getMesReferenciaAtual = () => {
     return `${meses[data.getMonth()]}/${data.getFullYear()}`;
 };
 
-const ReceiptGenerator = () => {
-    // InputField component: reusable internal input with left icon and focus ring
-    const InputField = ({ id, label, Icon, type = 'text', value, onChange, placeholder, className = '', inputClass = '', disabled = false }) => (
+// InputField component (module-level) - memoized + forwardRef to avoid remounts and preserve caret
+const InputField = React.memo(React.forwardRef(function InputField({ id, label, Icon, type = 'text', value, onChange, placeholder, className = '', inputClass = '', disabled = false }, ref) {
+    return (
         <div className={`w-full ${className}`}>
             {label && <label htmlFor={id} className="block text-sm font-medium text-gray-500 mb-1">{label}</label>}
             <div className="relative">
@@ -37,8 +37,9 @@ const ReceiptGenerator = () => {
                 )}
                 <input
                     id={id}
+                    ref={ref}
                     type={type}
-                    value={value}
+                    value={value ?? ''}
                     onChange={onChange}
                     placeholder={placeholder}
                     disabled={disabled}
@@ -47,13 +48,17 @@ const ReceiptGenerator = () => {
             </div>
         </div>
     );
+}));
+
+const ReceiptGenerator = () => {
+    
     // Estados para os dados da empresa e sócio
-    const [empresaNome, setEmpresaNome] = useState('MOTIVE SOLUCOES IMOBILIARIAS LTDA');
-    const [empresaCnpj, setEmpresaCnpj] = useState('48.503.810/0001-97');
-    const [empresaEndereco, setEmpresaEndereco] = useState('SCIA QUADRA 14 CONJUNTO 2, LOTE 12');
-    const [empresaCidade, setEmpresaCidade] = useState('Brasília/DF');
-    const [empresaCep, setEmpresaCep] = useState('71250-110');
-    const [socioNome, setSocioNome] = useState('ALEF ADREAN SARAIVA DE SOUSA');
+        const [empresaNome, setEmpresaNome] = useState('');
+        const [empresaCnpj, setEmpresaCnpj] = useState('');
+        const [empresaEndereco, setEmpresaEndereco] = useState('');
+        const [empresaCidade, setEmpresaCidade] = useState('');
+        const [empresaCep, setEmpresaCep] = useState('');
+        const [socioNome, setSocioNome] = useState('');
     const [socioFuncao, setSocioFuncao] = useState('Sócio Administrador');
     const [mesReferencia, setMesReferencia] = useState(getMesReferenciaAtual());
 
@@ -67,6 +72,20 @@ const ReceiptGenerator = () => {
     const isFormValid = prolaboreBruto > 0 && !inputError && empresaNome && empresaCnpj && socioNome && mesReferencia;
 
     const [isCnpjLoading, setIsCnpjLoading] = useState(false);
+    // Quando a busca via CNPJ preencher o endereço, travamos os campos para evitar edições manuais
+    const [addressLocked, setAddressLocked] = useState(false);
+    // Ref para o input principal do pró-labore (para focar quando o usuário clicar em editar)
+    const prolaboreInputRef = useRef(null);
+
+    // Stable handlers to prevent recreating functions each render (helps preserve caret)
+    const handleEmpresaNomeChange = useCallback((e) => setEmpresaNome(e.target.value), []);
+    const handleEmpresaCnpjChange = useCallback((e) => { setEmpresaCnpj(e.target.value); setAddressLocked(false); }, []);
+    const handleEmpresaEnderecoChange = useCallback((e) => setEmpresaEndereco(e.target.value), []);
+    const handleEmpresaCepChange = useCallback((e) => setEmpresaCep(e.target.value), []);
+    const handleEmpresaCidadeChange = useCallback((e) => setEmpresaCidade(e.target.value), []);
+    const handleSocioNomeChange = useCallback((e) => setSocioNome(e.target.value), []);
+    const handleSocioFuncaoChange = useCallback((e) => setSocioFuncao(e.target.value), []);
+    const handleMesReferenciaChange = useCallback((e) => setMesReferencia(e.target.value), []);
 
 
     const handleCnpjSearch = async () => {
@@ -87,6 +106,8 @@ const ReceiptGenerator = () => {
             setEmpresaEndereco(`${data.logradouro || ''}, ${data.numero || ''}`);
             setEmpresaCidade(`${data.municipio || ''} / ${data.uf || ''}`);
             setEmpresaCep(data.cep || '');
+            // Bloqueia edição manual dos campos preenchidos automaticamente
+            setAddressLocked(true);
         } catch (error) {
             alert(error.message);
         } finally {
@@ -309,6 +330,7 @@ const ReceiptGenerator = () => {
                                                 type="number"
                                                 step="0.01"
                                                 id="prolabore-bruto"
+                                                ref={prolaboreInputRef}
                                                 className={`form-input block w-full rounded-2xl text-3xl p-4 pl-14 border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${inputError ? 'border-red-400' : ''}`}
                                                 value={prolaboreBruto}
                                                 onChange={handleProlaboreChange}
@@ -361,16 +383,21 @@ const ReceiptGenerator = () => {
                                     {brutoValue > 0 && !inputError && (
                                         <>
                                             <div className="mb-4">
-                                                <InputField
-                                                    id="prolabore-bruto"
-                                                    label="Pró-labore Bruto"
-                                                    Icon={CircleDollarSign}
-                                                    type="number"
-                                                    value={prolaboreBruto}
-                                                    onChange={handleProlaboreChange}
-                                                    placeholder="3000.00"
-                                                    inputClass={`text-3xl font-semibold ${inputError ? 'border-red-400' : ''}`}
-                                                />
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-sm text-gray-600">Pró-labore Bruto</p>
+                                                        <p className="text-2xl font-semibold mt-1">{formatarMoeda(parseFloat(prolaboreBruto) || 0)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => prolaboreInputRef.current && prolaboreInputRef.current.focus()}
+                                                            className="btn-secondary px-3 py-2 rounded-md"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
                                             </div>
 
@@ -405,34 +432,37 @@ const ReceiptGenerator = () => {
                                         <div className="mt-6 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="md:col-span-2">
-                                                <InputField id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} />
+                                                <InputField id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={handleEmpresaNomeChange} />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-500 mb-1">CNPJ</label>
                                                 <div className="flex gap-2">
-                                                    <InputField id="empresa-cnpj" label="" Icon={Building} value={empresaCnpj} onChange={e => setEmpresaCnpj(e.target.value)} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
+                                                    <InputField id="empresa-cnpj" label="" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
                                                     <button onClick={handleCnpjSearch} className="btn-secondary py-2 px-4 rounded-md flex items-center gap-2" disabled={isCnpjLoading}>
                                                         {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
                                                     </button>
                                                 </div>
                                             </div>
                                              <div>
-                                                <InputField id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={e => setSocioNome(e.target.value)} />
+                                                <InputField id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={handleSocioNomeChange} />
                                             </div>
                                             <div>
-                                                <InputField id="socio-funcao" label="Função" Icon={User} value={socioFuncao} onChange={e => setSocioFuncao(e.target.value)} />
+                                                <InputField id="socio-funcao" label="Função" Icon={User} value={socioFuncao} onChange={handleSocioFuncaoChange} />
                                             </div>
                                             <div>
-                                                <InputField id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={e => setMesReferencia(e.target.value)} />
+                                                <InputField id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={handleMesReferenciaChange} />
                                             </div>
                                             <div className="md:col-span-2">
-                                                <InputField id="empresa-endereco" label="Endereço" Icon={Building} value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} />
+                                                <InputField id="empresa-endereco" label="Endereço" Icon={Building} value={empresaEndereco} onChange={handleEmpresaEnderecoChange} disabled={addressLocked} />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
                                             </div>
                                             <div>
-                                                <InputField id="empresa-cep" label="CEP" Icon={Building} value={empresaCep} onChange={e => setEmpresaCep(e.target.value)} />
+                                                <InputField id="empresa-cep" label="CEP" Icon={Building} value={empresaCep} onChange={handleEmpresaCepChange} disabled={addressLocked} />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
                                             </div>
                                             <div>
-                                                <InputField id="empresa-cidade" label="Cidade/UF" Icon={Building} value={empresaCidade} onChange={e => setEmpresaCidade(e.target.value)} />
+                                                <InputField id="empresa-cidade" label="Cidade/UF" Icon={Building} value={empresaCidade} onChange={handleEmpresaCidadeChange} disabled={addressLocked} />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
                                             </div>
                                         </div>
                                     </div>
