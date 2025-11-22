@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchClients, deleteClient } from '../services/api';
+import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 
 // Constantes e helpers replicados do main.js
@@ -122,9 +122,51 @@ const getDayCounter = (creationDate) => {
     else if (diffDays < 30) colorClass = 'bg-orange-100 text-orange-800';
 
     return {
-        days: diffDays.toString().padStart(2, '0'),
+        days: diffDays,
         color: colorClass
     };
+};
+
+// retorna diferença de dias como número inteiro
+const getDaysDiff = (creationDate) => {
+    const today = new Date();
+    const created = new Date(creationDate);
+    const diffTime = Math.abs(today - created);
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+};
+
+const formatDate = (isoDate) => {
+    if (!isoDate) return '';
+    const d = new Date(isoDate);
+    if (Number.isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
+// Badge visual para exibir os dias com ícone quando necessário
+const DayBadge = ({ creationDate }) => {
+    const days = getDaysDiff(creationDate);
+    if (isNaN(days)) return null;
+
+    if (days > 30) {
+        return (
+            <div className="rounded-md px-2 py-1 inline-flex items-center gap-2 bg-red-50 text-red-600 text-xs font-medium">
+                <AlertCircle size={14} className="text-red-600" />
+                <span>{days} dias</span>
+            </div>
+        );
+    }
+
+    // neutro/positivo
+    const neutralClass = days < 10 ? 'text-green-700 bg-green-50' : 'text-gray-700 bg-gray-50';
+    return (
+        <div className={`rounded-md px-2 py-1 inline-flex items-center gap-2 text-xs font-medium ${neutralClass}`}>
+            <Clock size={14} className="text-gray-400" />
+            <span>{days} dias</span>
+        </div>
+    );
 };
 
 // Componente de Skeleton Loader para a tabela
@@ -138,11 +180,35 @@ const SkeletonRow = ({ columns }) => (
     </tr>
 );
 
+// Sub-componente StatusSelect — seletor estilizado em forma de "badge" (pill)
+const StatusSelect = ({ currentStatus, clientId, onChange }) => {
+    const handleChange = (e) => {
+        const newStatus = e.target.value;
+        if (onChange) onChange(newStatus);
+    };
+
+    const badgeClass = statusBadgeMap[currentStatus] || 'bg-gray-100 text-gray-700';
+
+    return (
+        <select
+            value={currentStatus}
+            onChange={handleChange}
+            className={`appearance-none px-3 py-1 rounded-full text-xs font-bold uppercase cursor-pointer ${badgeClass} border-0 focus:outline-none`}
+            aria-label={`Status do cliente ${clientId}`}
+        >
+            {STATUS_OPTIONS.map(opt => (
+                <option key={opt} value={opt} className="text-xs font-bold">{opt}</option>
+            ))}
+        </select>
+    );
+};
+
 const ClientsList = () => {
     const [allClients, setAllClients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [activeTab, setActiveTab] = useState('active');
     const [viewMode, setViewMode] = useState('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
@@ -193,15 +259,41 @@ const ClientsList = () => {
     };
 
     const filteredClients = useMemo(() => {
-        return allClients.filter(client =>
-            !FINAL_STATUSES.includes(client.status) &&
-            (statusFilter === '' || client.status === statusFilter) &&
-            (
-                client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (client.cpf && client.cpf.replace(/\D/g, '').includes(searchTerm.replace(/\D/g, '')))
-            )
-        );
-    }, [allClients, searchTerm, statusFilter]);
+        return allClients.filter(client => {
+            // tab filtering
+            let tabMatch = true;
+            if (activeTab === 'active') {
+                // active excludes final statuses
+                tabMatch = !FINAL_STATUSES.includes(client.status);
+            } else if (activeTab === 'signed') {
+                tabMatch = client.status === 'Assinado-Movido';
+            } else if (activeTab === 'archived') {
+                tabMatch = client.status === 'Arquivado';
+            }
+
+            const statusMatch = (statusFilter === '' || client.status === statusFilter);
+            const search = searchTerm.trim().toLowerCase();
+            const textMatch = search === '' || (
+                client.nome.toLowerCase().includes(search) ||
+                (client.cpf && client.cpf.replace(/\D/g, '').includes(search.replace(/\D/g, ''))) ||
+                (client.imovel && client.imovel.toLowerCase().includes(search))
+            );
+
+            return tabMatch && statusMatch && textMatch;
+        });
+    }, [allClients, searchTerm, statusFilter, activeTab]);
+
+    // Atualização rápida de status: salva no backend e recarrega a lista
+    const handleQuickStatusUpdate = async (clientId, newStatus) => {
+        try {
+            await saveClient({ id: clientId, status: newStatus });
+            logActivity && logActivity(`Status do cliente ${clientId} alterado para ${newStatus}`);
+            await loadClients();
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            // opcional: exibir toast/alerta para o usuário
+        }
+    };
 
     // KanbanBoard component: agrupa clientes por status e renderiza colunas com scroll horizontal
     const KanbanBoard = ({ clients }) => {
@@ -239,60 +331,55 @@ const ClientsList = () => {
 
     return (
         <div id="active-clients-content" className="fade-in p-6">
-            <div className="filter-container mb-6 bg-white rounded-xl shadow-sm p-4">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="w-full md:w-1/3 relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                            <Search size={16} />
-                        </div>
-                        <input
-                            type="text"
-                            id="search-client"
-                            placeholder="Buscar cliente por nome ou CPF..."
-                            className="form-input w-full pl-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full md:w-auto flex items-center gap-4">
-                        <select
-                            id="filter-status"
-                            className="form-select"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            <option value="">Todos os Status</option>
-                            {STATUS_OPTIONS.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
-                        <div className="flex items-center gap-3">
-                            <button 
-                                onClick={() => handleOpenModal()} 
-                                className="py-2 px-4 rounded-md shadow-sm text-sm font-medium btn-primary whitespace-nowrap flex items-center gap-2"
-                            >
-                               <PlusCircle size={18} /> Adicionar Cliente
-                            </button>
+            <div className="mb-6">
+                <div className="mb-3">
+                    <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Clientes</h1>
+                    <p className="text-sm text-gray-500">Visualize e gerencie o progresso dos financiamentos.</p>
+                </div>
 
-                            {/* View mode toggles: grid / list */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('grid')}
-                                    className={`p-2 rounded ${viewMode === 'grid' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
-                                    title="Grid View"
-                                >
-                                    <LayoutGrid size={16} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-2 rounded ${viewMode === 'list' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
-                                    title="List View"
-                                >
-                                    <List size={16} />
-                                </button>
+                <div className="flex items-center gap-6 border-b pb-2 mb-4">
+                    <button
+                        onClick={() => setActiveTab('active')}
+                        className={activeTab === 'active' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                    >
+                        Processos Ativos
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('signed')}
+                        className={activeTab === 'signed' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                    >
+                        Assinados
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('archived')}
+                        className={activeTab === 'archived' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                    >
+                        Arquivados
+                    </button>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                <Search size={16} />
                             </div>
+                            <input
+                                type="text"
+                                id="search-client"
+                                placeholder="Buscar por nome, CPF ou imóvel..."
+                                className="w-full pl-10 py-2 rounded-xl bg-gray-50 border border-gray-200"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700">Filtros</button>
+                            <button onClick={() => handleOpenModal()} className="py-2 px-4 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-2">
+                                <PlusCircle size={16} />
+                                Novo Cliente
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -300,60 +387,66 @@ const ClientsList = () => {
 
             {viewMode === 'list' ? (
                 <div className="bg-surface rounded-lg shadow-md overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50/50">
                             <tr>
-                                <th scope="col" className="px-6 py-4">Cliente</th>
-                                <th scope="col" className="px-6 py-4">Imóvel</th>
-                                <th scope="col" className="px-6 py-4">Corretor</th>
-                                <th scope="col" className="px-6 py-4">Status</th>
-                                <th scope="col" className="px-6 py-4 text-center">Dias</th>
-                                <th scope="col" className="px-6 py-4 text-center whitespace-nowrap">Ações</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Imóvel</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsável</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Agência</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assinatura Prevista</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Tempo</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? (
-                                [...Array(5)].map((_, i) => <SkeletonRow key={i} columns={6} />)
+                                [...Array(5)].map((_, i) => <SkeletonRow key={i} columns={7} />)
                             ) : filteredClients.length > 0 ? (
                                 filteredClients.map(client => {
                                     const dayCounter = getDayCounter(client.createdAt);
                                     const initials = getInitials(client.nome);
                                     const palette = pickAvatarPalette(client.nome);
+                                    const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                                     return (
                                         <tr key={client.id} className="bg-white border-b hover:bg-gray-50">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className={`flex-shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full ${palette} font-medium`}>{initials}</div>
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${palette} font-medium`}>{initials}</div>
                                                     <div className="min-w-0">
-                                                        <div className="text-sm font-semibold text-gray-900 truncate">{client.nome}</div>
+                                                        <div className="font-medium text-gray-900 truncate">{client.nome}</div>
                                                         <div className="text-xs text-gray-500 truncate">{formatCPF(client.cpf)}</div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-700">{client.imovel}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-700">{client.corretor}</td>
                                             <td className="px-6 py-4">
-                                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusBadgeMap[client.status] || 'bg-gray-100 text-gray-700'}`}>
-                                                    {client.status}
-                                                </span>
+                                                <div className="truncate text-gray-900">{imovelName}</div>
+                                                <div className="text-xs text-gray-500">{imovelMeta}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-700">{client.responsavel || client.corretor}</td>
+                                            <td className="px-6 py-4 text-gray-700">{client.agencia || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {client.dataAssinaturaContrato ? (
+                                                    <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                                        <Calendar size={14} className="text-gray-400" />
+                                                        <span className="text-sm">{formatDate(client.dataAssinaturaContrato)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">—</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dayCounter.color}`}>{dayCounter.days}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
-                                                <button onClick={() => handleOpenModal(client)} className="rounded-full p-2 text-gray-400 hover:text-primary hover:bg-gray-100" title="Editar">
-                                                    <FilePenLine size={18} />
-                                                </button>
-                                                <button onClick={() => handleDelete(client)} className="rounded-full p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100" title="Excluir">
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                <DayBadge creationDate={client.createdAt} />
                                             </td>
                                         </tr>
                                     );
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center p-10 text-gray-500">
+                                    <td colSpan="7" className="text-center p-10 text-gray-500">
                                         Nenhum cliente encontrado.
                                     </td>
                                 </tr>
