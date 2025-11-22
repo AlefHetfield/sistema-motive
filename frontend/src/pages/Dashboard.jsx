@@ -1,159 +1,199 @@
 import { useState, useEffect } from 'react';
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { fetchClients } from '../services/api';
-import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 
-// Registrar os elementos do Chart.js que serão usados
-ChartJS.register(ArcElement, Tooltip, Legend);
+import { TrendingUp, TrendingDown, Users } from 'lucide-react';
+// 1. Novos Imports para o gráfico
+import { Line } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+} from 'chart.js';
 
-// Constantes do projeto original
+// Registrar os componentes do Chart.js
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend
+);
+
+// Constantes de Status (para consistência)
 const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
-const statusColorMap = {
-    "Aprovado": "status-aprovado",
-    "Engenharia": "status-engenharia",
-    "Finalização": "status-finalização",
-    "Conformidade": "status-conformidade",
-    "Assinado": "status-assinado"
-};
-
-const chartColors = {
-    "Aprovado": "#A8A29E",
-    "Engenharia": "#F87171",
-    "Finalização": "#FBBF24",
-    "Conformidade": "#4ADE80",
-    "Assinado": "#60A5FA"
-};
-
-
 const Dashboard = () => {
-    const [stats, setStats] = useState({});
-    const [chartData, setChartData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { activities } = useActivityLog(); // Usar o hook
+
+    // Estado para as contagens por status
+    const [statusCounts, setStatusCounts] = useState({
+        totalActive: 0,
+        Aprovado: 0,
+        Engenharia: 0,
+        Finalização: 0,
+        Conformidade: 0,
+        Assinado: 0,
+    });
+    // 2. Novos estados para métricas e gráfico
+    const [trendMetrics, setTrendMetrics] = useState({ monthlyGrowth: { percentage: 0, isPositive: true } });
+    const [lineChartData, setLineChartData] = useState({ labels: [], datasets: [] });
+
+    const loadDashboardData = async () => {
+        setIsLoading(true);
+        try {
+            const fetchedClients = await fetchClients();
+            const activeClients = fetchedClients.filter(c => !FINAL_STATUSES.includes(c.status));
+
+            // Calcular contagens por status
+            const counts = { totalActive: activeClients.length };
+            STATUS_OPTIONS.forEach(status => {
+                counts[status] = activeClients.filter(c => c.status === status).length;
+            });
+            setStatusCounts(counts);
+
+            // 3. Lógica de cálculo
+            const now = new Date();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+            const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+            const newClientsThisMonth = activeClients.filter(c => {
+                const createdAt = new Date(c.createdAt);
+                return createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear;
+            }).length;
+
+            const newClientsLastMonth = activeClients.filter(c => {
+                const createdAt = new Date(c.createdAt);
+                return createdAt.getMonth() === lastMonth && createdAt.getFullYear() === lastMonthYear;
+            }).length;
+
+            const growth = newClientsLastMonth > 0 ? ((newClientsThisMonth - newClientsLastMonth) / newClientsLastMonth) * 100 : (newClientsThisMonth > 0 ? 100 : 0);
+            setTrendMetrics({ monthlyGrowth: { percentage: growth.toFixed(1), isPositive: growth >= 0 } });
+
+            // Preparar dados para o gráfico de linha (últimos 6 meses)
+            const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            const labels = [];
+            const data = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(thisYear, thisMonth - i, 1);
+                labels.push(monthNames[d.getMonth()]);
+                const monthClients = activeClients.filter(c => {
+                    const createdAt = new Date(c.createdAt);
+                    return createdAt.getMonth() === d.getMonth() && createdAt.getFullYear() === d.getFullYear();
+                }).length;
+                data.push(monthClients);
+            }
+
+            setLineChartData({
+                labels,
+                datasets: [{
+                    label: 'Novos Clientes',
+                    data,
+                    borderColor: 'rgb(59, 130, 246)', // Cor primária (blue-500)
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    tension: 0.4, // Linha suave
+                }],
+            });
+
+        } catch (error) {
+            console.error("Erro ao carregar dados do dashboard:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const loadDashboardData = async () => {
-            setIsLoading(true);
-            try {
-                const clients = await fetchClients();
-
-                // 1. Calcular totais para os cards de KPI
-                const statusCounts = clients.reduce((acc, client) => {
-                    if (!FINAL_STATUSES.includes(client.status)) {
-                        acc[client.status] = (acc[client.status] || 0) + 1;
-                    }
-                    return acc;
-                }, {});
-                setStats(statusCounts);
-
-                // 2. Preparar dados para o gráfico de pizza
-                const activeClients = clients.filter(client => !FINAL_STATUSES.includes(client.status));
-                const chartStatusCounts = activeClients.reduce((acc, client) => {
-                    acc[client.status] = (acc[client.status] || 0) + 1;
-                    return acc;
-                }, {});
-
-                const labels = Object.keys(chartStatusCounts);
-                const data = Object.values(chartStatusCounts);
-                const backgroundColors = labels.map(label => chartColors[label] || '#CCCCCC');
-
-                setChartData({
-                    labels,
-                    datasets: [{
-                        label: 'Clientes',
-                        data,
-                        backgroundColor: backgroundColors,
-                        borderColor: '#FFFFFF',
-                        borderWidth: 2
-                    }]
-                });
-
-            } catch (error) {
-                console.error("Erro ao carregar dados do dashboard:", error);
-                // Aqui você poderia definir um estado de erro para exibir na UI
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         loadDashboardData();
     }, []);
 
+    const stats = [
+        { name: 'Clientes Ativos', stat: statusCounts.totalActive, isTotal: true },
+        ...STATUS_OPTIONS.map(status => ({ name: status, stat: statusCounts[status] }))
+    ];
+
     if (isLoading) {
-        return (
-            <div className="p-6 animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="bg-gray-200 p-4 rounded-lg h-24"></div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                        <div className="bg-gray-200 rounded-lg h-80"></div>
-                    </div>
-                    <div>
-                         <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                         <div className="bg-gray-200 rounded-lg h-80"></div>
-                    </div>
-                </div>
-            </div>
-        );
+        return <div className="p-6">Carregando...</div>;
     }
 
     return (
-        <div id="dashboard-view" className="fade-in space-y-8 p-6">
-            {/* Seção de Métricas (Funil) */}
-            <div>
-                <h2 className="text-lg font-semibold text-secondary mb-4">Funil de Clientes Ativos</h2>
-                <div id="stats-grid" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {STATUS_OPTIONS.filter(s => !FINAL_STATUSES.includes(s)).map(status => (
-                        <div key={status} className="bg-surface p-4 rounded-lg shadow-md flex items-center">
-                            <div className={`p-3 rounded-full ${statusColorMap[status] || 'bg-gray-200'} mr-4`}>
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                            </div>
+        <div className="p-6 space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+
+            {/* 1. Seção de cards de KPI */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+                {stats.map((item) => {
+                    const percentageOfTotal = statusCounts.totalActive > 0 ? (item.stat / statusCounts.totalActive) * 100 : 0;
+
+                    return (
+                        <div key={item.name} className="bg-white rounded-xl shadow-sm p-5 flex flex-col justify-between overflow-hidden">
                             <div>
-                                <div className="text-3xl font-bold text-secondary">{stats[status] || 0}</div>
-                                <div className="text-sm text-text-secondary">{status}</div>
+                                <p className="text-sm font-medium text-gray-500 truncate">{item.name}</p>
+                                <p className="mt-1 text-3xl font-semibold text-gray-900">{item.stat}</p>
                             </div>
+
+                            {/* 2. Indicador de tendência para o card total */}
+                            {item.isTotal ? (
+                                <div className="mt-2 flex items-center gap-1 text-xs font-medium">
+                                    {trendMetrics.monthlyGrowth.isPositive ? (
+                                        <TrendingUp className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                        <TrendingDown className="h-4 w-4 text-red-500" />
+                                    )}
+                                    <span className={trendMetrics.monthlyGrowth.isPositive ? 'text-green-600' : 'text-red-600'}>
+                                        {trendMetrics.monthlyGrowth.percentage}%
+                                    </span>
+                                    <span className="text-gray-500">vs mês anterior</span>
+                                </div>
+                            ) : (
+                                /* 3. Barra de progresso para outros cards */
+                                <div className="mt-4 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                        className="bg-blue-500 h-full rounded-full"
+                                        style={{ width: `${percentageOfTotal}%` }}
+                                    ></div>
+                                </div>
+                            )}
                         </div>
-                    ))}
+                    );
+                })}
+            </div>
+
+            {/* 1. Nova seção de largura total para o Gráfico de Linha */}
+            <div className="bg-white rounded-xl shadow-sm p-5">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Evolução de Novos Clientes</h3>
+                    <span className="text-sm font-medium text-gray-500">Últimos 6 meses</span>
+                </div>
+                {/* 2. Container do gráfico com altura fixa */}
+                <div className="h-80">
+                    {lineChartData.labels.length > 0 ? (
+                        <Line data={lineChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                            <p>Não há dados suficientes para exibir o gráfico.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Seção Gráfico e Atividades */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Coluna do Gráfico */}
-                <div>
-                    <h2 className="text-lg font-semibold text-secondary mb-4">Distribuição por Status</h2>
-                    <div className="bg-surface rounded-lg shadow-md p-4 flex justify-center items-center h-80">
-                        {chartData && <Pie id="status-pie-chart" data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />}
-                    </div>
+            {/* 3. Layout de duas colunas para os próximos componentes */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Placeholder para o Gráfico de Pizza */}
+                <div className="bg-white rounded-xl shadow-sm p-5 h-96 flex items-center justify-center text-gray-400">
+                    (Gráfico de Pizza - Status)
                 </div>
-
-                {/* Coluna de Atividades Recentes */}
-                <div>
-                    <h2 className="text-lg font-semibold text-secondary mb-4">Atividades Recentes</h2>
-                    <div className="bg-surface rounded-lg shadow-md">
-                        <ul id="recent-activity-list" className="divide-y divide-gray-200">
-                            {activities.length > 0 ? (
-                                activities.map(activity => (
-                                    <li key={activity.id} className="p-4">
-                                        <p className="text-sm text-text-primary">{activity.description}</p>
-                                        <p className="text-xs text-text-secondary mt-1">
-                                            {new Date(activity.date).toLocaleString()}
-                                        </p>
-                                    </li>
-                                ))
-                            ) : (
-                                <li className="p-4 text-center text-gray-500">Nenhuma atividade recente.</li>
-                            )}
-                        </ul>
-                    </div>
+                {/* Placeholder para a Lista de Atividades */}
+                <div className="bg-white rounded-xl shadow-sm p-5 h-96 flex items-center justify-center text-gray-400">
+                    (Lista de Atividades Recentes)
                 </div>
             </div>
         </div>
