@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
+import { DndContext, closestCenter, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
@@ -33,10 +36,90 @@ const statusBorderMap = {
     Assinado: 'border-sky-400',
 };
 
-// ClientCard: componente de apresentação para cada cliente no Kanban
+// DroppableArea: área de drop para colunas vazias
+const DroppableArea = ({ id }) => {
+    const { setNodeRef } = useSortable({ id });
+    
+    return (
+        <div 
+            ref={setNodeRef}
+            className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center"
+        >
+            Arraste clientes aqui
+        </div>
+    );
+};
+
+// DraggableClientCard: componente draggable para o Kanban
+const DraggableClientCard = ({ client, status, onEdit }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: client.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+    };
+
+    const borderClass = statusBorderMap[status] || 'border-gray-200';
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md flex flex-col border-l-4 ${borderClass}`}
+        >
+            <div className="flex items-start justify-between">
+                <div 
+                    {...attributes}
+                    {...listeners}
+                    className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing"
+                >
+                    <div className="text-gray-400 flex-shrink-0">
+                        <GripVertical size={16} />
+                    </div>
+                    <div className="text-sm font-semibold text-gray-900 truncate">
+                        {client.nome}
+                    </div>
+                </div>
+                <button
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onEdit && onEdit(client); 
+                    }}
+                    className="p-1 text-gray-400 hover:text-gray-700 flex-shrink-0 cursor-pointer"
+                    title="Editar"
+                >
+                    <MoreHorizontal size={16} />
+                </button>
+            </div>
+
+            <div className="mt-3 space-y-2 text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
+                <div className="flex items-center gap-2">
+                    <Home size={14} />
+                    <span className="truncate">{client.imovel}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <User size={14} />
+                    <span className="truncate">{client.corretor}</span>
+                </div>
+            </div>
+
+            <div className="mt-3 border-t pt-2 flex justify-end text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
+                <div>{getDayCounter(client.createdAt).days} dias</div>
+            </div>
+        </div>
+    );
+};
+
+// ClientCard: componente de apresentação para cada cliente no Kanban (versão não-draggable, se necessário)
 const ClientCard = ({ client, status, onEdit }) => {
-    const initials = getInitials(client.nome);
-    const palette = pickAvatarPalette(client.nome);
     const borderClass = statusBorderMap[status] || 'border-gray-200';
 
     return (
@@ -240,6 +323,7 @@ const ClientsList = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
     const [updatingStatusMap, setUpdatingStatusMap] = useState({});
+    const [activeId, setActiveId] = useState(null);
     const { logActivity } = useActivityLog();
     
     const loadClients = async () => {
@@ -378,37 +462,138 @@ const ClientsList = () => {
         }
     };
 
+    // Configuração dos sensores para drag and drop
+    const sensors = useSensors(
+        useSensor(MouseSensor),
+        useSensor(TouchSensor)
+    );
+
+    // Handler quando o arrasto começa
+    const handleDragStart = (event) => {
+        setActiveId(event.active.id);
+    };
+
+    // Handler quando o arrasto é cancelado
+    const handleDragCancel = () => {
+        setActiveId(null);
+    };
+
+    // Handler para quando um card é solto em uma nova posição
+    const handleDragEnd = async (event) => {
+        setActiveId(null);
+        const { active, over } = event;
+
+        if (!over) return;
+
+        const activeClient = allClients.find(c => c.id === active.id);
+        if (!activeClient) return;
+
+        // Determina o novo status baseado no container (coluna) ou no card sobre o qual foi solto
+        let newStatus;
+        
+        // Se over.id começa com 'droppable-', é uma coluna vazia
+        if (typeof over.id === 'string' && over.id.startsWith('droppable-')) {
+            newStatus = over.id.replace('droppable-', '');
+        } else {
+            // Se foi solto sobre outro card, usa o status daquele card
+            const overClient = allClients.find(c => c.id === over.id);
+            if (!overClient) return;
+            newStatus = overClient.status;
+        }
+        
+        // Se o status não mudou, não faz nada
+        if (activeClient.status === newStatus) return;
+
+        // Atualiza otimisticamente
+        const prevStatus = activeClient.status;
+        setAllClients(list => list.map(c => c.id === active.id ? { ...c, status: newStatus } : c));
+
+        // Marca como atualizando
+        setUpdatingStatusMap(m => ({ ...m, [active.id]: true }));
+
+        try {
+            await saveClient({ id: active.id, status: newStatus });
+            logActivity && logActivity(`Status do cliente ${active.id} alterado para ${newStatus} via drag and drop`);
+            addToast(`Cliente movido para ${newStatus}`, 'success');
+        } catch (error) {
+            console.error('Erro ao atualizar status via drag:', error);
+            setAllClients(list => list.map(c => c.id === active.id ? { ...c, status: prevStatus } : c));
+            addToast('Erro ao mover cliente', 'error');
+        } finally {
+            setUpdatingStatusMap(m => {
+                const copy = { ...m };
+                delete copy[active.id];
+                return copy;
+            });
+        }
+    };
+
     // KanbanBoard component: agrupa clientes por status e renderiza colunas com scroll horizontal
     const KanbanBoard = ({ clients }) => {
         // Exclui status finais por segurança
         const statuses = STATUS_OPTIONS.filter(s => !FINAL_STATUSES.includes(s));
+        
+        // Encontra o cliente ativo para o overlay
+        const activeClient = activeId ? clients.find(c => c.id === activeId) : null;
 
         return (
-            <div className="overflow-x-auto">
-                <div className="flex gap-6 px-2">
-                    {statuses.map(status => {
-                        const items = clients.filter(c => c.status === status);
-                        return (
-                            <div key={status} className="min-w-[300px] flex-shrink-0 bg-gray-50/50 rounded-lg p-3">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-semibold text-gray-800">
-                                        {status}
-                                    </h4>
-                                    <span className="text-xs text-gray-500">{items.length}</span>
-                                </div>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+            >
+                <div className="overflow-x-auto">
+                    <div className="flex gap-6 px-2">
+                        {statuses.map(status => {
+                            const items = clients.filter(c => c.status === status);
+                            const itemIds = items.map(c => c.id);
+                            // Adiciona um ID único para a área droppable vazia
+                            const droppableId = `droppable-${status}`;
 
-                                <div className="overflow-y-auto max-h-[60vh] space-y-3 pr-2">
-                                    {items.length === 0 ? (
-                                            <div className="text-xs text-gray-400">Nenhum cliente</div>
-                                        ) : items.map(client => (
-                                            <ClientCard key={client.id} client={client} status={status} onEdit={(c) => handleOpenModal(c)} />
-                                        ))}
+                            return (
+                                <div key={status} className="min-w-[300px] flex-shrink-0 bg-gray-50/50 rounded-lg p-3">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-semibold text-gray-800">
+                                            {status}
+                                        </h4>
+                                        <span className="text-xs text-gray-500">{items.length}</span>
+                                    </div>
+
+                                    <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
+                                        <div className="overflow-y-auto max-h-[60vh] space-y-3 pr-2 min-h-[100px]">
+                                            {items.length === 0 ? (
+                                                <DroppableArea id={droppableId} />
+                                            ) : items.map(client => (
+                                                <DraggableClientCard 
+                                                    key={client.id} 
+                                                    client={client} 
+                                                    status={status} 
+                                                    onEdit={(c) => handleOpenModal(c)} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+                
+                {/* Overlay que segue o cursor durante o arrasto */}
+                <DragOverlay>
+                    {activeClient ? (
+                        <div className="rotate-3 scale-105">
+                            <ClientCard 
+                                client={activeClient} 
+                                status={activeClient.status} 
+                                onEdit={() => {}}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
         );
     };
 
@@ -458,6 +643,34 @@ const ClientsList = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
+                            {activeTab === 'active' && (
+                                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-2 rounded-md transition-colors ${
+                                            viewMode === 'list'
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                        title="Visualizar em Lista"
+                                    >
+                                        <List size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('kanban')}
+                                        className={`p-2 rounded-md transition-colors ${
+                                            viewMode === 'kanban'
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                        title="Visualizar em Kanban"
+                                    >
+                                        <LayoutGrid size={18} />
+                                    </button>
+                                </div>
+                            )}
+                            
                             <button className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700">Filtros</button>
                             <button onClick={() => handleOpenModal()} className="py-2 px-4 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-2">
                                 <PlusCircle size={16} />
@@ -468,7 +681,7 @@ const ClientsList = () => {
                 </div>
             </div>
 
-            {viewMode === 'list' ? (
+            {(activeTab !== 'active' || viewMode === 'list') ? (
                 <div className="bg-surface rounded-lg shadow-md overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50/50">
