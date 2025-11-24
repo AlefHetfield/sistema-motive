@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
+import ConfirmModal from '../components/ConfirmModal';
 import { DndContext, closestCenter, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -324,6 +325,7 @@ const ClientsList = () => {
     const [editingClient, setEditingClient] = useState(null);
     const [updatingStatusMap, setUpdatingStatusMap] = useState({});
     const [activeId, setActiveId] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const { logActivity } = useActivityLog();
     
     const loadClients = async () => {
@@ -395,17 +397,23 @@ const ClientsList = () => {
     };
 
     const handleDelete = async (client) => {
-        if (window.confirm(`Tem certeza que deseja excluir o cliente '${client.nome}'?`)) {
-            try {
-                await deleteClient(client.id);
-                logActivity && logActivity(`Cliente '${client.nome}' excluído.`);
-                addToast(`Cliente ${client.nome} excluído com sucesso`, 'success');
-                loadClients();
-            } catch (error) {
-                console.error("Erro ao excluir cliente:", error);
-                addToast('Erro ao excluir cliente', 'error');
+        setConfirmModal({
+            isOpen: true,
+            title: 'Excluir Cliente',
+            message: `Tem certeza que deseja excluir o cliente '${client.nome}'?`,
+            confirmColor: 'red',
+            onConfirm: async () => {
+                try {
+                    await deleteClient(client.id);
+                    logActivity && logActivity(`Cliente '${client.nome}' excluído.`);
+                    addToast(`Cliente ${client.nome} excluído com sucesso`, 'success');
+                    loadClients();
+                } catch (error) {
+                    console.error("Erro ao excluir cliente:", error);
+                    addToast('Erro ao excluir cliente', 'error');
+                }
             }
-        }
+        });
     };
 
     const handleSignatureDate = async (clientId, dateValue) => {
@@ -432,17 +440,83 @@ const ClientsList = () => {
             return;
         }
 
-        if (window.confirm(`Finalizar o processo de ${client.nome}? O cliente será movido para "Assinados".`)) {
-            try {
-                await saveClient({ id: client.id, status: 'Assinado-Movido' });
-                logActivity && logActivity(`Cliente '${client.nome}' finalizado e movido para Assinados`);
-                addToast(`${client.nome} finalizado com sucesso`, 'success');
-                loadClients();
-            } catch (error) {
-                console.error("Erro ao finalizar cliente:", error);
-                addToast('Erro ao finalizar cliente', 'error');
+        setConfirmModal({
+            isOpen: true,
+            title: 'Finalizar Processo',
+            message: `Finalizar o processo de ${client.nome}? O cliente será movido para "Assinados".`,
+            confirmColor: 'green',
+            onConfirm: async () => {
+                try {
+                    await saveClient({ id: client.id, status: 'Assinado-Movido' });
+                    logActivity && logActivity(`Cliente '${client.nome}' finalizado e movido para Assinados`);
+                    addToast(`${client.nome} finalizado com sucesso`, 'success');
+                    loadClients();
+                } catch (error) {
+                    console.error("Erro ao finalizar cliente:", error);
+                    addToast('Erro ao finalizar cliente', 'error');
+                }
             }
-        }
+        });
+    };
+
+    const handleArchive = async (client) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Arquivar Cliente',
+            message: `Arquivar o cliente ${client.nome}?`,
+            confirmColor: 'orange',
+            onConfirm: async () => {
+                try {
+                    await saveClient({ id: client.id, status: 'Arquivado' });
+                    logActivity && logActivity(`Cliente '${client.nome}' arquivado`);
+                    addToast(`${client.nome} arquivado com sucesso`, 'success');
+                    loadClients();
+                } catch (error) {
+                    console.error("Erro ao arquivar cliente:", error);
+                    addToast('Erro ao arquivar cliente', 'error');
+                }
+            }
+        });
+    };
+
+    const handleRestore = async (client) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Restaurar Cliente',
+            message: `Restaurar ${client.nome} para Processos Ativos?`,
+            confirmColor: 'purple',
+            onConfirm: async () => {
+                try {
+                    await saveClient({ id: client.id, status: 'Aprovado' });
+                    logActivity && logActivity(`Cliente '${client.nome}' restaurado para Processos Ativos`);
+                    addToast(`${client.nome} restaurado com sucesso`, 'success');
+                    loadClients();
+                } catch (error) {
+                    console.error("Erro ao restaurar cliente:", error);
+                    addToast('Erro ao restaurar cliente', 'error');
+                }
+            }
+        });
+    };
+
+    const handleRestoreToSigned = async (client) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Restaurar Cliente',
+            message: `Restaurar ${client.nome} para Assinados?`,
+            confirmColor: 'blue',
+            onConfirm: async () => {
+                try {
+                    await saveClient({ id: client.id, status: 'Assinado-Movido' });
+                    logActivity && logActivity(`Cliente '${client.nome}' restaurado para Assinados`);
+                    addToast(`${client.nome} restaurado para Assinados`, 'success');
+                    loadClients();
+                } catch (error) {
+                    console.error("Erro ao restaurar cliente:", error);
+                    addToast('Erro ao restaurar cliente', 'error');
+                }
+            }
+        });
     };
 
     const filteredClients = useMemo(() => {
@@ -816,6 +890,33 @@ const ClientsList = () => {
                                                             <Check size={16} />
                                                         </button>
                                                     )}
+                                                    {activeTab === 'signed' && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleArchive(client)}
+                                                                className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors"
+                                                                title="Arquivar"
+                                                            >
+                                                                <Archive size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRestore(client)}
+                                                                className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                                                                title="Restaurar para Processos Ativos"
+                                                            >
+                                                                <RotateCcw size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {activeTab === 'archived' && (
+                                                        <button
+                                                            onClick={() => handleRestoreToSigned(client)}
+                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                            title="Restaurar para Assinados"
+                                                        >
+                                                            <RotateCcw size={16} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -849,6 +950,14 @@ const ClientsList = () => {
                 onClose={handleCloseModal}
                 onSave={handleSaveSuccess}
                 clientToEdit={editingClient}
+            />
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmColor={confirmModal.confirmColor}
             />
             {/* Toasts empilhados com animação */}
             <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2" aria-live="polite">
