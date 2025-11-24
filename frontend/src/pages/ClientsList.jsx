@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 import { DndContext, closestCenter, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -398,11 +398,49 @@ const ClientsList = () => {
         if (window.confirm(`Tem certeza que deseja excluir o cliente '${client.nome}'?`)) {
             try {
                 await deleteClient(client.id);
-                logActivity(`Cliente '${client.nome}' excluído.`);
-                loadClients(); // Recarrega a lista
+                logActivity && logActivity(`Cliente '${client.nome}' excluído.`);
+                addToast(`Cliente ${client.nome} excluído com sucesso`, 'success');
+                loadClients();
             } catch (error) {
                 console.error("Erro ao excluir cliente:", error);
-                // Adicionar um toast de erro aqui seria uma boa prática
+                addToast('Erro ao excluir cliente', 'error');
+            }
+        }
+    };
+
+    const handleSignatureDate = async (clientId, dateValue) => {
+        try {
+            // Converte YYYY-MM-DD para ISO sem problemas de timezone
+            let isoDate = null;
+            if (dateValue) {
+                const [year, month, day] = dateValue.split('-');
+                isoDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))).toISOString();
+            }
+            await saveClient({ id: clientId, dataAssinaturaContrato: isoDate });
+            logActivity && logActivity(`Data de assinatura definida para cliente ${clientId}`);
+            addToast('Data de assinatura salva', 'success');
+            loadClients();
+        } catch (error) {
+            console.error("Erro ao salvar data de assinatura:", error);
+            addToast('Erro ao salvar data', 'error');
+        }
+    };
+
+    const handleFinalize = async (client) => {
+        if (!client.dataAssinaturaContrato) {
+            addToast('Preencha a data de assinatura antes de finalizar', 'error');
+            return;
+        }
+
+        if (window.confirm(`Finalizar o processo de ${client.nome}? O cliente será movido para "Assinados".`)) {
+            try {
+                await saveClient({ id: client.id, status: 'Assinado-Movido' });
+                logActivity && logActivity(`Cliente '${client.nome}' finalizado e movido para Assinados`);
+                addToast(`${client.nome} finalizado com sucesso`, 'success');
+                loadClients();
+            } catch (error) {
+                console.error("Erro ao finalizar cliente:", error);
+                addToast('Erro ao finalizar cliente', 'error');
             }
         }
     };
@@ -691,13 +729,14 @@ const ClientsList = () => {
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsável</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Agência</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assinatura Prevista</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assinatura</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Tempo</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? (
-                                [...Array(5)].map((_, i) => <SkeletonRow key={i} columns={7} />)
+                                [...Array(5)].map((_, i) => <SkeletonRow key={i} columns={8} />)
                             ) : filteredClients.length > 0 ? (
                                 filteredClients.map(client => {
                                     const dayCounter = getDayCounter(client.createdAt);
@@ -727,7 +766,15 @@ const ClientsList = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {client.dataAssinaturaContrato ? (
+                                                {client.status === 'Assinado' ? (
+                                                    <input
+                                                        type="date"
+                                                        value={client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0] : ''}
+                                                        onChange={(e) => handleSignatureDate(client.id, e.target.value)}
+                                                        className="px-2 py-1 text-sm border border-blue-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Selecione a data"
+                                                    />
+                                                ) : client.dataAssinaturaContrato ? (
                                                     <div className="inline-flex items-center gap-2 text-sm text-gray-600">
                                                         <Calendar size={14} className="text-gray-400" />
                                                         <span className="text-sm">{formatDate(client.dataAssinaturaContrato)}</span>
@@ -739,12 +786,44 @@ const ClientsList = () => {
                                             <td className="px-6 py-4 text-center">
                                                 <DayBadge creationDate={client.createdAt} />
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleOpenModal(client)}
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                        title="Editar"
+                                                    >
+                                                        <FilePenLine size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(client)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                    {activeTab === 'active' && client.status === 'Assinado' && (
+                                                        <button
+                                                            onClick={() => handleFinalize(client)}
+                                                            disabled={!client.dataAssinaturaContrato}
+                                                            className={`p-1.5 rounded-md transition-colors ${
+                                                                client.dataAssinaturaContrato
+                                                                    ? 'text-green-600 hover:bg-green-50'
+                                                                    : 'text-gray-300 cursor-not-allowed'
+                                                            }`}
+                                                            title={client.dataAssinaturaContrato ? 'Finalizar' : 'Preencha a data de assinatura'}
+                                                        >
+                                                            <Check size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="7" className="text-center p-10 text-gray-500">
+                                    <td colSpan="8" className="text-center p-10 text-gray-500">
                                         Nenhum cliente encontrado.
                                     </td>
                                 </tr>
