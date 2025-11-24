@@ -270,24 +270,43 @@ const ReceiptGenerator = () => {
         { label: 'Teto INSS', value: TETO_INSS_2025.toFixed(2) },
     ];
 
+    // Calcular campos preenchidos
+    const filledFields = [
+        empresaNome,
+        empresaCnpj,
+        socioNome,
+        prolaboreBruto > 0,
+        empresaEndereco,
+        empresaCidade,
+        empresaCep
+    ].filter(Boolean).length;
+    const totalFields = 7;
+    const progressPercentage = (filledFields / totalFields) * 100;
+
     return (
         <div id="receipt-view" className="fade-in p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-full">
-            <div className="max-w-screen-2xl mx-auto"> {/* Increased max-width for better preview visibility */}
-                <header className="mb-8 flex items-start justify-between">
+            <div className="max-w-screen-2xl mx-auto">
+                <header className="mb-6">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800">Gerador de Recibo de Pró-Labore</h1>
                         <p className="text-gray-600 mt-1">Preencha os dados para calcular e gerar o recibo.</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setIsEditingEmitter(v => !v)}
-                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${isEditingEmitter ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                        >
-                            <Edit size={16} />
-                            {isEditingEmitter ? 'Fechar Dados do Emissor' : 'Editar Dados do Emissor'}
-                        </button>
-                    </div>
+                    
+                    {/* Indicador de Progresso */}
+                    {filledFields < totalFields && (
+                        <div className="mt-4 bg-white rounded-lg p-4 border border-blue-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">Progresso do Formulário</span>
+                                <span className="text-sm font-semibold text-blue-600">{filledFields}/{totalFields} campos</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${progressPercentage}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Main layout: form (2) + preview (1) */}
@@ -364,58 +383,37 @@ const ReceiptGenerator = () => {
                                     </h3>
 
                                     <div className="text-center">
-                                        <p className="text-sm font-medium text-gray-600">LÍQUIDO A RECEBER</p>
-                                        <p className="text-3xl font-bold text-green-600 tracking-tight my-2">{formatarMoeda(liquidoValue)}</p>
+                                        <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Líquido a Receber</p>
+                                        <p className="text-4xl font-bold text-green-600 tracking-tight my-3">{formatarMoeda(liquidoValue)}</p>
 
                                         {/* Barra de Progresso: Impostos vs Líquido */}
-                                        <div className="mx-auto w-full max-w-md mt-3">
+                                        <div className="mx-auto w-full max-w-md mt-4">
                                             <div className="h-3 bg-gray-200 rounded-full overflow-hidden flex">
-                                                <div className="h-full bg-red-400 transition-all duration-300" style={{ width: `${percentualDescontos}%` }} />
                                                 <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${percentualLiquido}%` }} />
+                                                <div className="h-full bg-red-400 transition-all duration-300" style={{ width: `${percentualDescontos}%` }} />
                                             </div>
                                             <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                                <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full" /> Líquido {percentualLiquido.toFixed(1)}%</span>
-                                                <span className="flex items-center gap-2"><span className="w-2 h-2 bg-red-400 rounded-full" /> Impostos {percentualDescontos.toFixed(1)}%</span>
+                                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full" /> Líquido {percentualLiquido.toFixed(1)}%</span>
+                                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-400 rounded-full" /> Impostos {percentualDescontos.toFixed(1)}%</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {brutoValue > 0 && !inputError && (
-                                        <>
-                                            <div className="mb-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-sm text-gray-600">Pró-labore Bruto</p>
-                                                        <p className="text-2xl font-semibold mt-1">{formatarMoeda(parseFloat(prolaboreBruto) || 0)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => prolaboreInputRef.current && prolaboreInputRef.current.focus()}
-                                                            className="btn-secondary px-3 py-2 rounded-md"
-                                                        >
-                                                            Editar
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
+                                        <div className="space-y-3 text-sm border-t border-gray-200 pt-4">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-gray-600 flex items-center gap-2"><TrendingDown size={14} /> Total de Descontos</p>
+                                                <p className="font-semibold text-red-600">{formatarMoeda(totalDescontos)}</p>
                                             </div>
-
-                                            <div className="space-y-3 text-sm">
-                                                <div className="flex justify-between items-center">
-                                                    <p className="text-gray-600 flex items-center gap-2"><TrendingDown size={14} /> Total de Descontos</p>
-                                                    <p className="font-semibold text-red-600">{formatarMoeda(totalDescontos)}</p>
-                                                </div>
-                                                <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
-                                                    <p className="text-gray-500">INSS ({!inputError ? calculatedTaxes.inss.aliquotaEfetiva.toFixed(2) : '0.00'}%)</p>
-                                                    <p className="font-medium text-gray-700">{!inputError ? formatarMoeda(calculatedTaxes.inss.valor) : '0,00'}</p>
-                                                </div>
-                                                <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
-                                                    <p className="text-gray-500">IRRF ({!inputError ? calculatedTaxes.ir.aliquota.toFixed(2) : '0.00'}%)</p>
-                                                    <p className="font-medium text-gray-700">{!inputError ? formatarMoeda(calculatedTaxes.ir.valor) : '0,00'}</p>
-                                                </div>
+                                            <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
+                                                <p className="text-gray-500">INSS ({calculatedTaxes.inss.aliquotaEfetiva.toFixed(2)}%)</p>
+                                                <p className="font-medium text-gray-700">{formatarMoeda(calculatedTaxes.inss.valor)}</p>
                                             </div>
-                                        </>
+                                            <div className="flex justify-between items-center pl-4 border-l-2 border-gray-200">
+                                                <p className="text-gray-500">IRRF ({calculatedTaxes.ir.aliquota.toFixed(2)}%)</p>
+                                                <p className="font-medium text-gray-700">{formatarMoeda(calculatedTaxes.ir.valor)}</p>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -475,23 +473,30 @@ const ReceiptGenerator = () => {
                         </div>
                     </main>
 
-                    {/* Coluna Lateral - Live Preview */}
-                    <aside className="lg:col-span-1 flex justify-center"> {/* Centered for better A4 display */}
-                        <div className="sticky top-6">
-                            <ReceiptPreview
-                                empresaNome={empresaNome}
-                                empresaCnpj={empresaCnpj}
-                                empresaEndereco={empresaEndereco}
-                                empresaCidade={empresaCidade}
-                                empresaCep={empresaCep}
-                                socioNome={socioNome}
-                                socioFuncao={socioFuncao}
-                                mesReferencia={mesReferencia}
-                                calculatedTaxes={calculatedTaxes}
-                                prolaboreBruto={prolaboreBruto}
-                            />
-                        </div>
-                    </aside>
+                    {/* Coluna Lateral - Live Preview (apenas se houver dados) */}
+                    {filledFields >= 3 && (
+                        <aside className="lg:col-span-1 flex justify-center">
+                            <div className="sticky top-6">
+                                <div className="mb-3">
+                                    <p className="text-xs font-medium text-gray-500 text-center">
+                                        Atualizado em tempo real
+                                    </p>
+                                </div>
+                                <ReceiptPreview
+                                    empresaNome={empresaNome}
+                                    empresaCnpj={empresaCnpj}
+                                    empresaEndereco={empresaEndereco}
+                                    empresaCidade={empresaCidade}
+                                    empresaCep={empresaCep}
+                                    socioNome={socioNome}
+                                    socioFuncao={socioFuncao}
+                                    mesReferencia={mesReferencia}
+                                    calculatedTaxes={calculatedTaxes}
+                                    prolaboreBruto={prolaboreBruto}
+                                />
+                            </div>
+                        </aside>
+                    )}
                 </div>
             </div>
         </div>
