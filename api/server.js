@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import cron from 'node-cron';
+import { buildMonthlyReport, buildFileName, buildWeeklyReport, buildWeeklyFileName } from './reportGenerator.js';
+import { dispatchReport } from './emailSender.js';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -99,6 +102,78 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 });
 
+// --- RELATÓRIO MENSAL ---
+// Endpoint manual para gerar e enviar (ou salvar) relatório do mês especificado
+// GET /api/reports/monthly/run?month=11&year=2025
+app.get('/api/reports/monthly/run', async (req, res) => {
+  try {
+    const now = new Date();
+    const month = parseInt(req.query.month) || (now.getMonth() + 1);
+    const year = parseInt(req.query.year) || now.getFullYear();
+    const clients = await prisma.client.findMany();
+    const { workbook, metrics } = buildMonthlyReport(clients, month, year);
+    const fileName = buildFileName(month, year);
+    const result = await dispatchReport({ workbook, fileName, metrics });
+    res.json({ ok: true, month, year, fileName, ...result });
+  } catch (err) {
+    console.error('Erro ao gerar relatório manual:', err);
+    res.status(500).json({ ok: false, error: 'Falha ao gerar relatório', details: err.message });
+  }
+});
+
+// Cron job: primeiro dia do mês às 09:00 (minuto 0, hora 9, dia 1)
+// Formato: '0 9 1 * *'
+cron.schedule('0 9 1 * *', async () => {
+  try {
+    const execDate = new Date();
+    const month = execDate.getMonth() + 1; // 1-12
+    const year = execDate.getFullYear();
+    const clients = await prisma.client.findMany();
+    const { workbook, metrics } = buildMonthlyReport(clients, month, year);
+    const fileName = buildFileName(month, year);
+    const result = await dispatchReport({ workbook, fileName, metrics });
+    console.log(`Cron relatório mensal executado para ${fileName}`, result);
+  } catch (err) {
+    console.error('Erro no cron de relatório mensal:', err);
+  }
+}, {
+  timezone: process.env.TZ || 'America/Sao_Paulo'
+});
+
+// --- RELATÓRIO SEMANAL ---
+// Endpoint manual: /api/reports/weekly/run?start=2025-11-17&end=2025-11-24
+app.get('/api/reports/weekly/run', async (req, res) => {
+  try {
+    const end = req.query.end ? new Date(req.query.end) : new Date();
+    const start = req.query.start ? new Date(req.query.start) : new Date(end.getTime() - 7*24*60*60*1000);
+    const clients = await prisma.client.findMany();
+    const { workbook, metrics, newClients } = buildWeeklyReport(clients, start, end);
+    const fileName = buildWeeklyFileName(end);
+    const result = await dispatchReport({ workbook, fileName, metrics, type: 'weekly', newClients });
+    res.json({ ok: true, start, end, fileName, newClients: newClients.length, ...result });
+  } catch (err) {
+    console.error('Erro ao gerar relatório semanal manual:', err);
+    res.status(500).json({ ok: false, error: 'Falha ao gerar relatório semanal', details: err.message });
+  }
+});
+
+// Cron semanal: toda segunda às 09:05
+cron.schedule('5 9 * * 1', async () => {
+  try {
+    const end = new Date();
+    const start = new Date(end.getTime() - 7*24*60*60*1000);
+    const clients = await prisma.client.findMany();
+    const { workbook, metrics, newClients } = buildWeeklyReport(clients, start, end);
+    const fileName = buildWeeklyFileName(end);
+    const result = await dispatchReport({ workbook, fileName, metrics, type: 'weekly', newClients });
+    console.log(`Cron relatório semanal enviado: ${fileName} novos=${newClients.length}`, result);
+  } catch (err) {
+    console.error('Erro no cron de relatório semanal:', err);
+  }
+}, {
+  timezone: process.env.TZ || 'America/Sao_Paulo'
+});
+
 // --- ROTAS PARA USUÁRIOS (Users) ---
 
 // [READ] Listar todos os usuários
@@ -166,5 +241,7 @@ const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    console.log('Cron de relatório mensal ativo (primeiro dia do mês às 09:00).');
+    console.log('Cron de relatório semanal ativo (toda segunda às 09:05).');
   });
 }
