@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { ModernInput } from '../components/ModernInput';
 import { DndContext, closestCenter, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -44,7 +45,7 @@ const DroppableArea = ({ id }) => {
     return (
         <div 
             ref={setNodeRef}
-            className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center"
+            className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center bg-gray-50/50 hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
         >
             Arraste clientes aqui
         </div>
@@ -74,7 +75,7 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md flex flex-col border-l-4 ${borderClass}`}
+            className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div 
@@ -126,7 +127,7 @@ const ClientCard = ({ client, status, onEdit }) => {
     return (
         <div
             onClick={() => onEdit && onEdit(client)}
-            className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md cursor-pointer flex flex-col border-l-4 ${borderClass}`}
+            className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div className="min-w-0">
@@ -237,7 +238,7 @@ const DayBadge = ({ creationDate }) => {
 
     if (days > 30) {
         return (
-            <div className="rounded-md px-2 py-1 inline-flex items-center gap-2 bg-red-50 text-red-600 text-xs font-medium">
+            <div className="rounded-full px-3 py-1.5 inline-flex items-center gap-2 bg-red-50 text-red-600 text-xs font-medium border border-red-100 animate-fade-in">
                 <AlertCircle size={14} className="text-red-600" />
                 <span>{days} dias</span>
             </div>
@@ -245,9 +246,9 @@ const DayBadge = ({ creationDate }) => {
     }
 
     // neutro/positivo
-    const neutralClass = days < 10 ? 'text-green-700 bg-green-50' : 'text-gray-700 bg-gray-50';
+    const neutralClass = days < 10 ? 'text-green-700 bg-green-50 border-green-100' : 'text-gray-700 bg-gray-50 border-gray-100';
     return (
-        <div className={`rounded-md px-2 py-1 inline-flex items-center gap-2 text-xs font-medium ${neutralClass}`}>
+        <div className={`rounded-full px-3 py-1.5 inline-flex items-center gap-2 text-xs font-medium border ${neutralClass} animate-fade-in`}>
             <Clock size={14} className="text-gray-400" />
             <span>{days} dias</span>
         </div>
@@ -665,12 +666,12 @@ const ClientsList = () => {
                             const droppableId = `droppable-${status}`;
 
                             return (
-                                <div key={status} className="min-w-[300px] flex-shrink-0 bg-gray-50/50 rounded-lg p-3">
-                                    <div className="flex items-center justify-between mb-3">
+                                <div key={status} className="min-w-[300px] flex-shrink-0 bg-gray-50/80 rounded-2xl p-4 border border-gray-100">
+                                    <div className="flex items-center justify-between mb-4">
                                         <h4 className="text-sm font-semibold text-gray-800">
                                             {status}
                                         </h4>
-                                        <span className="text-xs text-gray-500">{items.length}</span>
+                                        <span className="text-xs font-medium text-gray-500 bg-white px-2.5 py-1 rounded-full">{items.length}</span>
                                     </div>
 
                                     <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
@@ -711,44 +712,41 @@ const ClientsList = () => {
 
     return (
         <div id="active-clients-content" className="fade-in p-6">
-            <div className="mb-6">
-                <div className="mb-3">
-                    <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Clientes</h1>
-                    <p className="text-sm text-gray-500">Visualize e gerencie o progresso dos financiamentos.</p>
+            <div className="mb-8">
+                <div className="mb-6">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Gerenciamento de Clientes</h2>
+                    <p className="text-gray-500">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
                 </div>
 
-                <div className="flex items-center gap-6 border-b pb-2 mb-4">
+                <div className="bg-gray-50 p-1 rounded-2xl inline-flex gap-2 mb-6">
                     <button
                         onClick={() => setActiveTab('active')}
-                        className={activeTab === 'active' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'active' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
                     >
                         Processos Ativos
                     </button>
                     <button
                         onClick={() => setActiveTab('signed')}
-                        className={activeTab === 'signed' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'signed' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
                     >
                         Assinados
                     </button>
                     <button
                         onClick={() => setActiveTab('archived')}
-                        className={activeTab === 'archived' ? 'pb-2 border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}
+                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'archived' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
                     >
                         Arquivados
                     </button>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 animate-fade-in">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                                <Search size={16} />
-                            </div>
-                            <input
-                                type="text"
+                        <div className="flex-1">
+                            <ModernInput
                                 id="search-client"
+                                Icon={Search}
+                                type="text"
                                 placeholder="Buscar por nome, CPF ou imóvel..."
-                                className="w-full pl-10 py-2 rounded-xl bg-gray-50 border border-gray-200"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -757,13 +755,13 @@ const ClientsList = () => {
                         <div className="flex items-center gap-3">
                             {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
                             {activeTab === 'active' && (
-                                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded-md transition-colors ${
+                                        className={`p-2.5 rounded-lg transition-all duration-300 ${
                                             viewMode === 'list'
-                                                ? 'bg-white text-blue-600 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                         }`}
                                         title="Visualizar em Lista"
                                     >
@@ -771,10 +769,10 @@ const ClientsList = () => {
                                     </button>
                                     <button
                                         onClick={() => setViewMode('kanban')}
-                                        className={`p-2 rounded-md transition-colors ${
+                                        className={`p-2.5 rounded-lg transition-all duration-300 ${
                                             viewMode === 'kanban'
-                                                ? 'bg-white text-blue-600 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                         }`}
                                         title="Visualizar em Kanban"
                                     >
@@ -783,8 +781,11 @@ const ClientsList = () => {
                                 </div>
                             )}
                             
-                            <button className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700">Filtros</button>
-                            <button onClick={() => handleOpenModal()} className="py-2 px-4 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-2">
+                            <button className="px-4 py-2.5 border border-gray-200 rounded-2xl text-sm text-gray-700 hover:bg-gray-50 transition-all duration-300 flex items-center gap-2 font-medium">
+                                <Filter size={16} />
+                                Filtros
+                            </button>
+                            <button onClick={() => handleOpenModal()} className="py-2.5 px-5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm flex items-center gap-2 font-medium shadow-sm hover:shadow-md transition-all duration-300">
                                 <PlusCircle size={16} />
                                 Novo Cliente
                             </button>
@@ -794,9 +795,9 @@ const ClientsList = () => {
             </div>
 
             {(activeTab !== 'active' || viewMode === 'list') ? (
-                <div className="bg-surface rounded-lg shadow-md overflow-x-auto">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
                     <table className="w-full text-left">
-                        <thead className="bg-gray-50/50">
+                        <thead className="bg-gray-50/80 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Imóvel</th>
@@ -864,14 +865,14 @@ const ClientsList = () => {
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button
                                                         onClick={() => handleOpenModal(client)}
-                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300 hover:scale-110"
                                                         title="Editar"
                                                     >
                                                         <FilePenLine size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(client)}
-                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 hover:scale-110"
                                                         title="Excluir"
                                                     >
                                                         <Trash2 size={16} />
@@ -880,7 +881,7 @@ const ClientsList = () => {
                                                         <button
                                                             onClick={() => handleFinalize(client)}
                                                             disabled={!client.dataAssinaturaContrato}
-                                                            className={`p-1.5 rounded-md transition-colors ${
+                                                            className={`p-2 rounded-lg transition-all duration-300 hover:scale-110 ${
                                                                 client.dataAssinaturaContrato
                                                                     ? 'text-green-600 hover:bg-green-50'
                                                                     : 'text-gray-300 cursor-not-allowed'
@@ -894,14 +895,14 @@ const ClientsList = () => {
                                                         <>
                                                             <button
                                                                 onClick={() => handleArchive(client)}
-                                                                className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors"
+                                                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-300 hover:scale-110"
                                                                 title="Arquivar"
                                                             >
                                                                 <Archive size={16} />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleRestore(client)}
-                                                                className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                                                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-300 hover:scale-110"
                                                                 title="Restaurar para Processos Ativos"
                                                             >
                                                                 <RotateCcw size={16} />
@@ -911,7 +912,7 @@ const ClientsList = () => {
                                                     {activeTab === 'archived' && (
                                                         <button
                                                             onClick={() => handleRestoreToSigned(client)}
-                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300 hover:scale-110"
                                                             title="Restaurar para Assinados"
                                                         >
                                                             <RotateCcw size={16} />
