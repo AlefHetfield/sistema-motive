@@ -12,14 +12,40 @@ const navItems = [
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
 
-const NavLink = ({ to, children }) => {
+const NavLink = ({ to, icon: Icon, label }) => {
     const location = useLocation();
     const isActive = location.pathname === to;
-    const activeClass = 'bg-gray-700 text-white';
-    const inactiveClass = 'hover:bg-gray-700 text-gray-300';
+    
     return (
-        <Link to={to} className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${isActive ? activeClass : inactiveClass}`}>
-            {children}
+        <Link 
+            to={to} 
+            className={`group flex items-center px-4 py-3 rounded-xl transition-all duration-300 relative overflow-hidden ${
+                isActive 
+                    ? 'bg-primary text-white shadow-lg' 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+            }`}
+        >
+            {/* Indicador lateral para item ativo */}
+            {isActive && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full animate-fade-in" />
+            )}
+            
+            {/* Ícone com animação */}
+            <Icon 
+                className={`w-5 h-5 mr-3 transition-all duration-300 ${
+                    isActive 
+                        ? 'scale-110' 
+                        : 'group-hover:scale-110 group-hover:rotate-3'
+                }`} 
+            />
+            
+            {/* Label */}
+            <span className="font-medium text-sm">{label}</span>
+            
+            {/* Background hover animado */}
+            {!isActive && (
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+            )}
         </Link>
     );
 };
@@ -33,35 +59,68 @@ const AppLayout = () => {
     return (
         <div id="app-structure" className="h-screen w-full flex">
             {/* Sidebar (Menu Lateral) */}
-            <aside id="sidebar" className="w-64 bg-secondary text-white flex flex-col shrink-0">
-                <div className="h-16 flex items-center justify-center border-b border-gray-700 px-4">
-                     <img src={logoLight} alt="Logo Motive" className="h-10" />
+            <aside id="sidebar" className="w-64 bg-secondary text-white flex flex-col shrink-0 shadow-2xl relative">
+                {/* Gradiente decorativo no topo */}
+                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/20 to-transparent pointer-events-none" />
+                
+                {/* Logo */}
+                <div className="h-16 flex items-center justify-center border-b border-gray-700/50 px-4 relative z-10">
+                     <img src={logoLight} alt="Logo Motive" className="h-10 transition-transform duration-300 hover:scale-105" />
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    {navItems.map(item => (
-                        <NavLink key={item.to} to={item.to}>
-                            <item.icon className="w-5 h-5 mr-3" />
-                            <span className="sidebar-text">{item.label}</span>
-                        </NavLink>
+                
+                {/* Navegação */}
+                <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto no-scrollbar relative z-10">
+                    {navItems.map((item, index) => (
+                        <div 
+                            key={item.to} 
+                            className="animate-fade-in"
+                            style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                            <NavLink 
+                                to={item.to} 
+                                icon={item.icon} 
+                                label={item.label}
+                            />
+                        </div>
                     ))}
                 </nav>
-                <div className="p-4 border-t border-gray-700">
-                    <button onClick={logout} className="w-full flex items-center px-4 py-2 rounded-lg hover:bg-red-700 text-gray-300">
-                         <LogOut className="w-5 h-5 mr-3" />
-                         <span>Sair</span>
+                
+                {/* Botão de Logout */}
+                <div className="p-4 border-t border-gray-700/50 relative z-10">
+                    <button 
+                        onClick={logout} 
+                        className="group w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-gray-300 hover:text-white hover:bg-red-600/90 hover:shadow-lg"
+                    >
+                         <LogOut className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
+                         <span className="font-medium text-sm">Sair</span>
                     </button>
                 </div>
+                
+                {/* Decoração de fundo */}
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
             </aside>
             
             {/* Conteúdo Principal */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden">
-                <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
-                    <h1 id="page-title" className="text-xl font-semibold text-secondary">
-                        {currentPage?.label || 'Sistema Motive'}
-                    </h1>
-                    <div className="text-right">
-                        <p className="font-semibold text-sm text-secondary">Gerenciamento</p>
-                        <p className="text-xs text-text-secondary">motiveimoveis@gmail.com</p>
+            <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        {currentPage?.icon && (
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <currentPage.icon className="w-5 h-5 text-primary" />
+                            </div>
+                        )}
+                        <h1 id="page-title" className="text-xl font-bold text-gray-800">
+                            {currentPage?.label || 'Sistema Motive'}
+                        </h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="font-semibold text-sm text-gray-800">Gerenciamento</p>
+                            <p className="text-xs text-gray-500">motiveimoveis@gmail.com</p>
+                        </div>
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-bold text-primary">GM</span>
+                        </div>
                     </div>
                 </header>
                 
