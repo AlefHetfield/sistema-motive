@@ -7,8 +7,9 @@ import {
     SALARIO_MINIMO_2025,
     TETO_INSS_2025
 } from '../utils/taxCalculations';
-import { Building, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Loader2 } from 'lucide-react';
+import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Loader2, Search, MapPin, AlertCircle } from 'lucide-react';
 import ReceiptPreview from '../components/ReceiptPreview';
+import { ModernInput } from '../components/ModernInput';
 
 
 const initialTaxes = {
@@ -24,31 +25,7 @@ const getMesReferenciaAtual = () => {
     return `${meses[data.getMonth()]}/${data.getFullYear()}`;
 };
 
-// InputField component (module-level) - memoized + forwardRef to avoid remounts and preserve caret
-const InputField = React.memo(React.forwardRef(function InputField({ id, label, Icon, type = 'text', value, onChange, placeholder, className = '', inputClass = '', disabled = false }, ref) {
-    return (
-        <div className={`w-full ${className}`}>
-            {label && <label htmlFor={id} className="block text-sm font-medium text-gray-500 mb-1">{label}</label>}
-            <div className="relative">
-                {Icon && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Icon size={18} />
-                    </div>
-                )}
-                <input
-                    id={id}
-                    ref={ref}
-                    type={type}
-                    value={value ?? ''}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    className={`block w-full rounded-2xl border border-gray-200 bg-white/60 py-2 pr-3 ${Icon ? 'pl-10' : 'pl-4'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition-shadow ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${inputClass}`}
-                />
-            </div>
-        </div>
-    );
-}));
+
 
 const ReceiptGenerator = () => {
     
@@ -284,24 +261,24 @@ const ReceiptGenerator = () => {
     const progressPercentage = (filledFields / totalFields) * 100;
 
     return (
-        <div id="receipt-view" className="fade-in p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-full">
+        <div id="receipt-view" className="fade-in p-6">
             <div className="max-w-screen-2xl mx-auto">
-                <header className="mb-6">
+                <header className="mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Gerador de Recibo de Pró-Labore</h1>
-                        <p className="text-gray-600 mt-1">Preencha os dados para calcular e gerar o recibo.</p>
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Gerador de Recibo de Pró-Labore</h2>
+                        <p className="text-gray-500">Preencha os dados para calcular e gerar o recibo em PDF</p>
                     </div>
                     
                     {/* Indicador de Progresso */}
                     {filledFields < totalFields && (
-                        <div className="mt-4 bg-white rounded-lg p-4 border border-blue-100">
-                            <div className="flex items-center justify-between mb-2">
+                        <div className="mt-6 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm animate-fade-in">
+                            <div className="flex items-center justify-between mb-3">
                                 <span className="text-sm font-medium text-gray-700">Progresso do Formulário</span>
-                                <span className="text-sm font-semibold text-blue-600">{filledFields}/{totalFields} campos</span>
+                                <span className="text-sm font-semibold text-primary">{filledFields}/{totalFields} campos</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
                                 <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                    className="bg-primary h-2.5 rounded-full transition-all duration-500"
                                     style={{ width: `${progressPercentage}%` }}
                                 />
                             </div>
@@ -312,25 +289,28 @@ const ReceiptGenerator = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Main layout: form (2) + preview (1) */}
                     {/* Coluna Principal - Inputs e Resultados */}
                     <main className="lg:col-span-2 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Two cards side-by-side on md+ */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Input Card */}
-                            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-md p-6 border border-white/30">
+                            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in">
                                 <div className="space-y-6">
-                                    <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2 mb-2">
-                                        <CircleDollarSign size={20} className="text-blue-500"/>
-                                        Entrada
-                                    </h2>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary/10 rounded-lg">
+                                            <CircleDollarSign size={20} className="text-primary"/>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-semibold text-gray-800">Entrada</h2>
+                                            <p className="text-xs text-gray-500">Valor bruto do pró-labore</p>
+                                        </div>
+                                    </div>
 
-                                    <p className="text-sm text-gray-600">Informe o valor bruto do pró-labore para calcular os descontos.</p>
-
-                                    <div> {/* Sugestões acima do input */}
-                                        <p className="text-sm font-medium text-gray-600 mb-2">Sugestões Rápidas</p>
+                                    <div>
+                                        <p className="text-xs text-gray-600 mb-2 font-medium">Sugestões Rápidas</p>
                                         <div className="flex flex-wrap gap-2">
                                             {suggestions.map(s => (
                                                 <button 
                                                     key={s.label}
                                                     onClick={() => handleSuggestionClick(s.value)}
-                                                    className="bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold px-3 py-1 rounded-full transition-colors"
+                                                    className="bg-gray-50 text-gray-700 hover:bg-primary/10 hover:text-primary text-xs font-medium px-4 py-2 rounded-full transition-all duration-300 border border-gray-200 hover:border-primary/30"
                                                 >
                                                     {s.label}
                                                 </button>
@@ -339,24 +319,28 @@ const ReceiptGenerator = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="prolabore-bruto" className="block text-sm font-medium text-gray-600 mb-2">Pró-labore Bruto</label>
+                                        <label htmlFor="prolabore-bruto" className="block text-xs text-gray-600 mb-2 font-medium">Pró-labore Bruto</label>
                                         <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <CircleDollarSign size={20} className="text-gray-400" />
-                                                <span className="sr-only">R$</span>
+                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                <span className="text-2xl text-gray-400 font-semibold">R$</span>
                                             </div>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 id="prolabore-bruto"
                                                 ref={prolaboreInputRef}
-                                                className={`form-input block w-full rounded-2xl text-3xl p-4 pl-14 border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${inputError ? 'border-red-400' : ''}`}
+                                                className={`block w-full rounded-2xl text-3xl font-bold p-4 pl-16 border-2 bg-gray-50 focus:bg-white transition-all duration-300 ${inputError ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20'} outline-none`}
                                                 value={prolaboreBruto}
                                                 onChange={handleProlaboreChange}
                                                 placeholder="3000.00"
                                             />
                                         </div>
-                                        {inputError && <p className="text-red-600 text-sm mt-2">{inputError}</p>}
+                                        {inputError && (
+                                            <div className="flex items-center gap-2 mt-2 text-red-600 text-sm animate-fade-in">
+                                                <AlertCircle size={14} />
+                                                <p>{inputError}</p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-2">
@@ -364,11 +348,9 @@ const ReceiptGenerator = () => {
                                             id="generate-pdf-btn" 
                                             onClick={handleGeneratePdf}
                                             disabled={!isFormValid}
-                                            className="group w-full font-bold py-3 px-6 rounded-2xl shadow transition-all duration-200 transform hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                                            className="group w-full font-semibold py-3.5 px-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white"
                                         >
-                                            <span className="transition-transform duration-300 group-hover:animate-bounce">
-                                                <FileDown size={18} />
-                                            </span>
+                                            <FileDown size={18} className="group-hover:animate-bounce" />
                                             Gerar Recibo em PDF
                                         </button>
                                     </div>
@@ -376,15 +358,21 @@ const ReceiptGenerator = () => {
                             </div>
 
                             {/* Results Card */}
-                            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-md p-6 flex flex-col justify-between border border-white/30">
+                            <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in" style={{ animationDelay: '100ms' }}>
                                 <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                                        <Wallet size={18} className="text-gray-600"/> Cálculos
-                                    </h3>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-green-50 rounded-lg">
+                                            <Wallet size={18} className="text-green-600"/>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-800">Cálculos</h3>
+                                            <p className="text-xs text-gray-500">Resultado líquido</p>
+                                        </div>
+                                    </div>
 
-                                    <div className="text-center">
-                                        <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Líquido a Receber</p>
-                                        <p className="text-4xl font-bold text-green-600 tracking-tight my-3">{formatarMoeda(liquidoValue)}</p>
+                                    <div className="text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+                                        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Líquido a Receber</p>
+                                        <p className="text-4xl font-bold text-green-600 tracking-tight">R$ {formatarMoeda(liquidoValue)}</p>
 
                                         {/* Barra de Progresso: Impostos vs Líquido */}
                                         <div className="mx-auto w-full max-w-md mt-4">
@@ -420,51 +408,56 @@ const ReceiptGenerator = () => {
                         </div>
 
                         {/* Card de Dados Adicionais */}
-                        <div className="bg-white rounded-xl shadow-md">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in" style={{ animationDelay: '200ms' }}>
                              <details open={isEditingEmitter} onToggle={(e) => setIsEditingEmitter(e.currentTarget.open)}>
-                                <summary className="p-6 text-lg font-semibold text-gray-700 cursor-pointer flex justify-between items-center">
-                                    <span className="flex items-center gap-2"><Edit size={20}/> Dados do Emissor e Sócio</span>
-                                    <span className="text-sm text-blue-600 font-medium">{isEditingEmitter ? 'Fechar' : 'Editar'}</span>
+                                <summary className="p-6 text-lg font-semibold text-gray-800 cursor-pointer flex justify-between items-center hover:text-primary transition-colors">
+                                    <span className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary/10 rounded-lg">
+                                            <Edit size={18} className="text-primary"/>
+                                        </div>
+                                        Dados do Emissor e Sócio
+                                    </span>
+                                    <span className="text-sm text-primary font-medium">{isEditingEmitter ? 'Fechar' : 'Editar'}</span>
                                 </summary>
-                                <div className="px-6 pb-6 border-t border-gray-200">
-                                        <div className="mt-6 space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="px-6 pb-6 border-t border-gray-100">
+                                        <div className="mt-6 space-y-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="md:col-span-2">
-                                                <InputField id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={handleEmpresaNomeChange} />
+                                                <ModernInput id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={handleEmpresaNomeChange} placeholder="Razão Social" />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-500 mb-1">CNPJ</label>
+                                                <label className="block text-xs text-gray-600 mb-1 font-medium">CNPJ</label>
                                                 <div className="flex gap-2">
-                                                    <InputField id="empresa-cnpj" label="" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
+                                                    <ModernInput id="empresa-cnpj" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
                                                     <button
                                                         onClick={handleCnpjSearch}
-                                                        className="py-2 px-4 rounded-md flex items-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        className="py-2 px-5 rounded-2xl flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed font-medium border border-primary/20 hover:border-primary"
                                                         disabled={isCnpjLoading}
                                                     >
-                                                        {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : 'Buscar'}
+                                                        {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : <><Search size={16} /> Buscar</>}
                                                     </button>
                                                 </div>
                                             </div>
                                              <div>
-                                                <InputField id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={handleSocioNomeChange} />
+                                                <ModernInput id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={handleSocioNomeChange} placeholder="Nome completo" />
                                             </div>
                                             <div>
-                                                <InputField id="socio-funcao" label="Função" Icon={User} value={socioFuncao} onChange={handleSocioFuncaoChange} />
+                                                <ModernInput id="socio-funcao" label="Função" Icon={User} value={socioFuncao} onChange={handleSocioFuncaoChange} placeholder="Sócio Administrador" />
                                             </div>
                                             <div>
-                                                <InputField id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={handleMesReferenciaChange} />
+                                                <ModernInput id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={handleMesReferenciaChange} placeholder="Janeiro/2025" />
                                             </div>
                                             <div className="md:col-span-2">
-                                                <InputField id="empresa-endereco" label="Endereço" Icon={Building} value={empresaEndereco} onChange={handleEmpresaEnderecoChange} disabled={addressLocked} />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
+                                                <ModernInput id="empresa-endereco" label="Endereço" Icon={MapPin} value={empresaEndereco} onChange={handleEmpresaEnderecoChange} disabled={addressLocked} placeholder="Rua, número" />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                             <div>
-                                                <InputField id="empresa-cep" label="CEP" Icon={Building} value={empresaCep} onChange={handleEmpresaCepChange} disabled={addressLocked} />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
+                                                <ModernInput id="empresa-cep" label="CEP" Icon={MapPin} value={empresaCep} onChange={handleEmpresaCepChange} disabled={addressLocked} placeholder="00000-000" />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                             <div>
-                                                <InputField id="empresa-cidade" label="Cidade/UF" Icon={Building} value={empresaCidade} onChange={handleEmpresaCidadeChange} disabled={addressLocked} />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente — não editável</p>}
+                                                <ModernInput id="empresa-cidade" label="Cidade/UF" Icon={Building2} value={empresaCidade} onChange={handleEmpresaCidadeChange} disabled={addressLocked} placeholder="São Paulo / SP" />
+                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                         </div>
                                     </div>
@@ -475,10 +468,11 @@ const ReceiptGenerator = () => {
 
                     {/* Coluna Lateral - Live Preview (apenas se houver dados) */}
                     {filledFields >= 3 && (
-                        <aside className="lg:col-span-1 flex justify-center">
+                        <aside className="lg:col-span-1 flex justify-center animate-fade-in" style={{ animationDelay: '300ms' }}>
                             <div className="sticky top-6">
-                                <div className="mb-3">
-                                    <p className="text-xs font-medium text-gray-500 text-center">
+                                <div className="mb-4 text-center">
+                                    <p className="text-xs font-medium text-gray-500 bg-white rounded-full px-4 py-2 inline-flex items-center gap-2 shadow-sm border border-gray-100">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                                         Atualizado em tempo real
                                     </p>
                                 </div>
