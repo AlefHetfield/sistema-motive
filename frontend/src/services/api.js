@@ -3,14 +3,16 @@
  * Prioriza a variável de ambiente VITE_API_URL, se disponível.
  * Caso contrário, usa um valor padrão para o ambiente de desenvolvimento local.
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /**
  * Busca todos os clientes do backend.
  * @returns {Promise<Array>} Uma promessa que resolve para a lista de clientes.
  */
 export async function fetchClients() {
-    const response = await fetch(`${API_BASE_URL}/clients`);
+    const response = await fetch(`${API_BASE_URL}/api/clients`, {
+        credentials: 'include',
+    });
     if (!response.ok) throw new Error('Falha ao buscar clientes.');
     return response.json();
 }
@@ -21,7 +23,9 @@ export async function fetchClients() {
  * @returns {Promise<Object>} Uma promessa que resolve para os dados do cliente.
  */
 export async function fetchClient(clientId) {
-    const response = await fetch(`${API_BASE_URL}/clients/${clientId}`);
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
+        credentials: 'include',
+    });
     if (!response.ok) throw new Error('Falha ao buscar dados do cliente.');
     return response.json();
 }
@@ -33,12 +37,13 @@ export async function fetchClient(clientId) {
  */
 export async function saveClient(clientData) {
     const { id, ...data } = clientData;
-    const url = id ? `${API_BASE_URL}/clients/${id}` : `${API_BASE_URL}/clients`;
+    const url = id ? `${API_BASE_URL}/api/clients/${id}` : `${API_BASE_URL}/api/clients`;
     const method = id ? 'PUT' : 'POST';
 
     const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Falha ao salvar cliente.');
@@ -50,7 +55,10 @@ export async function saveClient(clientData) {
  * @param {number|string} clientId O ID do cliente a ser excluído.
  */
 export async function deleteClient(clientId) {
-    const response = await fetch(`${API_BASE_URL}/clients/${clientId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
     if (!response.ok) throw new Error('Falha ao excluir cliente.');
 }
 
@@ -59,7 +67,9 @@ export async function deleteClient(clientId) {
  * @returns {Promise<Array>} Uma promessa que resolve para a lista de usuários.
  */
 export async function fetchUsers() {
-    const response = await fetch(`${API_BASE_URL}/users`);
+    const response = await fetch(`${API_BASE_URL}/api/users`, {
+        credentials: 'include',
+    });
     if (!response.ok) throw new Error('Falha ao buscar usuários.');
     return response.json();
 }
@@ -71,12 +81,13 @@ export async function fetchUsers() {
  */
 export async function saveUser(userData) {
     const { id, ...data } = userData;
-    const url = id ? `${API_BASE_URL}/users/${id}` : `${API_BASE_URL}/users`;
+    const url = id ? `${API_BASE_URL}/api/users/${id}` : `${API_BASE_URL}/api/users`;
     const method = id ? 'PUT' : 'POST';
 
     const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Falha ao salvar usuário.');
@@ -88,6 +99,9 @@ export async function saveUser(userData) {
  * @param {number|string} userId O ID do usuário a ser excluído.
  */
 export async function deleteUser(userId) {
-    const response = await fetch(`${API_BASE_URL}/users/${userId}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
     if (!response.ok) throw new Error('Falha ao excluir usuário.');
 }

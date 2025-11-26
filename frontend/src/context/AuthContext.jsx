@@ -1,49 +1,104 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 
-// 1. Criação do Contexto
 const AuthContext = createContext(null);
 
-// 2. Provedor do Contexto
-export const AuthProvider = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-    // Na inicialização, verifica se o usuário já estava logado
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Verifica a sessão ao carregar a aplicação
     useEffect(() => {
-        const loggedIn = localStorage.getItem('isAuthenticated') === 'true';
-        if (loggedIn) {
-            setIsAuthenticated(true);
-        }
+        checkAuth();
     }, []);
 
-    const login = async (email, password) => {
-        // Simula a verificação de credenciais do sistema legado
-        const validEmail = 'motiveimoveis@gmail.com';
-        const validPassword = 'motive@sistema';
+    const checkAuth = async () => {
+        try {
+            const response = await fetch(`${API_URL}/api/auth/me`, {
+                credentials: 'include',
+            });
 
-        if (email === validEmail && password === validPassword) {
-            localStorage.setItem('isAuthenticated', 'true');
-            setIsAuthenticated(true);
-            return true;
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                setIsAuthenticated(true);
+            } else {
+                setUser(null);
+                setIsAuthenticated(false);
+            }
+        } catch (error) {
+            console.error('Erro ao verificar autenticação:', error);
+            setUser(null);
+            setIsAuthenticated(false);
+        } finally {
+            setIsLoading(false);
         }
-        return false;
     };
 
-    const logout = () => {
-        localStorage.removeItem('isAuthenticated');
-        setIsAuthenticated(false);
-        // O redirecionamento será tratado pelo componente que chamar o logout
+    const login = async (email, password) => {
+        try {
+            const response = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                setIsAuthenticated(true);
+                return { success: true, user: userData };
+            } else {
+                const error = await response.json();
+                return { success: false, error: error.error || 'Credenciais inválidas' };
+            }
+        } catch (error) {
+            console.error('Erro no login:', error);
+            return { success: false, error: 'Erro ao conectar com o servidor' };
+        }
+    };
+
+    const logout = async () => {
+        try {
+            await fetch(`${API_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (error) {
+            console.error('Erro ao fazer logout:', error);
+        } finally {
+            setUser(null);
+            setIsAuthenticated(false);
+        }
+    };
+
+    const hasRole = (role) => {
+        return user?.role === role;
+    };
+
+    const isAdmin = () => {
+        return user?.role === 'ADM';
     };
 
     const value = {
+        user,
         isAuthenticated,
+        isLoading,
         login,
         logout,
+        checkAuth,
+        hasRole,
+        isAdmin,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// 3. Hook customizado para facilitar o uso do contexto
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

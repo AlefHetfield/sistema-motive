@@ -27,12 +27,21 @@ model Client {
   @@map("clients")
 }
 
+enum Role {
+  ADM
+  CORRETOR
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  nome      String?
-  email     String?  @unique
-  role      String?
-  createdAt DateTime @default(now()) @map("createdAt")
+  id                 Int       @id @default(autoincrement())
+  nome               String
+  email              String    @unique
+  passwordHash       String
+  role               Role      @default(CORRETOR)
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLogin          DateTime?
+  createdAt          DateTime  @default(now()) @map("createdAt")
 
   @@map("users")
 }

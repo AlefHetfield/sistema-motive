@@ -5,13 +5,151 @@ import { PrismaClient } from '@prisma/client';
 import cron from 'node-cron';
 import { buildMonthlyReport, buildFileName, buildWeeklyReport, buildWeeklyFileName } from './reportGenerator.js';
 import { dispatchReport } from './emailSender.js';
+import cookieParser from 'cookie-parser';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json()); // Substitui o body-parser para JSON
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
+
+// ========== AUTENTICAÇÃO E AUTORIZAÇÃO ==========
+
+// Helpers de sessão via cookies
+const SESSION_COOKIE = 'motive_session';
+
+function createSession(res, payload) {
+  const value = Buffer.from(JSON.stringify(payload)).toString('base64');
+  res.cookie(SESSION_COOKIE, value, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000, // 8 horas
+  });
+}
+
+function destroySession(res) {
+  res.clearCookie(SESSION_COOKIE);
+}
+
+function readSession(req) {
+  const raw = req.cookies?.[SESSION_COOKIE];
+  if (!raw) return null;
+  try {
+    return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+// Middleware de autenticação
+function requireAuth(req, res, next) {
+  const session = readSession(req);
+  if (!session) return res.status(401).json({ error: 'Não autenticado' });
+  req.user = session;
+  next();
+}
+
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    const session = readSession(req);
+    if (!session) return res.status(401).json({ error: 'Não autenticado' });
+    if (!allowedRoles.includes(session.role)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+    req.user = session;
+    next();
+  };
+}
+
+// ========== ROTAS DE AUTENTICAÇÃO ==========
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    // Atualiza último login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    });
+
+    // Cria sessão
+    createSession(res, {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      nome: user.nome
+    });
+
+    res.json({
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role,
+      mustChangePassword: user.mustChangePassword
+    });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro ao processar login' });
+  }
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  destroySession(res);
+  res.json({ success: true });
+});
+
+// Verificar sessão atual
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        mustChangePassword: true,
+        isActive: true
+      }
+    });
+
+    if (!user || !user.isActive) {
+      destroySession(res);
+      return res.status(401).json({ error: 'Sessão inválida' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Erro ao verificar sessão:', error);
+    res.status(500).json({ error: 'Erro ao verificar sessão' });
+  }
+});
 
 // --- ROTAS PARA CLIENTES (Clients) ---
 
@@ -174,62 +312,167 @@ cron.schedule('5 9 * * 1', async () => {
   timezone: process.env.TZ || 'America/Sao_Paulo'
 });
 
-// --- ROTAS PARA USUÁRIOS (Users) ---
+// ========== ROTAS DE GERENCIAMENTO DE USUÁRIOS (Apenas ADM) ==========
 
 // [READ] Listar todos os usuários
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireRole('ADM'), async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      orderBy: {
-        nome: 'asc',
-      },
+      orderBy: { nome: 'asc' },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        mustChangePassword: true
+      }
     });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ error: 'Não foi possível buscar os usuários.' });
+    console.error('Erro ao listar usuários:', error);
+    res.status(500).json({ error: 'Não foi possível buscar os usuários' });
+  }
+});
+
+// [READ] Buscar usuário por ID
+app.get('/api/users/:id', requireRole('ADM'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        mustChangePassword: true
+      }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    res.status(500).json({ error: 'Não foi possível buscar o usuário' });
   }
 });
 
 // [CREATE] Criar um novo usuário
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', requireRole('ADM'), async (req, res) => {
   try {
+    const { nome, email, password, role = 'CORRETOR', isActive = true } = req.body;
+    
+    if (!nome || !email || !password) {
+      return res.status(400).json({ 
+        error: 'Nome, email e senha são obrigatórios' 
+      });
+    }
+
+    // Verifica se o email já existe
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Este email já está em uso' });
+    }
+
+    // Hash da senha
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const newUser = await prisma.user.create({
-      data: req.body,
+      data: {
+        nome,
+        email,
+        passwordHash,
+        role,
+        isActive,
+        mustChangePassword: true // Força troca de senha no primeiro login
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      }
     });
+
     res.status(201).json(newUser);
   } catch (error) {
-    console.error("Erro ao criar usuário:", error);
-    res.status(400).json({ 
-        error: 'Dados inválidos para criar o usuário.',
-        details: error.message 
+    console.error('Erro ao criar usuário:', error);
+    res.status(500).json({ 
+      error: 'Não foi possível criar o usuário',
+      details: error.message 
     });
   }
 });
 
 // [UPDATE] Atualizar um usuário por ID
-app.put('/api/users/:id', async (req, res) => {
-  const { id } = req.params;
+app.put('/api/users/:id', requireRole('ADM'), async (req, res) => {
   try {
+    const { id } = req.params;
+    const { nome, email, password, role, isActive, mustChangePassword } = req.body;
+
+    const updateData = {};
+    if (nome !== undefined) updateData.nome = nome;
+    if (email !== undefined) updateData.email = email;
+    if (role !== undefined) updateData.role = role;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (mustChangePassword !== undefined) updateData.mustChangePassword = mustChangePassword;
+    
+    // Se uma nova senha foi fornecida, faz o hash
+    if (password) {
+      updateData.passwordHash = await bcrypt.hash(password, 10);
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(id) },
-      data: req.body,
+      data: updateData,
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true
+      }
     });
+
     res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({ error: 'Não foi possível atualizar o usuário.' });
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({ error: 'Não foi possível atualizar o usuário' });
   }
 });
 
 // [DELETE] Deletar um usuário por ID
-app.delete('/api/users/:id', async (req, res) => {
-  const { id } = req.params;
+app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
   try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    // Impede que o usuário delete a si mesmo
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
+    }
+
     await prisma.user.delete({
-      where: { id: parseInt(id) },
+      where: { id: userId }
     });
+
     res.status(204).send();
   } catch (error) {
-    res.status(500).json({ error: 'Não foi possível deletar o usuário.' });
+    console.error('Erro ao deletar usuário:', error);
+    res.status(500).json({ error: 'Não foi possível deletar o usuário' });
   }
 });
 

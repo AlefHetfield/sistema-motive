@@ -1,15 +1,21 @@
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, Calculator, MapPin, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, Calculator, MapPin, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
+import ChangePasswordModal from './ChangePasswordModal';
 
-const navItems = [
+const baseNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/clients', label: 'Clientes', icon: Users },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
+];
+
+const adminNavItems = [
+    { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, adminOnly: true },
 ];
 
 const NavLink = ({ to, icon: Icon, label }) => {
@@ -51,8 +57,25 @@ const NavLink = ({ to, icon: Icon, label }) => {
 };
 
 const AppLayout = () => {
-    const { logout } = useAuth();
+    const { logout, user, isAdmin, checkAuth } = useAuth();
     const location = useLocation();
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    
+    // Verifica se precisa trocar senha ao carregar
+    useEffect(() => {
+        if (user?.mustChangePassword) {
+            setShowPasswordModal(true);
+        }
+    }, [user]);
+
+    const handlePasswordChanged = async () => {
+        setShowPasswordModal(false);
+        // Recarrega os dados do usuário para atualizar o estado
+        await checkAuth();
+    };
+    
+    // Combina itens base com itens de admin se for administrador
+    const navItems = isAdmin() ? [...baseNavItems, ...adminNavItems] : baseNavItems;
     
     const currentPage = navItems.find(item => item.to === location.pathname);
 
@@ -115,11 +138,20 @@ const AppLayout = () => {
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
-                            <p className="font-semibold text-sm text-gray-800">Gerenciamento</p>
-                            <p className="text-xs text-gray-500">motiveimoveis@gmail.com</p>
+                            <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>
+                            <p className="text-xs text-gray-500">
+                                {user?.email || ''} 
+                                {user?.role && (
+                                    <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-medium">
+                                        {user.role === 'ADM' ? 'Admin' : 'Corretor'}
+                                    </span>
+                                )}
+                            </p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-bold text-primary">GM</span>
+                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
+                            <span className="text-sm font-bold text-white">
+                                {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
                         </div>
                     </div>
                 </header>
@@ -129,6 +161,14 @@ const AppLayout = () => {
                     <Outlet />
                 </div>
             </main>
+
+            {/* Modal de Troca de Senha Obrigatória */}
+            {showPasswordModal && user && (
+                <ChangePasswordModal
+                    user={user}
+                    onSuccess={handlePasswordChanged}
+                />
+            )}
         </div>
     );
 };

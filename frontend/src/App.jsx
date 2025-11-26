@@ -10,6 +10,7 @@ import PdfEditor from './pages/PdfEditor';
 import ReceiptGenerator from './pages/ReceiptGenerator';
 import CepSearch from './pages/CepSearch';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -35,6 +36,16 @@ function App() {
             <Route path="receipt-generator" element={<ReceiptGenerator />} />
             <Route path="cep-search" element={<CepSearch />} />
             <Route path="settings" element={<Settings />} />
+            
+            {/* Rota exclusiva para Administradores */}
+            <Route 
+              path="users" 
+              element={
+                <PrivateRoute requiredRole="ADM">
+                  <UserManagement />
+                </PrivateRoute>
+              } 
+            />
           </Route>
 
           {/* Fallback para rotas não encontradas */}
