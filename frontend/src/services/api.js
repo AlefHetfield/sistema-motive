@@ -1,9 +1,9 @@
 /**
  * Define a URL base para todas as chamadas de API.
- * Prioriza a variável de ambiente VITE_API_URL, se disponível.
- * Caso contrário, usa um valor padrão para o ambiente de desenvolvimento local.
+ * Em produção, usa o mesmo domínio (origin).
+ * Em desenvolvimento, usa localhost:3000.
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
 
 /**
  * Busca todos os clientes do backend.
