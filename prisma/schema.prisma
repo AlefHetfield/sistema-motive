@@ -47,6 +47,20 @@ model User {
   @@map("users")
 }
 
+model ActivityLog {
+  id            Int      @id @default(autoincrement())
+  clientId      Int
+  clientNome    String
+  action        String   // "created", "updated", "status_changed", "deleted"
+  statusAntes   String?
+  statusDepois  String?
+  userName      String
+  createdAt     DateTime @default(now())
+
+  @@map("activity_logs")
+  @@index([createdAt(sort: Desc)])
+}
+
 model Property {
   id          Int     @id @default(autoincrement())
   title       String

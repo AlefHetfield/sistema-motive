@@ -52,6 +52,7 @@ const Dashboard = () => {
     const [recentClients, setRecentClients] = useState([]);
     const [topPerformers, setTopPerformers] = useState([]);
     const [avgDaysByStatus, setAvgDaysByStatus] = useState([]);
+    const [recentActivities, setRecentActivities] = useState([]);
 
     const loadDashboardData = async () => {
         setIsLoading(true);
@@ -163,6 +164,15 @@ const Dashboard = () => {
                 return { status, avgDays: Math.round(totalDays / clientsInStatus.length) };
             });
             setAvgDaysByStatus(avgDays);
+
+            // Buscar últimas atividades
+            const activitiesResponse = await fetch('http://localhost:3000/api/activities/recent?limit=9', {
+                credentials: 'include'
+            });
+            if (activitiesResponse.ok) {
+                const activities = await activitiesResponse.json();
+                setRecentActivities(activities);
+            }
 
         } catch (error) {
             console.error("Erro ao carregar dados do dashboard:", error);
@@ -407,40 +417,44 @@ const Dashboard = () => {
                         <h3 className="text-lg font-semibold text-gray-800">Últimas Alterações</h3>
                     </div>
                     <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100% - 3rem)' }}>
-                        {allClients
-                            .filter(c => c.ultimaAtualizacao)
-                            .sort((a, b) => new Date(b.ultimaAtualizacao) - new Date(a.ultimaAtualizacao))
-                            .slice(0, 10)
-                            .map(client => {
-                                const updatedDate = new Date(client.ultimaAtualizacao);
-                                const timeAgo = Math.floor((new Date() - updatedDate) / (1000 * 60));
-                                const timeText = timeAgo < 60 ? `${timeAgo}min atrás` : 
-                                               timeAgo < 1440 ? `${Math.floor(timeAgo / 60)}h atrás` : 
-                                               `${Math.floor(timeAgo / 1440)}d atrás`;
-                                
-                                return (
-                                    <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                                <Calendar size={16} className="text-purple-600" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-gray-900 truncate text-sm">{client.nome}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    Por <span className="font-medium text-gray-700">{client.ultimoUsuarioAlteracao || 'Sistema'}</span>
-                                                </p>
-                                            </div>
+                        {recentActivities.map((activity, index) => {
+                            const activityDate = new Date(activity.createdAt);
+                            const timeAgo = Math.floor((new Date() - activityDate) / (1000 * 60));
+                            const timeText = timeAgo < 60 ? `${timeAgo}min atrás` : 
+                                           timeAgo < 1440 ? `${Math.floor(timeAgo / 60)}h atrás` : 
+                                           `${Math.floor(timeAgo / 1440)}d atrás`;
+                            
+                            const actionText = activity.action === 'created' ? 'Criou' :
+                                             activity.action === 'status_changed' ? 'Mudou status' :
+                                             'Atualizou';
+                            
+                            const statusToShow = activity.action === 'status_changed' ? 
+                                               `${activity.statusAntes} → ${activity.statusDepois}` :
+                                               activity.statusDepois || activity.statusAntes || '-';
+                            
+                            return (
+                                <div key={`${activity.id}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                            <Calendar size={16} className="text-purple-600" />
                                         </div>
-                                        <div className="text-right flex-shrink-0 ml-4">
-                                            <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[client.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                                {client.status}
-                                            </span>
-                                            <p className="text-xs text-gray-500 mt-1">{timeText}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-gray-900 truncate text-sm">{activity.clientNome}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {actionText} por <span className="font-medium text-gray-700">{activity.userName}</span>
+                                            </p>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        {allClients.filter(c => c.ultimaAtualizacao).length === 0 && (
+                                    <div className="text-right flex-shrink-0 ml-4">
+                                        <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[activity.statusDepois] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                            {statusToShow}
+                                        </span>
+                                        <p className="text-xs text-gray-500 mt-1">{timeText}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {recentActivities.length === 0 && (
                             <p className="text-gray-400 text-sm text-center py-8">Nenhuma alteração recente</p>
                         )}
                     </div>

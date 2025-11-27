@@ -128,6 +128,8 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   destroySession(res);
   res.json({ success: true });
+});
+
 // Trocar própria senha (não requer ADM)
 app.put('/api/auth/change-password', requireAuth, async (req, res) => {
   try {
@@ -203,8 +205,6 @@ app.put('/api/auth/profile', requireAuth, async (req, res) => {
   }
 });
 
-});
-
 // Verificar sessão atual
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
@@ -229,6 +229,23 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erro ao verificar sessão:', error);
     res.status(500).json({ error: 'Erro ao verificar sessão' });
+  }
+});
+
+// Buscar últimas atividades
+app.get('/api/activities/recent', requireAuth, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 9;
+    const activities = await prisma.activityLog.findMany({
+      take: limit,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    res.json(activities);
+  } catch (error) {
+    console.error('Erro ao buscar atividades:', error);
+    res.status(500).json({ error: 'Erro ao buscar atividades' });
   }
 });
 
@@ -283,6 +300,18 @@ app.post('/api/clients', requireAuth, async (req, res) => {
         ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário que criou
       },
     });
+    
+    // Registra a atividade
+    await prisma.activityLog.create({
+      data: {
+        clientId: newClient.id,
+        clientNome: newClient.nome || 'Cliente sem nome',
+        action: 'created',
+        statusDepois: newClient.status,
+        userName: req.user.nome
+      }
+    });
+    
     // Log para confirmar a criação no terminal
     console.log('Novo cliente criado com sucesso:', newClient);
     res.status(201).json(newClient);
@@ -301,6 +330,11 @@ app.post('/api/clients', requireAuth, async (req, res) => {
 app.put('/api/clients/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
+    // Busca o cliente antes da atualização para comparar o status
+    const clienteAntes = await prisma.client.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
     const updatedClient = await prisma.client.update({
       where: { id: parseInt(id) },
       data: {
@@ -308,6 +342,20 @@ app.put('/api/clients/:id', requireAuth, async (req, res) => {
         ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário logado
       },
     });
+    
+    // Registra a atividade
+    const statusMudou = clienteAntes.status !== updatedClient.status;
+    await prisma.activityLog.create({
+      data: {
+        clientId: updatedClient.id,
+        clientNome: updatedClient.nome || 'Cliente sem nome',
+        action: statusMudou ? 'status_changed' : 'updated',
+        statusAntes: clienteAntes.status,
+        statusDepois: updatedClient.status,
+        userName: req.user.nome
+      }
+    });
+    
     res.json(updatedClient);
   } catch (error) {
     res.status(500).json({ error: 'Não foi possível atualizar o cliente.' });
