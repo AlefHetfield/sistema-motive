@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
+    "start": "node api/server.js",
     "dev": "nodemon api/server.js",
-    "build": "prisma generate",
+    "build": "cd frontend && npm install && npm run build && cd ..",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma migrate deploy && prisma generate"
+    "vercel-build": "prisma migrate deploy && prisma generate && npm run build"
   },
   "repository": {
     "type": "git",

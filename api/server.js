@@ -174,13 +174,18 @@ app.put('/api/auth/profile', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Nome e email são obrigatórios' });
     }
 
+    // Busca o usuário atual no banco de dados
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
     // Verifica se o email já está em uso por outro usuário
-    if (email !== req.user.email) {
+    if (email !== currentUser.email) {
       const existingUser = await prisma.user.findUnique({
         where: { email }
       });
 
-      if (existingUser) {
+      if (existingUser && existingUser.id !== req.user.id) {
         return res.status(400).json({ error: 'Este email já está em uso' });
       }
     }
@@ -196,6 +201,14 @@ app.put('/api/auth/profile', requireAuth, async (req, res) => {
         role: true,
         mustChangePassword: true
       }
+    });
+
+    // Atualiza a sessão com os novos dados
+    createSession(res, {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      nome: updatedUser.nome
     });
 
     res.json(updatedUser);
