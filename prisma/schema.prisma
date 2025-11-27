@@ -23,6 +23,7 @@ model Client {
   createdAt              DateTime  @default(now()) @map("createdAt")
   ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
   dataAssinaturaContrato DateTime? @db.Date
+  ultimoUsuarioAlteracao String?
 
   @@map("clients")
 }

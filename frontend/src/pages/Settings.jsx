@@ -39,7 +39,7 @@ const Settings = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/api/users/${user.id}`, {
+            const response = await fetch(`${API_URL}/api/auth/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

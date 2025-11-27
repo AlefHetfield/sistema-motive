@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { fetchClients } from '../services/api';
 
-import { TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Clock, AlertTriangle, Award, Sparkles, CheckCircle2, FileCheck, AlertCircle, Calendar } from 'lucide-react';
 // 1. Novos Imports para o gráfico
-import { Line } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
     PointElement,
     LineElement,
+    ArcElement,
     Title,
     Tooltip,
     Legend,
@@ -21,6 +22,7 @@ ChartJS.register(
     LinearScale,
     PointElement,
     LineElement,
+    ArcElement,
     Title,
     Tooltip,
     Legend
@@ -32,6 +34,7 @@ const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
 const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
+    const [allClients, setAllClients] = useState([]);
 
     // Estado para as contagens por status
     const [statusCounts, setStatusCounts] = useState({
@@ -45,11 +48,16 @@ const Dashboard = () => {
     // 2. Novos estados para métricas e gráfico
     const [trendMetrics, setTrendMetrics] = useState({ monthlyGrowth: { percentage: 0, isPositive: true } });
     const [lineChartData, setLineChartData] = useState({ labels: [], datasets: [] });
+    const [doughnutData, setDoughnutData] = useState({ labels: [], datasets: [] });
+    const [recentClients, setRecentClients] = useState([]);
+    const [topPerformers, setTopPerformers] = useState([]);
+    const [avgDaysByStatus, setAvgDaysByStatus] = useState([]);
 
     const loadDashboardData = async () => {
         setIsLoading(true);
         try {
             const fetchedClients = await fetchClients();
+            setAllClients(fetchedClients);
             const activeClients = fetchedClients.filter(c => !FINAL_STATUSES.includes(c.status));
 
             // Calcular contagens por status
@@ -98,11 +106,63 @@ const Dashboard = () => {
                 datasets: [{
                     label: 'Novos Clientes',
                     data,
-                    borderColor: 'rgb(59, 130, 246)', // Cor primária (blue-500)
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    tension: 0.4, // Linha suave
+                    borderColor: 'rgb(91, 124, 153)', // Cor primária Motive
+                    backgroundColor: 'rgba(91, 124, 153, 0.1)',
+                    tension: 0.4,
+                    fill: true,
                 }],
             });
+
+            // Preparar dados para o gráfico de pizza (distribuição por status)
+            const statusColors = {
+                'Aprovado': 'rgb(16, 185, 129)', // green
+                'Engenharia': 'rgb(251, 191, 36)', // amber
+                'Finalização': 'rgb(168, 85, 247)', // purple
+                'Conformidade': 'rgb(249, 115, 22)', // orange
+                'Assinado': 'rgb(59, 130, 246)', // blue
+            };
+
+            setDoughnutData({
+                labels: STATUS_OPTIONS,
+                datasets: [{
+                    data: STATUS_OPTIONS.map(status => counts[status]),
+                    backgroundColor: STATUS_OPTIONS.map(status => statusColors[status]),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                }],
+            });
+
+            // Clientes mais recentes (últimos 5)
+            const sortedByDate = [...activeClients].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setRecentClients(sortedByDate.slice(0, 5));
+
+            // Top performers (corretores com mais clientes)
+            const performerMap = {};
+            activeClients.forEach(c => {
+                const name = c.responsavel || c.corretor || 'Não atribuído';
+                performerMap[name] = (performerMap[name] || 0) + 1;
+            });
+            const topPerfs = Object.entries(performerMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([name, count]) => ({ name, count }));
+            setTopPerformers(topPerfs);
+
+            // Tempo médio por status (em dias)
+            const avgDays = STATUS_OPTIONS.map(status => {
+                const clientsInStatus = activeClients.filter(c => c.status === status);
+                if (clientsInStatus.length === 0) return { status, avgDays: 0 };
+                
+                const totalDays = clientsInStatus.reduce((sum, c) => {
+                    const created = new Date(c.createdAt);
+                    const today = new Date();
+                    const diffDays = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+                    return sum + diffDays;
+                }, 0);
+                
+                return { status, avgDays: Math.round(totalDays / clientsInStatus.length) };
+            });
+            setAvgDaysByStatus(avgDays);
 
         } catch (error) {
             console.error("Erro ao carregar dados do dashboard:", error);
@@ -115,85 +175,275 @@ const Dashboard = () => {
         loadDashboardData();
     }, []);
 
-    const stats = [
-        { name: 'Clientes Ativos', stat: statusCounts.totalActive, isTotal: true },
-        ...STATUS_OPTIONS.map(status => ({ name: status, stat: statusCounts[status] }))
-    ];
+    const isNewClient = (creationDate) => {
+        if (!creationDate) return false;
+        const now = new Date();
+        const created = new Date(creationDate);
+        const diffHours = (now - created) / (1000 * 60 * 60);
+        return diffHours < 24;
+    };
+
+    const formatDate = (isoDate) => {
+        if (!isoDate) return '';
+        const d = new Date(isoDate);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}`;
+    };
+
+    const statusIcons = {
+        'Aprovado': CheckCircle2,
+        'Engenharia': Clock,
+        'Finalização': FileCheck,
+        'Conformidade': AlertCircle,
+        'Assinado': CheckCircle2,
+    };
+
+    const statusColorClasses = {
+        'Aprovado': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
+        'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
+        'Assinado': 'bg-blue-50 text-blue-700 border-blue-200',
+    };
 
     if (isLoading) {
-        return <div className="p-6">Carregando...</div>;
+        return (
+            <div className="p-6 flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+        <div className="p-6 space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
+                    <p className="text-gray-500 mt-1">Visão geral do desempenho e métricas</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm text-gray-500">Atualizado em</p>
+                    <p className="text-sm font-medium text-gray-700">{new Date().toLocaleString('pt-BR')}</p>
+                </div>
+            </div>
 
-            {/* 1. Seção de cards de KPI */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
-                {stats.map((item) => {
-                    const percentageOfTotal = statusCounts.totalActive > 0 ? (item.stat / statusCounts.totalActive) * 100 : 0;
-
-                    return (
-                        <div key={item.name} className="bg-white rounded-xl shadow-sm p-5 flex flex-col justify-between overflow-hidden">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500 truncate">{item.name}</p>
-                                <p className="mt-1 text-3xl font-semibold text-gray-900">{item.stat}</p>
-                            </div>
-
-                            {/* 2. Indicador de tendência para o card total */}
-                            {item.isTotal ? (
-                                <div className="mt-2 flex items-center gap-1 text-xs font-medium">
-                                    {trendMetrics.monthlyGrowth.isPositive ? (
-                                        <TrendingUp className="h-4 w-4 text-green-500" />
-                                    ) : (
-                                        <TrendingDown className="h-4 w-4 text-red-500" />
-                                    )}
-                                    <span className={trendMetrics.monthlyGrowth.isPositive ? 'text-green-600' : 'text-red-600'}>
-                                        {trendMetrics.monthlyGrowth.percentage}%
-                                    </span>
-                                    <span className="text-gray-500">vs mês anterior</span>
-                                </div>
+            {/* Cards de métricas principais */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total de Clientes Ativos */}
+                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 opacity-10">
+                        <Users size={120} />
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-white/80 text-sm font-medium">Clientes Ativos</p>
+                        <p className="text-4xl font-bold mt-2">{statusCounts.totalActive}</p>
+                        <div className="mt-3 flex items-center gap-2">
+                            {trendMetrics.monthlyGrowth.isPositive ? (
+                                <TrendingUp size={16} />
                             ) : (
-                                /* 3. Barra de progresso para outros cards */
-                                <div className="mt-4 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="bg-blue-500 h-full rounded-full"
-                                        style={{ width: `${percentageOfTotal}%` }}
-                                    ></div>
+                                <TrendingDown size={16} />
+                            )}
+                            <span className="text-sm font-medium">
+                                {trendMetrics.monthlyGrowth.percentage}% vs mês anterior
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Aprovado */}
+                <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">Aprovado</p>
+                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Aprovado}</p>
+                        </div>
+                        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
+                            <CheckCircle2 size={24} className="text-emerald-600" />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                            className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Aprovado / statusCounts.totalActive) * 100 : 0}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Engenharia */}
+                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">Engenharia</p>
+                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Engenharia}</p>
+                        </div>
+                        <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
+                            <Clock size={24} className="text-amber-600" />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                            className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Engenharia / statusCounts.totalActive) * 100 : 0}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Conformidade */}
+                <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium">Conformidade</p>
+                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Conformidade}</p>
+                        </div>
+                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                            <AlertCircle size={24} className="text-orange-600" />
+                        </div>
+                    </div>
+                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                            className="bg-orange-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Conformidade / statusCounts.totalActive) * 100 : 0}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Grid Principal - 3 colunas com Últimas Alterações ocupando 2 linhas */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Coluna 1 e 2: Evolução + Clientes e Distribuição */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Gráfico de Linha - Evolução */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800">Evolução de Novos Clientes</h3>
+                                <p className="text-sm text-gray-500 mt-1">Últimos 6 meses</p>
+                            </div>
+                        </div>
+                        <div className="h-72">
+                            {lineChartData.labels.length > 0 ? (
+                                <Line 
+                                    data={lineChartData} 
+                                    options={{ 
+                                        responsive: true, 
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: { display: false }
+                                        }
+                                    }} 
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-gray-400">
+                                    <p>Sem dados disponíveis</p>
                                 </div>
                             )}
                         </div>
-                    );
-                })}
-            </div>
+                    </div>
 
-            {/* 1. Nova seção de largura total para o Gráfico de Linha */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-800">Evolução de Novos Clientes</h3>
-                    <span className="text-sm font-medium text-gray-500">Últimos 6 meses</span>
-                </div>
-                {/* 2. Container do gráfico com altura fixa */}
-                <div className="h-80">
-                    {lineChartData.labels.length > 0 ? (
-                        <Line data={lineChartData} options={{ responsive: true, maintainAspectRatio: false }} />
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-gray-500">
-                            <p>Não há dados suficientes para exibir o gráfico.</p>
+                    {/* Grid de 2 colunas - Clientes Recentes e Distribuição */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Clientes Recentes */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Sparkles size={20} className="text-primary" />
+                                <h3 className="text-lg font-semibold text-gray-800">Clientes Recentes</h3>
+                            </div>
+                            <div className="space-y-3">
+                                {recentClients.length > 0 ? recentClients.map(client => (
+                                    <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium text-gray-900 truncate text-sm">{client.nome}</p>
+                                                {isNewClient(client.createdAt) && (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-500 text-white">
+                                                        NOVO
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-0.5">{formatDate(client.createdAt)}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[client.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                            {client.status}
+                                        </span>
+                                    </div>
+                                )) : (
+                                    <p className="text-gray-400 text-sm text-center py-8">Nenhum cliente recente</p>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-            </div>
 
-            {/* 3. Layout de duas colunas para os próximos componentes */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Placeholder para o Gráfico de Pizza */}
-                <div className="bg-white rounded-xl shadow-sm p-5 h-96 flex items-center justify-center text-gray-400">
-                    (Gráfico de Pizza - Status)
+                        {/* Gráfico de Pizza - Distribuição por Status */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-semibold text-gray-800">Distribuição por Status</h3>
+                                <p className="text-sm text-gray-500 mt-1">Visão geral</p>
+                            </div>
+                            <div className="h-56 flex items-center justify-center">
+                                {doughnutData.labels.length > 0 && statusCounts.totalActive > 0 ? (
+                                    <Doughnut 
+                                        data={doughnutData} 
+                                        options={{ 
+                                            responsive: true, 
+                                            maintainAspectRatio: true,
+                                            plugins: {
+                                                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                                            }
+                                        }} 
+                                    />
+                                ) : (
+                                    <p className="text-gray-400">Sem clientes ativos</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                {/* Placeholder para a Lista de Atividades */}
-                <div className="bg-white rounded-xl shadow-sm p-5 h-96 flex items-center justify-center text-gray-400">
-                    (Lista de Atividades Recentes)
+
+                {/* Coluna 3: Últimas Alterações (altura dupla - row-span-2) */}
+                <div className="lg:row-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Clock size={20} className="text-purple-500" />
+                        <h3 className="text-lg font-semibold text-gray-800">Últimas Alterações</h3>
+                    </div>
+                    <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100% - 3rem)' }}>
+                        {allClients
+                            .filter(c => c.ultimaAtualizacao)
+                            .sort((a, b) => new Date(b.ultimaAtualizacao) - new Date(a.ultimaAtualizacao))
+                            .slice(0, 10)
+                            .map(client => {
+                                const updatedDate = new Date(client.ultimaAtualizacao);
+                                const timeAgo = Math.floor((new Date() - updatedDate) / (1000 * 60));
+                                const timeText = timeAgo < 60 ? `${timeAgo}min atrás` : 
+                                               timeAgo < 1440 ? `${Math.floor(timeAgo / 60)}h atrás` : 
+                                               `${Math.floor(timeAgo / 1440)}d atrás`;
+                                
+                                return (
+                                    <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                                <Calendar size={16} className="text-purple-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-900 truncate text-sm">{client.nome}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    Por <span className="font-medium text-gray-700">{client.ultimoUsuarioAlteracao || 'Sistema'}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex-shrink-0 ml-4">
+                                            <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[client.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                                {client.status}
+                                            </span>
+                                            <p className="text-xs text-gray-500 mt-1">{timeText}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        {allClients.filter(c => c.ultimaAtualizacao).length === 0 && (
+                            <p className="text-gray-400 text-sm text-center py-8">Nenhuma alteração recente</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

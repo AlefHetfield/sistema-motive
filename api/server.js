@@ -163,6 +163,46 @@ app.put('/api/auth/change-password', requireAuth, async (req, res) => {
   }
 });
 
+// Atualizar próprio perfil (não requer ADM)
+app.put('/api/auth/profile', requireAuth, async (req, res) => {
+  try {
+    const { nome, email } = req.body;
+
+    if (!nome || !email) {
+      return res.status(400).json({ error: 'Nome e email são obrigatórios' });
+    }
+
+    // Verifica se o email já está em uso por outro usuário
+    if (email !== req.user.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'Este email já está em uso' });
+      }
+    }
+
+    // Atualiza apenas nome e email do usuário logado
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { nome, email },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        mustChangePassword: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    res.status(500).json({ error: 'Erro ao atualizar perfil' });
+  }
+});
+
 });
 
 // Verificar sessão atual
@@ -225,7 +265,7 @@ app.get('/api/clients/:id', async (req, res) => {
 });
 
 // [CREATE] Criar um novo cliente
-app.post('/api/clients', async (req, res) => {
+app.post('/api/clients', requireAuth, async (req, res) => {
   const { nome, corretor } = req.body;
 
   // Validação básica no backend
@@ -238,7 +278,10 @@ app.post('/api/clients', async (req, res) => {
 
   try {
     const newClient = await prisma.client.create({
-      data: req.body,
+      data: {
+        ...req.body,
+        ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário que criou
+      },
     });
     // Log para confirmar a criação no terminal
     console.log('Novo cliente criado com sucesso:', newClient);
@@ -255,12 +298,15 @@ app.post('/api/clients', async (req, res) => {
 });
 
 // [UPDATE] Atualizar um cliente por ID
-app.put('/api/clients/:id', async (req, res) => {
+app.put('/api/clients/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
     const updatedClient = await prisma.client.update({
       where: { id: parseInt(id) },
-      data: req.body,
+      data: {
+        ...req.body,
+        ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário logado
+      },
     });
     res.json(updatedClient);
   } catch (error) {
