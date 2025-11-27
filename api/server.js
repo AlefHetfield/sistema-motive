@@ -75,6 +75,8 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('Tentativa de login:', email);
+    
     if (!email || !password) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
@@ -82,12 +84,16 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
     
     if (!user || !user.isActive) {
+      console.log('Usuário não encontrado ou inativo:', email);
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
+    console.log('Comparando senha para:', email);
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    console.log('Resultado da comparação:', passwordMatch);
     
     if (!passwordMatch) {
+      console.log('Senha incorreta para:', email);
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
@@ -122,6 +128,41 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   destroySession(res);
   res.json({ success: true });
+// Trocar própria senha (não requer ADM)
+app.put('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+    }
+
+    // Hash da nova senha
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Atualiza a senha do usuário logado
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { 
+        passwordHash,
+        mustChangePassword: false 
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        mustChangePassword: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Erro ao trocar senha:', error);
+    res.status(500).json({ error: 'Erro ao trocar senha' });
+  }
+});
+
 });
 
 // Verificar sessão atual
@@ -371,6 +412,8 @@ app.post('/api/users', requireRole('ADM'), async (req, res) => {
   try {
     const { nome, email, password, role = 'CORRETOR', isActive = true } = req.body;
     
+    console.log('Criando usuário:', { nome, email, role, hasPassword: !!password });
+    
     if (!nome || !email || !password) {
       return res.status(400).json({ 
         error: 'Nome, email e senha são obrigatórios' 
@@ -384,7 +427,9 @@ app.post('/api/users', requireRole('ADM'), async (req, res) => {
     }
 
     // Hash da senha
+    console.log('Gerando hash para senha:', password);
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log('Hash gerado com sucesso');
 
     const newUser = await prisma.user.create({
       data: {

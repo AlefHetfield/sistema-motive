@@ -83,28 +83,39 @@ const UserManagement = () => {
     const confirmAction = async () => {
         const { user, action } = confirmModal;
 
-        if (action === 'delete') {
-            await deleteUser(user.id);
-        } else if (action === 'toggle') {
-            await toggleUserActive(user.id, !user.isActive);
+        try {
+            if (action === 'delete') {
+                await deleteUser(user.id);
+            } else if (action === 'toggle') {
+                await toggleUserActive(user.id, !user.isActive);
+            }
+        } finally {
+            setConfirmModal({ isOpen: false, user: null, action: null });
         }
-
-        setConfirmModal({ isOpen: false, user: null, action: null });
     };
 
     const deleteUser = async (userId) => {
         try {
+            console.log('Tentando deletar usuário:', userId);
             const response = await fetch(`${API_URL}/api/users/${userId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
 
+            console.log('Resposta da exclusão:', response.status, response.ok);
+
             if (response.ok) {
                 showNotification('Usuário deletado com sucesso', 'success');
-                fetchUsers();
+                await fetchUsers();
             } else {
-                const error = await response.json();
-                showNotification(error.error || 'Erro ao deletar usuário', 'error');
+                let errorMessage = 'Erro ao deletar usuário';
+                try {
+                    const error = await response.json();
+                    errorMessage = error.error || errorMessage;
+                } catch (e) {
+                    console.error('Erro ao parsear resposta:', e);
+                }
+                showNotification(errorMessage, 'error');
             }
         } catch (error) {
             console.error('Erro ao deletar usuário:', error);
@@ -391,12 +402,14 @@ const UserManagement = () => {
             {/* Modal de Confirmação */}
             {confirmModal.isOpen && (
                 <ConfirmModal
+                    isOpen={confirmModal.isOpen}
                     title={confirmModal.title}
                     message={confirmModal.message}
                     onConfirm={confirmAction}
                     onCancel={() => setConfirmModal({ isOpen: false, user: null, action: null })}
                     confirmText="Confirmar"
                     cancelText="Cancelar"
+                    confirmColor={confirmModal.action === 'delete' ? 'red' : 'blue'}
                 />
             )}
         </div>

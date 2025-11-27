@@ -30,14 +30,11 @@ const ChangePasswordModal = ({ user, onSuccess }) => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/api/users/${user.id}`, {
+            const response = await fetch(`${API_URL}/api/auth/change-password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({
-                    password: formData.newPassword,
-                    mustChangePassword: false, // Remove a flag após trocar
-                }),
+                body: JSON.stringify({ password: formData.newPassword }),
             });
 
             if (response.ok) {

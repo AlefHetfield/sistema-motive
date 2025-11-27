@@ -78,7 +78,8 @@ const Settings = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/api/users/${user.id}`, {
+            // Usa rota dedicada que não exige ADM
+            const response = await fetch(`${API_URL}/api/auth/change-password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

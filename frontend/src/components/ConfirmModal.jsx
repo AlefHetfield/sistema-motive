@@ -1,7 +1,9 @@
 import { X } from 'lucide-react';
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "OK", cancelText = "Cancelar", confirmColor = "blue" }) => {
+const ConfirmModal = ({ isOpen, onClose, onCancel, onConfirm, title, message, confirmText = "OK", cancelText = "Cancelar", confirmColor = "blue" }) => {
     if (!isOpen) return null;
+
+    const handleCancel = onCancel || onClose;
 
     const colorClasses = {
         blue: "bg-blue-500 hover:bg-blue-600",
@@ -16,7 +18,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
             {/* Backdrop */}
             <div 
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={handleCancel}
             />
             
             {/* Modal */}
@@ -33,7 +35,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
                         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleCancel}
                         className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
                         <X size={20} />
@@ -48,16 +50,13 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl">
                     <button
-                        onClick={onClose}
+                        onClick={handleCancel}
                         className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
                     >
                         {cancelText}
                     </button>
                     <button
-                        onClick={() => {
-                            onConfirm();
-                            onClose();
-                        }}
+                        onClick={onConfirm}
                         className={`px-4 py-2 text-white rounded-lg transition-colors font-medium ${colorClasses[confirmColor] || colorClasses.blue}`}
                     >
                         {confirmText}
