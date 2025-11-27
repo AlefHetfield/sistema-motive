@@ -5,6 +5,3 @@ node_modules
 /generated/prisma
 
 .vercel
-
-# Build do frontend
-dist
