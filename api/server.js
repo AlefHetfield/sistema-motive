@@ -628,15 +628,19 @@ app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Exporta o app para a Vercel
 export default app;
 
-// Inicia o servidor para desenvolvimento local (não será executado na Vercel)
+// Inicia o servidor para desenvolvimento local e produção (Render/Railway)
 const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-    console.log('Cron de relatório mensal ativo (primeiro dia do mês às 09:00).');
-    console.log('Cron de relatório semanal ativo (toda segunda às 09:05).');
-  });
-}
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log('🔄 Cron de relatório mensal ativo (primeiro dia do mês às 09:00).');
+  console.log('🔄 Cron de relatório semanal ativo (toda segunda às 09:05).');
+});

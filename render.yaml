@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: sistema-motive-api
+    env: node
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
