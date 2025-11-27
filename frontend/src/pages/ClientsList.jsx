@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { ModernInput } from '../components/ModernInput';
@@ -86,8 +87,11 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
                     <div className="text-gray-400 flex-shrink-0">
                         <GripVertical size={16} />
                     </div>
-                    <div className="text-sm font-semibold text-gray-900 truncate">
-                        {client.nome}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-900 truncate">
+                            {client.nome}
+                        </div>
+                        <NewBadge creationDate={client.createdAt} />
                     </div>
                 </div>
                 <button
@@ -130,12 +134,15 @@ const ClientCard = ({ client, status, onEdit }) => {
             className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
-                <div className="min-w-0">
-                    <div className="text-sm font-semibold text-gray-900 truncate">{client.nome}</div>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{client.nome}</div>
+                        <NewBadge creationDate={client.createdAt} />
+                    </div>
                 </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); onEdit && onEdit(client); }}
-                    className="p-1 text-gray-400 hover:text-gray-700"
+                    className="p-1 text-gray-400 hover:text-gray-700 flex-shrink-0"
                     title="Ações"
                 >
                     <MoreHorizontal size={16} />
@@ -231,6 +238,27 @@ const formatDate = (isoDate) => {
     return `${day}/${month}/${year}`;
 };
 
+// Verifica se o cliente foi criado há menos de 24 horas
+const isNewClient = (creationDate) => {
+    if (!creationDate) return false;
+    const now = new Date();
+    const created = new Date(creationDate);
+    const diffHours = (now - created) / (1000 * 60 * 60);
+    return diffHours < 24;
+};
+
+// Badge "Novo" que aparece por 24h
+const NewBadge = ({ creationDate }) => {
+    if (!isNewClient(creationDate)) return null;
+    
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white shadow-sm animate-pulse">
+            <Sparkles size={10} />
+            NOVO
+        </span>
+    );
+};
+
 // Badge visual para exibir os dias com ícone quando necessário
 const DayBadge = ({ creationDate }) => {
     const days = getDaysDiff(creationDate);
@@ -266,31 +294,125 @@ const SkeletonRow = ({ columns }) => (
     </tr>
 );
 
-// Sub-componente StatusSelect — custom select que mostra o StatusBadge com um select invisível sobreposto
+// Sub-componente StatusSelect — versão moderna com popover customizado usando Portal
 const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loading = false }) => {
-    const handleChange = (e) => {
-        const newStatus = e.target.value;
-        if (onChange) onChange(newStatus);
+    const [open, setOpen] = useState(false);
+    const [position, setPosition] = useState({ top: 0, left: 0, openUpwards: false });
+    const buttonRef = useRef(null);
+    const popoverRef = useRef(null);
+
+    const toggle = () => !disabled && setOpen(o => !o);
+
+    const handleSelect = (status) => {
+        if (disabled) return;
+        if (onChange) onChange(status);
+        setOpen(false);
     };
 
-    return (
-        <div className="relative group cursor-pointer inline-block">
-            {/* visual bonito */}
-            <StatusBadge status={currentStatus} loading={loading} />
+    // Calcula posição do popover
+    useEffect(() => {
+        if (!open || !buttonRef.current) return;
+        
+        const updatePosition = () => {
+            const rect = buttonRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            const popoverHeight = popoverRef.current?.offsetHeight || 280;
+            const openUpwards = spaceBelow < popoverHeight && spaceAbove > spaceBelow;
+            
+            let top = openUpwards ? rect.top - popoverHeight - 8 : rect.bottom + 8;
+            // Garante que não sai da tela
+            top = Math.max(8, Math.min(top, window.innerHeight - popoverHeight - 8));
+            
+            setPosition({
+                top,
+                left: rect.left,
+                openUpwards
+            });
+        };
+        
+        // Pequeno delay para garantir que o popover foi renderizado
+        const timer = setTimeout(updatePosition, 0);
+        return () => clearTimeout(timer);
+    }, [open]);
 
-            {/* select nativo invisível sobreposto para abrir menu do SO */}
-            <select
-                value={currentStatus}
-                onChange={handleChange}
+    // Fecha ao clicar fora
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (buttonRef.current && !buttonRef.current.contains(e.target) &&
+                popoverRef.current && !popoverRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        document.addEventListener('keydown', keyHandler);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            document.removeEventListener('keydown', keyHandler);
+        };
+    }, [open]);
+
+    const cfg = statusConfig[currentStatus] || statusConfig.default;
+    const Icon = cfg.icon || statusConfig.default.icon;
+
+    return (
+        <>
+            <button
+                ref={buttonRef}
+                type="button"
+                onClick={toggle}
                 disabled={disabled}
-                className={`absolute inset-0 w-full h-full opacity-0 cursor-pointer ${disabled ? 'pointer-events-none' : ''}`}
-                aria-label={`Alterar status do cliente ${clientId}`}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                className={`group flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-sm active:scale-[0.97]'} ${cfg.style}`}
             >
-                {STATUS_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                ))}
-            </select>
-        </div>
+                {loading ? (
+                    <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                ) : (
+                    <Icon size={14} aria-hidden className="shrink-0" />
+                )}
+                <span>{currentStatus}</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && !disabled && createPortal(
+                <div
+                    ref={popoverRef}
+                    style={{ top: `${position.top}px`, left: `${position.left}px` }}
+                    className="fixed z-[9999] w-48 rounded-xl border border-gray-200 bg-white shadow-xl backdrop-blur-sm ring-1 ring-black/5 animate-in fade-in zoom-in"
+                >
+                    <ul role="listbox" aria-label={`Status do cliente ${clientId}`} className="py-2">
+                        {STATUS_OPTIONS.map(opt => {
+                            const active = opt === currentStatus;
+                            const optCfg = statusConfig[opt] || statusConfig.default;
+                            const OptIcon = optCfg.icon || statusConfig.default.icon;
+                            return (
+                                <li key={opt} role="option" aria-selected={active}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelect(opt)}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 mx-1 text-left text-sm font-medium transition rounded-lg ${active ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-700'} focus:outline-none focus:ring-2 focus:ring-primary/30`}
+                                    >
+                                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${optCfg.style}`}>
+                                            <OptIcon size={15} />
+                                        </span>
+                                        <span className="flex-1 font-semibold">{opt}</span>
+                                        {active && <Check size={16} className="text-primary font-bold" />}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 
@@ -409,13 +531,18 @@ const ClientsList = () => {
                     logActivity && logActivity(`Cliente '${client.nome}' excluído.`);
                     addToast(`Cliente ${client.nome} excluído com sucesso`, 'success');
                     loadClients();
+                    setConfirmModal({ isOpen: false });
                 } catch (error) {
                     console.error("Erro ao excluir cliente:", error);
                     addToast('Erro ao excluir cliente', 'error');
+                    setConfirmModal({ isOpen: false });
                 }
             }
         });
     };
+
+    // Draft de data de assinatura (evita salvar a cada tecla)
+    const [signatureDrafts, setSignatureDrafts] = useState({});
 
     const handleSignatureDate = async (clientId, dateValue) => {
         try {
@@ -452,9 +579,11 @@ const ClientsList = () => {
                     logActivity && logActivity(`Cliente '${client.nome}' finalizado e movido para Assinados`);
                     addToast(`${client.nome} finalizado com sucesso`, 'success');
                     loadClients();
+                    setConfirmModal({ isOpen: false });
                 } catch (error) {
                     console.error("Erro ao finalizar cliente:", error);
                     addToast('Erro ao finalizar cliente', 'error');
+                    setConfirmModal({ isOpen: false });
                 }
             }
         });
@@ -472,9 +601,11 @@ const ClientsList = () => {
                     logActivity && logActivity(`Cliente '${client.nome}' arquivado`);
                     addToast(`${client.nome} arquivado com sucesso`, 'success');
                     loadClients();
+                    setConfirmModal({ isOpen: false });
                 } catch (error) {
                     console.error("Erro ao arquivar cliente:", error);
                     addToast('Erro ao arquivar cliente', 'error');
+                    setConfirmModal({ isOpen: false });
                 }
             }
         });
@@ -492,9 +623,11 @@ const ClientsList = () => {
                     logActivity && logActivity(`Cliente '${client.nome}' restaurado para Processos Ativos`);
                     addToast(`${client.nome} restaurado com sucesso`, 'success');
                     loadClients();
+                    setConfirmModal({ isOpen: false });
                 } catch (error) {
                     console.error("Erro ao restaurar cliente:", error);
                     addToast('Erro ao restaurar cliente', 'error');
+                    setConfirmModal({ isOpen: false });
                 }
             }
         });
@@ -512,9 +645,11 @@ const ClientsList = () => {
                     logActivity && logActivity(`Cliente '${client.nome}' restaurado para Assinados`);
                     addToast(`${client.nome} restaurado para Assinados`, 'success');
                     loadClients();
+                    setConfirmModal({ isOpen: false });
                 } catch (error) {
                     console.error("Erro ao restaurar cliente:", error);
                     addToast('Erro ao restaurar cliente', 'error');
+                    setConfirmModal({ isOpen: false });
                 }
             }
         });
@@ -795,8 +930,9 @@ const ClientsList = () => {
             </div>
 
             {(activeTab !== 'active' || viewMode === 'list') ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
-                    <table className="w-full text-left">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
+                    <div className="overflow-x-auto no-scrollbar">
+                        <table className="w-full text-left">
                         <thead className="bg-gray-50/80 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
@@ -824,7 +960,10 @@ const ClientsList = () => {
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${palette} font-medium`}>{initials}</div>
                                                     <div className="min-w-0">
-                                                        <div className="font-medium text-gray-900 truncate">{client.nome}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-medium text-gray-900 truncate">{client.nome}</div>
+                                                            <NewBadge creationDate={client.createdAt} />
+                                                        </div>
                                                         <div className="text-xs text-gray-500 truncate">{formatCPF(client.cpf)}</div>
                                                     </div>
                                                 </div>
@@ -844,10 +983,26 @@ const ClientsList = () => {
                                                 {client.status === 'Assinado' ? (
                                                     <input
                                                         type="date"
-                                                        value={client.dataAssinaturaContrato ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0] : ''}
-                                                        onChange={(e) => handleSignatureDate(client.id, e.target.value)}
+                                                        value={
+                                                            signatureDrafts[client.id] !== undefined
+                                                                ? signatureDrafts[client.id]
+                                                                : (client.dataAssinaturaContrato
+                                                                    ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0]
+                                                                    : '')
+                                                        }
+                                                        onChange={(e) => {
+                                                            const val = e.target.value; // formato AAAA-MM-DD completo ou ''
+                                                            setSignatureDrafts(prev => ({ ...prev, [client.id]: val }));
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            const val = e.target.value;
+                                                            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                                                                // Só salva quando data completa selecionada/digitada
+                                                                handleSignatureDate(client.id, val);
+                                                                setSignatureDrafts(prev => ({ ...prev, [client.id]: undefined }));
+                                                            }
+                                                        }}
                                                         className="px-2 py-1 text-sm border border-blue-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        placeholder="Selecione a data"
                                                     />
                                                 ) : client.dataAssinaturaContrato ? (
                                                     <div className="inline-flex items-center gap-2 text-sm text-gray-600">
@@ -932,6 +1087,7 @@ const ClientsList = () => {
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-4">
