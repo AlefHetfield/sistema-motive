@@ -28,10 +28,24 @@ function App() {
             }
           >
             {/* Rota inicial padrão após o login */}
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<Navigate to="/pdf-editor" replace />} />
             
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="clients" element={<ClientsList />} />
+            <Route 
+              path="dashboard" 
+              element={
+                <PrivateRoute requiredRole="ADM">
+                  <Dashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="clients" 
+              element={
+                <PrivateRoute requiredRole="ADM">
+                  <ClientsList />
+                </PrivateRoute>
+              } 
+            />
             <Route path="pdf-editor" element={<PdfEditor />} />
             <Route path="receipt-generator" element={<ReceiptGenerator />} />
             <Route path="cep-search" element={<CepSearch />} />

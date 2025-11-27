@@ -5,9 +5,7 @@ import { LogOut, LayoutDashboard, Users, FileText, Calculator, MapPin, Settings 
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 
-const baseNavItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/clients', label: 'Clientes', icon: Users },
+const corretorNavItems = [
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
@@ -15,6 +13,12 @@ const baseNavItems = [
 ];
 
 const adminNavItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
+    { to: '/clients', label: 'Clientes', icon: Users, adminOnly: true },
+    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
+    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
+    { to: '/settings', label: 'Configurações', icon: SettingsIcon },
     { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, adminOnly: true },
 ];
 
@@ -74,8 +78,8 @@ const AppLayout = () => {
         await checkAuth();
     };
     
-    // Combina itens base com itens de admin se for administrador
-    const navItems = isAdmin() ? [...baseNavItems, ...adminNavItems] : baseNavItems;
+    // Define itens de navegação com base no role do usuário
+    const navItems = isAdmin() ? adminNavItems : corretorNavItems;
     
     const currentPage = navItems.find(item => item.to === location.pathname);
 
