@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchClients } from '../services/api';
+import HealthCheck from '../components/HealthCheck';
 
 import { TrendingUp, TrendingDown, Users, Clock, AlertTriangle, Award, Sparkles, CheckCircle2, FileCheck, AlertCircle, Calendar } from 'lucide-react';
 // 1. Novos Imports para o gráfico
@@ -166,7 +167,7 @@ const Dashboard = () => {
             setAvgDaysByStatus(avgDays);
 
             // Buscar últimas atividades
-            const activitiesResponse = await fetch('http://localhost:3000/api/activities/recent?limit=9', {
+            const activitiesResponse = await fetch(`${window.location.origin}/api/activities/recent?limit=9`, {
                 credentials: 'include'
             });
             if (activitiesResponse.ok) {
@@ -227,6 +228,7 @@ const Dashboard = () => {
 
     return (
         <div className="p-6 space-y-6 animate-fade-in">
+            <HealthCheck />
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>

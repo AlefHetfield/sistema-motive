@@ -5,6 +5,15 @@
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
 
+// Loga a URL base uma vez para facilitar diagnóstico em prod/dev
+if (typeof window !== 'undefined') {
+    // Evita log repetitivo
+    if (!window.__API_BASE_URL_LOGGED__) {
+        window.__API_BASE_URL_LOGGED__ = true;
+        console.log('[API] Base URL:', API_BASE_URL);
+    }
+}
+
 /**
  * Busca todos os clientes do backend.
  * @returns {Promise<Array>} Uma promessa que resolve para a lista de clientes.
@@ -72,6 +81,22 @@ export async function fetchUsers() {
     });
     if (!response.ok) throw new Error('Falha ao buscar usuários.');
     return response.json();
+}
+
+/**
+ * Healthcheck da API/DB
+ * @returns {Promise<Object>} status da API e do banco se o backend expõe `/api/health`
+ */
+export async function getHealth() {
+    const response = await fetch(`${API_BASE_URL}/api/health`, {
+        credentials: 'include'
+    });
+    // Se a rota não existir, ainda assim retornamos algo útil
+    if (!response.ok) {
+        return { ok: false, status: response.status, message: 'Health endpoint indisponível' };
+    }
+    const data = await response.json().catch(() => ({}));
+    return { ok: true, ...data };
 }
 
 /**
