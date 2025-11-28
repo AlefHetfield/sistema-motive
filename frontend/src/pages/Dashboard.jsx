@@ -15,9 +15,10 @@ import {
     Title,
     Tooltip,
     Legend,
+    Filler,
 } from 'chart.js';
 
-// Registrar os componentes do Chart.js
+// Registrar os componentes do Chart.js incluindo o Filler
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -26,7 +27,8 @@ ChartJS.register(
     ArcElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler
 );
 
 // Constantes de Status (para consistência)
@@ -167,12 +169,20 @@ const Dashboard = () => {
             setAvgDaysByStatus(avgDays);
 
             // Buscar últimas atividades
-            const activitiesResponse = await fetch(`${window.location.origin}/api/activities/recent?limit=9`, {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+            const activitiesResponse = await fetch(`${API_BASE_URL}/api/activities/recent?limit=9`, {
                 credentials: 'include'
             });
             if (activitiesResponse.ok) {
-                const activities = await activitiesResponse.json();
-                setRecentActivities(activities);
+                const contentType = activitiesResponse.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const activities = await activitiesResponse.json();
+                    setRecentActivities(activities);
+                } else {
+                    console.warn('Resposta de atividades não é JSON');
+                }
+            } else {
+                console.warn('Erro ao buscar atividades:', activitiesResponse.status);
             }
 
         } catch (error) {
