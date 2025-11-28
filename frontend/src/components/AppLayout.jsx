@@ -64,7 +64,6 @@ const AppLayout = () => {
     const { logout, user, isAdmin, checkAuth } = useAuth();
     const location = useLocation();
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const navigate = require('react-router-dom').useNavigate();
     
     // Verifica se precisa trocar senha ao carregar
     useEffect(() => {
@@ -77,10 +76,6 @@ const AppLayout = () => {
         setShowPasswordModal(false);
         // Recarrega os dados do usuário para atualizar o estado
         await checkAuth();
-        // Se o usuário for corretor, redireciona para gerador de recibo
-        if (user?.role === 'CORRETOR') {
-            navigate('/receipt-generator', { replace: true });
-        }
     };
     
     // Define itens de navegação com base no role do usuário
