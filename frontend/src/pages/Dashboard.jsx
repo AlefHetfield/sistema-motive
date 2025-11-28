@@ -132,13 +132,13 @@ const Dashboard = () => {
             // Preparar dados para o gráfico de pizza (distribuição por status)
             const statusColors = {
                 'Aprovado': 'rgb(16, 185, 129)', // green
-                'Engenharia': 'rgb(251, 191, 36)', // amber
-                'Baixando FGTS': 'rgb(251, 191, 36)', // amber
+                'Engenharia': 'rgb(245, 158, 11)', // amber
+                'Baixando FGTS': 'rgb(234, 179, 8)', // yellow
                 'Finalização': 'rgb(168, 85, 247)', // purple
-                'Aguardando Reserva': 'rgb(59, 130, 246)', // blue
+                'Aguardando Reserva': 'rgb(6, 182, 212)', // cyan
                 'Conformidade': 'rgb(249, 115, 22)', // orange
-                'Inconforme ⚠️': 'rgb(244, 63, 94)', // rose
-                'Assinado': 'rgb(59, 130, 246)', // blue
+                'Inconforme ⚠️': 'rgb(239, 68, 68)', // red
+                'Assinado': 'rgb(99, 102, 241)', // indigo
             };
 
             setDoughnutData({
@@ -243,10 +243,10 @@ const Dashboard = () => {
         'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
         'Baixando FGTS': 'bg-yellow-50 text-yellow-700 border-yellow-200',
         'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
-        'Aguardando Reserva': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Aguardando Reserva': 'bg-cyan-50 text-cyan-700 border-cyan-200',
         'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
         'Inconforme ⚠️': 'bg-red-50 text-red-700 border-red-200',
-        'Assinado': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Assinado': 'bg-indigo-50 text-indigo-700 border-indigo-200',
     };
 
     if (isLoading) {

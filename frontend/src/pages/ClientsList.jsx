@@ -28,33 +28,33 @@ const statusConfig = {
     Engenharia: { style: 'bg-amber-50 text-amber-700 border border-amber-100', icon: Clock },
     'Baixando FGTS': { style: 'bg-yellow-50 text-yellow-700 border border-yellow-100', icon: Clock },
     'Finalização': { style: 'bg-purple-50 text-purple-700 border border-purple-100', icon: FileCheck },
-    'Aguardando Reserva': { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: Calendar },
+    'Aguardando Reserva': { style: 'bg-cyan-50 text-cyan-700 border border-cyan-100', icon: Calendar },
     Conformidade: { style: 'bg-orange-50 text-orange-700 border border-orange-100', icon: AlertCircle },
     'Inconforme ⚠️': { style: 'bg-red-50 text-red-700 border border-red-100', icon: AlertTriangle },
-    Assinado: { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: CheckCircle2 },
+    Assinado: { style: 'bg-indigo-50 text-indigo-700 border border-indigo-100', icon: CheckCircle2 },
     default: { style: 'bg-gray-50 text-gray-600 border border-gray-100', icon: CheckCircle2 }
 };
 
 const statusDotMap = {
     Aprovado: 'bg-green-400',
-    Engenharia: 'bg-yellow-400',
+    Engenharia: 'bg-amber-400',
     'Baixando FGTS': 'bg-yellow-400',
-    'Finalização': 'bg-indigo-400',
-    'Aguardando Reserva': 'bg-sky-400',
+    'Finalização': 'bg-purple-400',
+    'Aguardando Reserva': 'bg-cyan-400',
     Conformidade: 'bg-orange-400',
     'Inconforme ⚠️': 'bg-red-400',
-    Assinado: 'bg-sky-400',
+    Assinado: 'bg-indigo-400',
 };
 
 const statusBorderMap = {
     Aprovado: 'border-green-400',
-    Engenharia: 'border-yellow-400',
+    Engenharia: 'border-amber-400',
     'Baixando FGTS': 'border-yellow-400',
-    'Finalização': 'border-indigo-400',
-    'Aguardando Reserva': 'border-sky-400',
+    'Finalização': 'border-purple-400',
+    'Aguardando Reserva': 'border-cyan-400',
     Conformidade: 'border-orange-400',
     'Inconforme ⚠️': 'border-red-400',
-    Assinado: 'border-sky-400',
+    Assinado: 'border-indigo-400',
 };
 
 // DroppableArea: área de drop para colunas vazias
@@ -700,7 +700,7 @@ const ClientsList = () => {
     const filteredClients = useMemo(() => {
         const search = searchTerm.trim().toLowerCase();
         
-        return allClients.filter(client => {
+        const filtered = allClients.filter(client => {
             // tab filtering
             let tabMatch = true;
             if (activeTab === 'active') {
@@ -735,6 +735,23 @@ const ClientsList = () => {
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
             return tabMatch && agenciaMatch && responsavelMatch && statusMatch && textMatch;
+        });
+
+        // Ordenar por status seguindo a ordem definida em STATUS_OPTIONS
+        return filtered.sort((a, b) => {
+            const indexA = STATUS_OPTIONS.indexOf(a.status);
+            const indexB = STATUS_OPTIONS.indexOf(b.status);
+            
+            // Se ambos têm status conhecido, ordena pela ordem em STATUS_OPTIONS
+            if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+            }
+            
+            // Status desconhecido vai para o final
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            
+            return 0;
         });
     }, [allClients, searchTerm, filters, activeTab]);
 
