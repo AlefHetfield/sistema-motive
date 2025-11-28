@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "send-weekly-report",
+			"type": "shell",
+			"command": "Invoke-WebRequest -Uri \"http://localhost:3000/api/reports/weekly/run\" -UseBasicParsing",
+			"group": "test"
+		}
+	]
+}
