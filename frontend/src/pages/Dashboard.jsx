@@ -32,7 +32,16 @@ ChartJS.register(
 );
 
 // Constantes de Status (para consistência)
-const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
+const STATUS_OPTIONS = [
+    "Aprovado",
+    "Engenharia",
+    "Baixando FGTS",
+    "Finalização",
+    "Aguardando Reserva",
+    "Conformidade",
+    "Inconforme ⚠️",
+    "Assinado",
+];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
 const Dashboard = () => {
@@ -44,8 +53,11 @@ const Dashboard = () => {
         totalActive: 0,
         Aprovado: 0,
         Engenharia: 0,
+        'Baixando FGTS': 0,
         Finalização: 0,
+        'Aguardando Reserva': 0,
         Conformidade: 0,
+        'Inconforme ⚠️': 0,
         Assinado: 0,
     });
     // 2. Novos estados para métricas e gráfico
@@ -121,8 +133,11 @@ const Dashboard = () => {
             const statusColors = {
                 'Aprovado': 'rgb(16, 185, 129)', // green
                 'Engenharia': 'rgb(251, 191, 36)', // amber
+                'Baixando FGTS': 'rgb(251, 191, 36)', // amber
                 'Finalização': 'rgb(168, 85, 247)', // purple
+                'Aguardando Reserva': 'rgb(59, 130, 246)', // blue
                 'Conformidade': 'rgb(249, 115, 22)', // orange
+                'Inconforme ⚠️': 'rgb(244, 63, 94)', // rose
                 'Assinado': 'rgb(59, 130, 246)', // blue
             };
 
@@ -215,16 +230,22 @@ const Dashboard = () => {
     const statusIcons = {
         'Aprovado': CheckCircle2,
         'Engenharia': Clock,
+        'Baixando FGTS': Clock,
         'Finalização': FileCheck,
+        'Aguardando Reserva': Calendar,
         'Conformidade': AlertCircle,
+        'Inconforme ⚠️': AlertTriangle,
         'Assinado': CheckCircle2,
     };
 
     const statusColorClasses = {
         'Aprovado': 'bg-emerald-50 text-emerald-700 border-emerald-200',
         'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Baixando FGTS': 'bg-yellow-50 text-yellow-700 border-yellow-200',
         'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
+        'Aguardando Reserva': 'bg-blue-50 text-blue-700 border-blue-200',
         'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
+        'Inconforme ⚠️': 'bg-red-50 text-red-700 border-red-200',
         'Assinado': 'bg-blue-50 text-blue-700 border-blue-200',
     };
 

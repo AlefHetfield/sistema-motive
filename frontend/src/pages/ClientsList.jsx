@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { ModernInput } from '../components/ModernInput';
@@ -11,31 +11,49 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 // Constantes e helpers replicados do main.js
-const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado"];
+const STATUS_OPTIONS = [
+    "Aprovado",
+    "Engenharia",
+    "Baixando FGTS",
+    "Finalização",
+    "Aguardando Reserva",
+    "Conformidade",
+    "Inconforme ⚠️",
+    "Assinado",
+];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
 const statusConfig = {
     Aprovado: { style: 'bg-emerald-50 text-emerald-700 border border-emerald-100', icon: CheckCircle2 },
-    Assinado: { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: CheckCircle2 },
     Engenharia: { style: 'bg-amber-50 text-amber-700 border border-amber-100', icon: Clock },
+    'Baixando FGTS': { style: 'bg-yellow-50 text-yellow-700 border border-yellow-100', icon: Clock },
     'Finalização': { style: 'bg-purple-50 text-purple-700 border border-purple-100', icon: FileCheck },
+    'Aguardando Reserva': { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: Calendar },
     Conformidade: { style: 'bg-orange-50 text-orange-700 border border-orange-100', icon: AlertCircle },
+    'Inconforme ⚠️': { style: 'bg-red-50 text-red-700 border border-red-100', icon: AlertTriangle },
+    Assinado: { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: CheckCircle2 },
     default: { style: 'bg-gray-50 text-gray-600 border border-gray-100', icon: CheckCircle2 }
 };
 
 const statusDotMap = {
     Aprovado: 'bg-green-400',
     Engenharia: 'bg-yellow-400',
+    'Baixando FGTS': 'bg-yellow-400',
     'Finalização': 'bg-indigo-400',
+    'Aguardando Reserva': 'bg-sky-400',
     Conformidade: 'bg-orange-400',
+    'Inconforme ⚠️': 'bg-red-400',
     Assinado: 'bg-sky-400',
 };
 
 const statusBorderMap = {
     Aprovado: 'border-green-400',
     Engenharia: 'border-yellow-400',
+    'Baixando FGTS': 'border-yellow-400',
     'Finalização': 'border-indigo-400',
+    'Aguardando Reserva': 'border-sky-400',
     Conformidade: 'border-orange-400',
+    'Inconforme ⚠️': 'border-red-400',
     Assinado: 'border-sky-400',
 };
 
