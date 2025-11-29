@@ -65,9 +65,9 @@ const DroppableArea = ({ id }) => {
     return (
         <div 
             ref={setNodeRef}
-            className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center bg-gray-50/50 hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
+            className="text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center bg-gradient-to-br from-gray-50 to-gray-100/50 hover:border-primary/40 hover:bg-primary/10 hover:scale-105 transition-all duration-300 hover:shadow-lg"
         >
-            Arraste clientes aqui
+            <div className="animate-bounce">Arraste clientes aqui</div>
         </div>
     );
 };
@@ -95,7 +95,7 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
+            className={`bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div 
@@ -150,7 +150,7 @@ const ClientCard = ({ client, status, onEdit }) => {
     return (
         <div
             onClick={() => onEdit && onEdit(client)}
-            className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
+            className={`bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
@@ -271,8 +271,8 @@ const NewBadge = ({ creationDate }) => {
     if (!isNewClient(creationDate)) return null;
     
     return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white shadow-sm animate-pulse">
-            <Sparkles size={10} />
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/30 animate-pulse">
+            <Sparkles size={10} className="animate-spin" />
             NOVO
         </span>
     );
@@ -285,17 +285,17 @@ const DayBadge = ({ creationDate }) => {
 
     if (days > 30) {
         return (
-            <div className="rounded-full px-3 py-1.5 inline-flex items-center gap-2 bg-red-50 text-red-600 text-xs font-medium border border-red-100 animate-fade-in">
-                <AlertCircle size={14} className="text-red-600" />
+            <div className="rounded-full px-3.5 py-2 inline-flex items-center gap-2 bg-gradient-to-r from-red-50 to-red-100/50 text-red-600 text-xs font-semibold border border-red-200 shadow-sm animate-fade-in">
+                <AlertCircle size={14} className="text-red-600 animate-pulse" />
                 <span>{days} dias</span>
             </div>
         );
     }
 
     // neutro/positivo
-    const neutralClass = days < 10 ? 'text-green-700 bg-green-50 border-green-100' : 'text-gray-700 bg-gray-50 border-gray-100';
+    const neutralClass = days < 10 ? 'text-green-700 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-sm' : 'text-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200';
     return (
-        <div className={`rounded-full px-3 py-1.5 inline-flex items-center gap-2 text-xs font-medium border ${neutralClass} animate-fade-in`}>
+        <div className={`rounded-full px-3.5 py-2 inline-flex items-center gap-2 text-xs font-semibold border ${neutralClass} animate-fade-in`}>
             <Clock size={14} className="text-gray-400" />
             <span>{days} dias</span>
         </div>
@@ -784,7 +784,7 @@ const ClientsList = () => {
                 top: (filterDropdownRef.current?.getBoundingClientRect().bottom || 0) + 8,
                 right: window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0),
             }}
-            className="w-80 bg-white rounded-2xl shadow-xl border border-gray-200 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200"
+            className="w-80 bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300"
         >
             <div className="p-5 space-y-4">
                 {/* Status */}
@@ -1007,12 +1007,12 @@ const ClientsList = () => {
                             const droppableId = `droppable-${status}`;
 
                             return (
-                                <div key={status} className="min-w-[300px] flex-shrink-0 bg-gray-50/80 rounded-2xl p-4 border border-gray-100">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-sm font-semibold text-gray-800">
+                                <div key={status} className="min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-3xl p-5 border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+                                    <div className="flex items-center justify-between mb-5">
+                                        <h4 className="text-sm font-bold text-gray-800">
                                             {status}
                                         </h4>
-                                        <span className="text-xs font-medium text-gray-500 bg-white px-2.5 py-1 rounded-full">{items.length}</span>
+                                        <span className="text-xs font-bold text-gray-600 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-gray-200">{items.length}</span>
                                     </div>
 
                                     <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
@@ -1058,33 +1058,39 @@ const ClientsList = () => {
     return (
         <div id="active-clients-content" className="fade-in p-6">
             <div className="mb-8">
-                <div className="mb-6">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Gerenciamento de Clientes</h2>
-                    <p className="text-gray-500">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+                <div className="mb-8 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 rounded-3xl blur-3xl"></div>
+                    <div className="relative">
+                        <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-3">Gerenciamento de Clientes</h2>
+                        <p className="text-gray-600 text-lg">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+                    </div>
                 </div>
 
-                <div className="bg-gray-50 p-1 rounded-2xl inline-flex gap-2 mb-6">
+                <div className="relative bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl inline-flex gap-1 mb-8 shadow-sm border border-gray-100">
                     <button
                         onClick={() => setActiveTab('active')}
-                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'active' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'active' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
-                        Processos Ativos
+                        <span className="relative z-10">Processos Ativos</span>
+                        {activeTab === 'active' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                     <button
                         onClick={() => setActiveTab('signed')}
-                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'signed' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'signed' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
-                        Assinados
+                        <span className="relative z-10">Assinados</span>
+                        {activeTab === 'signed' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                     <button
                         onClick={() => setActiveTab('archived')}
-                        className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${activeTab === 'archived' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'archived' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
-                        Arquivados
+                        <span className="relative z-10">Arquivados</span>
+                        {activeTab === 'archived' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 animate-fade-in">
+                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-lg shadow-gray-200/50 border border-white mb-8 animate-fade-in hover:shadow-xl transition-shadow duration-300">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
                             <ModernInput
@@ -1100,13 +1106,13 @@ const ClientsList = () => {
                         <div className="flex items-center gap-3">
                             {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
                             {activeTab === 'active' && (
-                                <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
+                                <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100/80 rounded-xl p-1 border border-gray-200 shadow-sm">
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-2.5 rounded-lg transition-all duration-300 ${
+                                        className={`p-3 rounded-lg transition-all duration-300 ${
                                             viewMode === 'list'
-                                                ? 'bg-white text-primary shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                                ? 'bg-white text-primary shadow-md scale-105'
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                                         }`}
                                         title="Visualizar em Lista"
                                     >
@@ -1114,10 +1120,10 @@ const ClientsList = () => {
                                     </button>
                                     <button
                                         onClick={() => setViewMode('kanban')}
-                                        className={`p-2.5 rounded-lg transition-all duration-300 ${
+                                        className={`p-3 rounded-lg transition-all duration-300 ${
                                             viewMode === 'kanban'
-                                                ? 'bg-white text-primary shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                                ? 'bg-white text-primary shadow-md scale-105'
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                                         }`}
                                         title="Visualizar em Kanban"
                                     >
@@ -1130,28 +1136,29 @@ const ClientsList = () => {
                             <div className="relative" ref={filterDropdownRef}>
                                 <button 
                                     onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                                    className={`px-4 py-2.5 border rounded-2xl text-sm transition-all duration-300 flex items-center gap-2 font-medium relative ${
+                                    className={`px-5 py-3 border rounded-2xl text-sm transition-all duration-300 flex items-center gap-2.5 font-semibold relative shadow-sm hover:shadow-md ${
                                         activeFiltersCount > 0 
-                                            ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10' 
-                                            : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                            ? 'border-primary bg-gradient-to-br from-primary/10 to-primary/5 text-primary hover:from-primary/15 hover:to-primary/10' 
+                                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
                                     <Filter size={16} />
                                     Filtros
                                     {activeFiltersCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                                        <span className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-primary to-primary/90 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg shadow-primary/30 animate-pulse">
                                             {activeFiltersCount}
                                         </span>
                                     )}
-                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown size={14} className={`transition-transform duration-300 ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {/* Dropdown Panel */}
                                 {filterDropdownPortal}
                             </div>
-                            <button onClick={() => handleOpenModal()} className="py-2.5 px-5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm flex items-center gap-2 font-medium shadow-sm hover:shadow-md transition-all duration-300">
-                                <PlusCircle size={16} />
-                                Novo Cliente
+                            <button onClick={() => handleOpenModal()} className="relative py-3 px-6 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 text-white rounded-2xl text-sm flex items-center gap-2.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 overflow-hidden group">
+                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                                <PlusCircle size={18} className="relative z-10" />
+                                <span className="relative z-10">Novo Cliente</span>
                             </button>
                         </div>
                     </div>
@@ -1159,10 +1166,10 @@ const ClientsList = () => {
             </div>
 
             {(activeTab !== 'active' || viewMode === 'list') ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white overflow-hidden animate-fade-in">
                     <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
-                        <thead className="bg-gray-50/80 border-b border-gray-100">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Imóvel</th>
@@ -1182,7 +1189,7 @@ const ClientsList = () => {
                                     const palette = pickAvatarPalette(client.nome);
                                     const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                                     return (
-                                        <tr key={client.id} className="bg-white border-b hover:bg-gray-50">
+                                        <tr key={client.id} className="bg-white border-b border-gray-100 hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent transition-all duration-200">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${palette} font-medium`}>{initials}</div>
@@ -1247,14 +1254,14 @@ const ClientsList = () => {
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button
                                                         onClick={() => handleOpenModal(client)}
-                                                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300 hover:scale-110"
+                                                        className="p-2.5 text-primary hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/5 rounded-xl transition-all duration-300 hover:scale-110 hover:shadow-md"
                                                         title="Editar"
                                                     >
                                                         <FilePenLine size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(client)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 hover:scale-110"
+                                                        className="p-2.5 text-red-600 hover:bg-gradient-to-br hover:from-red-50 hover:to-red-100/50 rounded-xl transition-all duration-300 hover:scale-110 hover:shadow-md"
                                                         title="Excluir"
                                                     >
                                                         <Trash2 size={16} />
