@@ -24,6 +24,8 @@ const initialFormData = {
     agencia: '',
     modalidade: '',
     observacoes: '',
+    processo: false,
+    terrenoConstrucao: false,
 };
 
 const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
@@ -46,6 +48,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                     agencia: clientToEdit.agencia || '',
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
+                    processo: clientToEdit.processo || false,
+                    terrenoConstrucao: clientToEdit.terrenoConstrucao || false,
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
                 });
@@ -68,9 +72,11 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
     }, [isOpen]);
 
     const handleInputChange = (e) => {
-        const { id, value } = e.target;
+        const { id, value, type, checked } = e.target;
         if (id === 'cpf') {
             setFormData({ ...formData, [id]: formatCPF(value) });
+        } else if (type === 'checkbox') {
+            setFormData({ ...formData, [id]: checked });
         } else {
             setFormData({ ...formData, [id]: value });
         }
@@ -163,6 +169,31 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                         <ModernInput id="agencia" label="Agência (Nº)" Icon={Hash} value={formData.agencia} onChange={handleInputChange} placeholder="Apenas números" />
                         <div className="md:col-span-3">
                             <ModernInput id="modalidade" label="Modalidade" value={formData.modalidade} onChange={handleInputChange} placeholder="Ex: Financiamento, À Vista..." />
+                        </div>
+                        
+                        {/* Checkboxes lado a lado */}
+                        <div className="md:col-span-3 flex gap-4">
+                            <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 flex-1">
+                                <input
+                                    type="checkbox"
+                                    id="processo"
+                                    checked={formData.processo}
+                                    onChange={handleInputChange}
+                                    className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Processo</span>
+                            </label>
+                            
+                            <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 flex-1">
+                                <input
+                                    type="checkbox"
+                                    id="terrenoConstrucao"
+                                    checked={formData.terrenoConstrucao}
+                                    onChange={handleInputChange}
+                                    className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Terreno & Construção</span>
+                            </label>
                         </div>
                     </div>
                     <div>

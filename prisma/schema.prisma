@@ -19,6 +19,8 @@ model Client {
   agencia                String?
   modalidade             String?
   status                 String?
+  processo               Boolean   @default(false)
+  terrenoConstrucao      Boolean   @default(false)
   createdAt              DateTime  @default(now()) @map("createdAt")
   ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
   dataAssinaturaContrato DateTime? @db.Date

@@ -468,9 +468,10 @@ const ClientsList = () => {
     const [updatingStatusMap, setUpdatingStatusMap] = useState({});
     const [activeId, setActiveId] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
-    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '' });
+    const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', terrenoConstrucao: '' });
     const { logActivity } = useActivityLog();
+    const filterDropdownRef = useRef(null);
     
     const loadClients = async () => {
         setIsLoading(true);
@@ -492,6 +493,27 @@ const ClientsList = () => {
             toastTimersRef.current = {};
         };
     }, []);
+
+    // Fechar dropdown ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // Verifica se o clique foi fora do botão E fora do dropdown
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+                // Verifica se não clicou em nenhum elemento do dropdown (que está no portal)
+                const dropdownElement = document.querySelector('[data-filter-dropdown]');
+                if (dropdownElement && !dropdownElement.contains(event.target)) {
+                    setIsFilterDropdownOpen(false);
+                }
+            }
+        };
+        if (isFilterDropdownOpen) {
+            // Pequeno delay para evitar fechar imediatamente após abrir
+            setTimeout(() => {
+                document.addEventListener('mousedown', handleClickOutside);
+            }, 100);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isFilterDropdownOpen]);
 
     const addToast = (message, type = 'info', duration = 3000) => {
         const id = `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
@@ -688,12 +710,7 @@ const ClientsList = () => {
     }, [allClients]);
 
     const handleClearFilters = () => {
-        setFilters({ agencia: '', responsavel: '', status: '' });
-        setIsFilterModalOpen(false);
-    };
-
-    const handleApplyFilters = () => {
-        setIsFilterModalOpen(false);
+        setFilters({ agencia: '', responsavel: '', status: '', processo: '', terrenoConstrucao: '' });
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
@@ -717,10 +734,12 @@ const ClientsList = () => {
             const agenciaMatch = filters.agencia === '' || client.agencia === filters.agencia;
             const responsavelMatch = filters.responsavel === '' || (client.responsavel === filters.responsavel || client.corretor === filters.responsavel);
             const statusMatch = filters.status === '' || client.status === filters.status;
+            const processoMatch = filters.processo === '' || (filters.processo === 'sim' ? client.processo : !client.processo);
+            const terrenoConstrucaoMatch = filters.terrenoConstrucao === '' || (filters.terrenoConstrucao === 'sim' ? client.terrenoConstrucao : !client.terrenoConstrucao);
             
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && terrenoConstrucaoMatch;
             }
             
             // Busca em nome
@@ -735,7 +754,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && terrenoConstrucaoMatch && textMatch;
         });
 
         // Ordenar por status seguindo a ordem definida em STATUS_OPTIONS
@@ -755,6 +774,117 @@ const ClientsList = () => {
             return 0;
         });
     }, [allClients, searchTerm, filters, activeTab]);
+
+    // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
+    const filterDropdownPortal = isFilterDropdownOpen ? createPortal(
+        <div
+            data-filter-dropdown
+            style={{
+                position: 'fixed',
+                top: (filterDropdownRef.current?.getBoundingClientRect().bottom || 0) + 8,
+                right: window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0),
+            }}
+            className="w-80 bg-white rounded-2xl shadow-xl border border-gray-200 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+            <div className="p-5 space-y-4">
+                {/* Status */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Status</label>
+                    <div className="relative">
+                        <select
+                            value={filters.status}
+                            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
+                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
+                        >
+                            <option value="">Todos os status</option>
+                            {STATUS_OPTIONS.map(status => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Agência */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Agência</label>
+                    <div className="relative">
+                        <select
+                            value={filters.agencia}
+                            onChange={(e) => setFilters({ ...filters, agencia: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
+                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
+                        >
+                            <option value="">Todas as agências</option>
+                            {uniqueAgencias.map(agencia => (
+                                <option key={agencia} value={agencia}>{agencia}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Responsável */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Responsável</label>
+                    <div className="relative">
+                        <select
+                            value={filters.responsavel}
+                            onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
+                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
+                        >
+                            <option value="">Todos os responsáveis</option>
+                            {uniqueResponsaveis.map(resp => (
+                                <option key={resp} value={resp}>{resp}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Checkboxes lado a lado */}
+                {/* Divisor */}
+                <div className="border-t border-gray-100"></div>
+
+                {/* Checkboxes */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Tipo</label>
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-xl cursor-pointer transition-all group border border-transparent hover:border-gray-200">
+                            <input
+                                type="checkbox"
+                                checked={filters.processo === 'sim'}
+                                onChange={(e) => setFilters({ ...filters, processo: e.target.checked ? 'sim' : '' })}
+                                className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 select-none">Processo</span>
+                        </label>
+                        
+                        <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-xl cursor-pointer transition-all group border border-transparent hover:border-gray-200">
+                            <input
+                                type="checkbox"
+                                checked={filters.terrenoConstrucao === 'sim'}
+                                onChange={(e) => setFilters({ ...filters, terrenoConstrucao: e.target.checked ? 'sim' : '' })}
+                                className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+                            />
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 select-none">Terreno & Construção</span>
+                        </label>
+                    </div>
+                </div>
+
+                {/* Footer com botão de limpar */}
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-2xl flex justify-end">
+                    <button
+                        onClick={handleClearFilters}
+                        disabled={activeFiltersCount === 0}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    ) : null;
 
     // Atualização rápida de status com UI otimista: atualiza localmente e tenta persistir no backend
     const handleQuickStatusUpdate = async (clientId, newStatus) => {
@@ -996,22 +1126,29 @@ const ClientsList = () => {
                                 </div>
                             )}
                             
-                            <button 
-                                onClick={() => setIsFilterModalOpen(true)}
-                                className={`px-4 py-2.5 border rounded-2xl text-sm transition-all duration-300 flex items-center gap-2 font-medium relative ${
-                                    activeFiltersCount > 0 
-                                        ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10' 
-                                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                                }`}
-                            >
-                                <Filter size={16} />
-                                Filtros
-                                {activeFiltersCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center font-semibold">
-                                        {activeFiltersCount}
-                                    </span>
-                                )}
-                            </button>
+                            {/* Dropdown de Filtros */}
+                            <div className="relative" ref={filterDropdownRef}>
+                                <button 
+                                    onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                                    className={`px-4 py-2.5 border rounded-2xl text-sm transition-all duration-300 flex items-center gap-2 font-medium relative ${
+                                        activeFiltersCount > 0 
+                                            ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10' 
+                                            : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Filter size={16} />
+                                    Filtros
+                                    {activeFiltersCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                                            {activeFiltersCount}
+                                        </span>
+                                    )}
+                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {/* Dropdown Panel */}
+                                {filterDropdownPortal}
+                            </div>
                             <button onClick={() => handleOpenModal()} className="py-2.5 px-5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm flex items-center gap-2 font-medium shadow-sm hover:shadow-md transition-all duration-300">
                                 <PlusCircle size={16} />
                                 Novo Cliente
@@ -1190,94 +1327,6 @@ const ClientsList = () => {
                 onSave={handleSaveSuccess}
                 clientToEdit={editingClient}
             />
-            {/* Modal de Filtros */}
-            {isFilterModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div 
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setIsFilterModalOpen(false)}
-                    />
-                    
-                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Filter size={20} className="text-primary" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-900">Filtros Avançados</h3>
-                            </div>
-                            <button
-                                onClick={() => setIsFilterModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            {/* Filtro por Status */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                <select
-                                    value={filters.status}
-                                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                >
-                                    <option value="">Todos os status</option>
-                                    {STATUS_OPTIONS.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Filtro por Agência */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Agência</label>
-                                <select
-                                    value={filters.agencia}
-                                    onChange={(e) => setFilters({ ...filters, agencia: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                >
-                                    <option value="">Todas as agências</option>
-                                    {uniqueAgencias.map(agencia => (
-                                        <option key={agencia} value={agencia}>{agencia}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Filtro por Responsável */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável</label>
-                                <select
-                                    value={filters.responsavel}
-                                    onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                                >
-                                    <option value="">Todos os responsáveis</option>
-                                    {uniqueResponsaveis.map(resp => (
-                                        <option key={resp} value={resp}>{resp}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                            <button
-                                onClick={handleClearFilters}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
-                            >
-                                Limpar Filtros
-                            </button>
-                            <button
-                                onClick={handleApplyFilters}
-                                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium"
-                            >
-                                Aplicar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
