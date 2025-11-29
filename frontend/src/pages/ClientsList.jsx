@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
 import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
+import LoadingAnimation from '../components/LoadingAnimation';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { ModernInput } from '../components/ModernInput';
@@ -920,6 +921,10 @@ const ClientsList = () => {
         );
     };
 
+    if (isLoading) {
+        return <LoadingAnimation fullScreen size="lg" message="Carregando clientes..." />;
+    }
+
     return (
         <div id="active-clients-content" className="fade-in p-6">
             <div className="mb-8">
@@ -1033,9 +1038,7 @@ const ClientsList = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading ? (
-                                [...Array(5)].map((_, i) => <SkeletonRow key={i} columns={8} />)
-                            ) : filteredClients.length > 0 ? (
+                            {filteredClients.length > 0 ? (
                                 filteredClients.map(client => {
                                     const dayCounter = getDayCounter(client.createdAt);
                                     const initials = getInitials(client.nome);
@@ -1178,15 +1181,7 @@ const ClientsList = () => {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
-                            ))}
-                        </div>
-                    ) : (
-                        <KanbanBoard clients={filteredClients} />
-                    )}
+                    <KanbanBoard clients={filteredClients} />
                 </div>
             )}
             <ClientModal 

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Plus, Edit2, Trash2, Shield, ShieldOff, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Shield, ShieldOff, AlertCircle, CheckCircle, X } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import UserModal from '../components/UserModal';
 import ConfirmModal from '../components/ConfirmModal';
+import LoadingAnimation from '../components/LoadingAnimation';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -216,6 +218,10 @@ const UserManagement = () => {
 
     if (!isAdmin()) {
         return null; // O PrivateRoute já vai bloquear, mas por segurança
+    }
+
+    if (isLoading) {
+        return <LoadingAnimation fullScreen size="lg" message="Carregando usuários..." />;
     }
 
     return (

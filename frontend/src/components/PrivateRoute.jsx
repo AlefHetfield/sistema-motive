@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import LoadingAnimation from './LoadingAnimation';
 
 const PrivateRoute = ({ children, requiredRole }) => {
     const { isAuthenticated, isLoading, user } = useAuth();
@@ -8,14 +8,7 @@ const PrivateRoute = ({ children, requiredRole }) => {
 
     // Mostra loading enquanto verifica autenticação
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Carregando...</p>
-                </div>
-            </div>
-        );
+        return <LoadingAnimation fullScreen size="lg" message="Verificando permissões..." />;
     }
 
     // Se não estiver autenticado, redireciona para login

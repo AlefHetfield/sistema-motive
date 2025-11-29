@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, MapPin, Navigation, Building2, Mail, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { ModernInput } from '../components/ModernInput';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const CepResultCard = ({ result, index }) => (
     <div 
@@ -191,10 +192,10 @@ const CepSearch = () => {
                                 type="submit" 
                                 disabled={isLoading || cepInput.length < 9} 
                                 className="py-2.5 px-8 bg-primary hover:bg-primary/90 text-white font-medium rounded-2xl w-full sm:w-auto flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-                            >
+                                >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 size={18} className="animate-spin" />
+                                        <LoadingSpinner size={18} />
                                         Buscando...
                                     </>
                                 ) : (
@@ -203,7 +204,7 @@ const CepSearch = () => {
                                         Buscar
                                     </>
                                 )}
-                            </button>
+                                </button>
                         </form>
                     </div>
                 </div>
@@ -259,7 +260,7 @@ const CepSearch = () => {
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader2 size={18} className="animate-spin" />
+                                            <LoadingSpinner size={18} />
                                             Buscando...
                                         </>
                                     ) : (

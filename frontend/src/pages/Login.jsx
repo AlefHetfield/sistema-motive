@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
+import LoadingAnimation from '../components/LoadingAnimation';
+import LoadingSpinner from '../components/LoadingSpinner';
 import logoDark from '../assets/logo-dark.png';
 
 const Login = () => {
@@ -42,11 +44,7 @@ const Login = () => {
 
     // Mostra loading inicial enquanto verifica autenticação
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-        );
+        return <LoadingAnimation fullScreen size="lg" message="Verificando autenticação..." />;
     }
 
     return (
@@ -137,7 +135,7 @@ const Login = () => {
                         >
                             {isSubmitting ? (
                                 <>
-                                    <Loader2 size={18} className="animate-spin" />
+                                    <LoadingSpinner size={18} />
                                     <span>Entrando...</span>
                                 </>
                             ) : (

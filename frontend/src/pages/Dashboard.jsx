@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchClients } from '../services/api';
 import HealthCheck from '../components/HealthCheck';
+import LoadingAnimation from '../components/LoadingAnimation';
 
 import { TrendingUp, TrendingDown, Users, Clock, AlertTriangle, Award, Sparkles, CheckCircle2, FileCheck, AlertCircle, Calendar } from 'lucide-react';
 // 1. Novos Imports para o gráfico
@@ -250,11 +251,7 @@ const Dashboard = () => {
     };
 
     if (isLoading) {
-        return (
-            <div className="p-6 flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <LoadingAnimation fullScreen size="lg" message="Carregando dados do dashboard..." />;
     }
 
     return (

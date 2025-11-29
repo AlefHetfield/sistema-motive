@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -204,7 +205,7 @@ const Settings = () => {
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader2 size={18} className="animate-spin" />
+                                            <LoadingSpinner size={18} />
                                             Salvando...
                                         </>
                                     ) : (
@@ -291,7 +292,7 @@ const Settings = () => {
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader2 size={18} className="animate-spin" />
+                                            <LoadingSpinner size={18} />
                                             Alterando...
                                         </>
                                     ) : (

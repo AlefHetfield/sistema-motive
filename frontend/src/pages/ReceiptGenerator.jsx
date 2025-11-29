@@ -7,7 +7,8 @@ import {
     SALARIO_MINIMO_2025,
     TETO_INSS_2025
 } from '../utils/taxCalculations';
-import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Loader2, Search, MapPin, AlertCircle } from 'lucide-react';
+import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import ReceiptPreview from '../components/ReceiptPreview';
 import { ModernInput } from '../components/ModernInput';
 
