@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
 import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
@@ -791,17 +792,12 @@ const ClientsList = () => {
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Status</label>
                     <div className="relative">
-                        <select
+                        <FancySelect
                             value={filters.status}
-                            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
-                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
-                        >
-                            <option value="">Todos os status</option>
-                            {STATUS_OPTIONS.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilters({ ...filters, status: val })}
+                            placeholder="Todos os status"
+                            options={[{ label: 'Todos os status', value: '' }, ...STATUS_OPTIONS.map(s => ({ label: s, value: s }))]}
+                        />
                     </div>
                 </div>
 
@@ -809,17 +805,12 @@ const ClientsList = () => {
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Agência</label>
                     <div className="relative">
-                        <select
+                        <FancySelect
                             value={filters.agencia}
-                            onChange={(e) => setFilters({ ...filters, agencia: e.target.value })}
-                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
-                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
-                        >
-                            <option value="">Todas as agências</option>
-                            {uniqueAgencias.map(agencia => (
-                                <option key={agencia} value={agencia}>{agencia}</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilters({ ...filters, agencia: val })}
+                            placeholder="Todas as agências"
+                            options={[{ label: 'Todas as agências', value: '' }, ...uniqueAgencias.map(a => ({ label: a, value: a }))]}
+                        />
                     </div>
                 </div>
 
@@ -827,17 +818,12 @@ const ClientsList = () => {
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Responsável</label>
                     <div className="relative">
-                        <select
+                        <FancySelect
                             value={filters.responsavel}
-                            onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
-                            className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all appearance-none cursor-pointer hover:border-gray-300 font-medium text-gray-700"
-                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
-                        >
-                            <option value="">Todos os responsáveis</option>
-                            {uniqueResponsaveis.map(resp => (
-                                <option key={resp} value={resp}>{resp}</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilters({ ...filters, responsavel: val })}
+                            placeholder="Todos os responsáveis"
+                            options={[{ label: 'Todos os responsáveis', value: '' }, ...uniqueResponsaveis.map(r => ({ label: r, value: r }))]}
+                        />
                     </div>
                 </div>
 
