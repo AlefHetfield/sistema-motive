@@ -7,7 +7,7 @@ import {
     SALARIO_MINIMO_2025,
     TETO_INSS_2025
 } from '../utils/taxCalculations';
-import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle } from 'lucide-react';
+import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ReceiptPreview from '../components/ReceiptPreview';
 import { ModernInput } from '../components/ModernInput';
@@ -69,25 +69,56 @@ const ReceiptGenerator = () => {
     const handleCnpjSearch = async () => {
         const cnpj = empresaCnpj.replace(/\D/g, '');
         if (cnpj.length !== 14) {
-            alert('CNPJ inválido. Digite 14 números.'); // Usando alert por simplicidade
+            alert('CNPJ inválido. Digite 14 números.');
             return;
         }
 
         setIsCnpjLoading(true);
         try {
             const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+            
             if (!response.ok) {
-                throw new Error('Não foi possível buscar os dados do CNPJ.');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'CNPJ não encontrado ou serviço indisponível.');
             }
+            
             const data = await response.json();
-            setEmpresaNome(data.razao_social || '');
-            setEmpresaEndereco(`${data.logradouro || ''}, ${data.numero || ''}`);
-            setEmpresaCidade(`${data.municipio || ''} / ${data.uf || ''}`);
-            setEmpresaCep(data.cep || '');
+            
+            // Valida se recebeu dados válidos
+            if (!data || typeof data !== 'object') {
+                throw new Error('Resposta inválida do servidor.');
+            }
+            
+            setEmpresaNome(data.razao_social || data.nome_fantasia || '');
+            
+            // Monta endereço apenas se tiver dados
+            const logradouro = data.logradouro || data.descricao_tipo_de_logradouro || '';
+            const numero = data.numero || '';
+            const bairro = data.bairro || '';
+            
+            if (logradouro || numero) {
+                const enderecoCompleto = [logradouro, numero].filter(Boolean).join(', ');
+                setEmpresaEndereco(bairro ? `${enderecoCompleto} - ${bairro}` : enderecoCompleto);
+            } else {
+                setEmpresaEndereco('');
+            }
+            
+            const municipio = data.municipio || data.cidade || '';
+            const uf = data.uf || data.estado || '';
+            if (municipio || uf) {
+                setEmpresaCidade([municipio, uf].filter(Boolean).join(' / '));
+            } else {
+                setEmpresaCidade('');
+            }
+            
+            setEmpresaCep(data.cep ? data.cep.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2') : '');
+            
             // Bloqueia edição manual dos campos preenchidos automaticamente
             setAddressLocked(true);
         } catch (error) {
-            alert(error.message);
+            console.error('Erro ao buscar CNPJ:', error);
+            alert(error.message || 'Erro ao buscar dados do CNPJ. Tente novamente.');
+            setAddressLocked(false);
         } finally {
             setIsCnpjLoading(false);
         }

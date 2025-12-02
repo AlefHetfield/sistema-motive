@@ -94,9 +94,9 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             agencia: formData.agencia.replace(/\D/g, '') || null,
         };
 
-        // Adiciona status 'Aprovado' para novos clientes
+        // Adiciona status 'Documentação Recebida' para novos clientes
         if (isNewClient) {
-            clientPayload.status = 'Aprovado';
+            clientPayload.status = 'Documentação Recebida';
         }
 
         try {
