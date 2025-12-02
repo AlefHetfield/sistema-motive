@@ -27,8 +27,17 @@ NODE_ENV=production
 PORT=3000
 DATABASE_URL=sua_url_do_neon_aqui
 CORS_ORIGIN=https://sistema-motive-react.vercel.app
-EMAIL_USER=seu_email@gmail.com
-EMAIL_PASS=sua_senha_de_app
+
+# Timezone para os crons (mensal/semanais)
+TZ=America/Sao_Paulo
+
+# Configuração de SMTP (necessária para enviar os relatórios por e-mail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=seu_email@gmail.com
+SMTP_PASS=sua_senha_de_app
+REPORT_TO=destinatario@exemplo.com
+REPORT_FROM=seu_email@gmail.com
 ```
 
 ### Passo 4: Deploy
