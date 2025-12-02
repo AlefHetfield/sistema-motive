@@ -425,7 +425,7 @@ const Dashboard = () => {
                                 <h3 className="text-lg font-semibold text-gray-800">Distribuição por Status</h3>
                                 <p className="text-sm text-gray-500 mt-1">Visão geral</p>
                             </div>
-                            <div className="h-56 flex items-center justify-center">
+                            <div className="h-80 flex items-center justify-center">
                                 {doughnutData.labels.length > 0 && statusCounts.totalActive > 0 ? (
                                     <Doughnut 
                                         data={doughnutData} 
