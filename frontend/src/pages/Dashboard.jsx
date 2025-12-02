@@ -40,7 +40,7 @@ const STATUS_OPTIONS = [
     "Finalização",
     "Aguardando Reserva",
     "Conformidade",
-    "Inconforme ⚠️",
+    "Inconforme",
     "Assinado",
 ];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
@@ -58,7 +58,7 @@ const Dashboard = () => {
         Finalização: 0,
         'Aguardando Reserva': 0,
         Conformidade: 0,
-        'Inconforme ⚠️': 0,
+        'Inconforme': 0,
         Assinado: 0,
     });
     // 2. Novos estados para métricas e gráfico
@@ -138,7 +138,7 @@ const Dashboard = () => {
                 'Finalização': 'rgb(168, 85, 247)', // purple
                 'Aguardando Reserva': 'rgb(6, 182, 212)', // cyan
                 'Conformidade': 'rgb(249, 115, 22)', // orange
-                'Inconforme ⚠️': 'rgb(239, 68, 68)', // red
+                'Inconforme': 'rgb(239, 68, 68)', // red
                 'Assinado': 'rgb(99, 102, 241)', // indigo
             };
 
@@ -235,7 +235,7 @@ const Dashboard = () => {
         'Finalização': FileCheck,
         'Aguardando Reserva': Calendar,
         'Conformidade': AlertCircle,
-        'Inconforme ⚠️': AlertTriangle,
+        'Inconforme': AlertTriangle,
         'Assinado': CheckCircle2,
     };
 
@@ -246,7 +246,7 @@ const Dashboard = () => {
         'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
         'Aguardando Reserva': 'bg-cyan-50 text-cyan-700 border-cyan-200',
         'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
-        'Inconforme ⚠️': 'bg-red-50 text-red-700 border-red-200',
+        'Inconforme': 'bg-red-50 text-red-700 border-red-200',
         'Assinado': 'bg-indigo-50 text-indigo-700 border-indigo-200',
     };
 

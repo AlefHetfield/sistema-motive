@@ -20,7 +20,7 @@ const STATUS_OPTIONS = [
     "Finalização",
     "Aguardando Reserva",
     "Conformidade",
-    "Inconforme ⚠️",
+    "Inconforme",
     "Assinado",
 ];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
@@ -32,7 +32,7 @@ const statusConfig = {
     'Finalização': { style: 'bg-purple-50 text-purple-700 border border-purple-100', icon: FileCheck },
     'Aguardando Reserva': { style: 'bg-cyan-50 text-cyan-700 border border-cyan-100', icon: Calendar },
     Conformidade: { style: 'bg-orange-50 text-orange-700 border border-orange-100', icon: AlertCircle },
-    'Inconforme ⚠️': { style: 'bg-red-50 text-red-700 border border-red-100', icon: AlertTriangle },
+    'Inconforme': { style: 'bg-red-50 text-red-700 border border-red-100', icon: AlertTriangle },
     Assinado: { style: 'bg-indigo-50 text-indigo-700 border border-indigo-100', icon: CheckCircle2 },
     default: { style: 'bg-gray-50 text-gray-600 border border-gray-100', icon: CheckCircle2 }
 };
@@ -44,7 +44,7 @@ const statusDotMap = {
     'Finalização': 'bg-purple-400',
     'Aguardando Reserva': 'bg-cyan-400',
     Conformidade: 'bg-orange-400',
-    'Inconforme ⚠️': 'bg-red-400',
+    'Inconforme': 'bg-red-400',
     Assinado: 'bg-indigo-400',
 };
 
@@ -55,7 +55,7 @@ const statusBorderMap = {
     'Finalização': 'border-purple-400',
     'Aguardando Reserva': 'border-cyan-400',
     Conformidade: 'border-orange-400',
-    'Inconforme ⚠️': 'border-red-400',
+    'Inconforme': 'border-red-400',
     Assinado: 'border-indigo-400',
 };
 
