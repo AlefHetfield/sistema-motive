@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
-import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check } from 'lucide-react';
+import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2 } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
@@ -28,7 +28,7 @@ const initialFormData = {
     venda: false,
 };
 
-const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
+const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const [formData, setFormData] = useState(initialFormData);
     const [isSaving, setIsSaving] = useState(false);
     const { logActivity } = useActivityLog(); // Usar o hook de log
@@ -199,23 +199,41 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                     <div>
                         <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={4} />
                     </div>
-                    <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="py-2 px-4 text-gray-800 font-semibold rounded-md bg-transparent hover:bg-gray-100 transition"
-                        >
-                            Cancelar
-                        </button>
+                    <div className="flex justify-between items-center">
+                        {/* Botão de excluir à esquerda (só aparece ao editar) */}
+                        {clientToEdit && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onDelete(clientToEdit);
+                                    onClose();
+                                }}
+                                className="inline-flex items-center gap-2 py-2 px-4 text-white rounded-md bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 transform transition-all duration-200 hover:-translate-y-0.5"
+                            >
+                                <Trash2 size={16} />
+                                Excluir Cliente
+                            </button>
+                        )}
+                        
+                        {/* Botões de ação à direita */}
+                        <div className="flex gap-3 ml-auto">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="py-2 px-4 text-gray-800 font-semibold rounded-md bg-transparent hover:bg-gray-100 transition"
+                            >
+                                Cancelar
+                            </button>
 
-                        <button
-                            type="submit"
-                            className={`inline-flex items-center gap-2 py-2 px-4 text-white rounded-md shadow-lg shadow-blue-500/30 transform transition-all duration-200 ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'} bg-gradient-to-r from-primary to-blue-600`}
-                            disabled={isSaving}
-                        >
-                            <Check size={16} />
-                            {isSaving ? 'Salvando...' : 'Salvar Cliente'}
-                        </button>
+                            <button
+                                type="submit"
+                                className={`inline-flex items-center gap-2 py-2 px-4 text-white rounded-md shadow-lg shadow-blue-500/30 transform transition-all duration-200 ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'} bg-gradient-to-r from-primary to-blue-600`}
+                                disabled={isSaving}
+                            >
+                                <Check size={16} />
+                                {isSaving ? 'Salvando...' : 'Salvar Cliente'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -100,7 +100,7 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
+            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div 
@@ -155,7 +155,7 @@ const ClientCard = ({ client, status, onEdit }) => {
     return (
         <div
             onClick={() => onEdit && onEdit(client)}
-            className={`bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
+            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
@@ -1447,6 +1447,7 @@ const ClientsList = () => {
                 onClose={handleCloseModal}
                 onSave={handleSaveSuccess}
                 clientToEdit={editingClient}
+                onDelete={handleDelete}
             />
 
             <ConfirmModal
