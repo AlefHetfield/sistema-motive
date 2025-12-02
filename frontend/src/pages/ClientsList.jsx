@@ -770,7 +770,13 @@ const ClientsList = () => {
                 let second = b[sortDescriptor.column];
 
                 // Tratamento especial para campos específicos
-                if (sortDescriptor.column === 'nome' || sortDescriptor.column === 'imovel' || sortDescriptor.column === 'responsavel' || sortDescriptor.column === 'corretor' || sortDescriptor.column === 'agencia' || sortDescriptor.column === 'status') {
+                if (sortDescriptor.column === 'status') {
+                    // Ordenação por posição na lista STATUS_OPTIONS
+                    const firstIndex = STATUS_OPTIONS.indexOf(first);
+                    const secondIndex = STATUS_OPTIONS.indexOf(second);
+                    first = firstIndex !== -1 ? firstIndex : 999;
+                    second = secondIndex !== -1 ? secondIndex : 999;
+                } else if (sortDescriptor.column === 'nome' || sortDescriptor.column === 'imovel' || sortDescriptor.column === 'responsavel' || sortDescriptor.column === 'corretor' || sortDescriptor.column === 'agencia') {
                     // Ordenação de strings (case-insensitive)
                     first = (first || '').toString().toLowerCase();
                     second = (second || '').toString().toLowerCase();
