@@ -758,22 +758,8 @@ const ClientsList = () => {
             return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && terrenoConstrucaoMatch && textMatch;
         });
 
-        // Ordenar por status seguindo a ordem definida em STATUS_OPTIONS
-        return filtered.sort((a, b) => {
-            const indexA = STATUS_OPTIONS.indexOf(a.status);
-            const indexB = STATUS_OPTIONS.indexOf(b.status);
-            
-            // Se ambos têm status conhecido, ordena pela ordem em STATUS_OPTIONS
-            if (indexA !== -1 && indexB !== -1) {
-                return indexA - indexB;
-            }
-            
-            // Status desconhecido vai para o final
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            
-            return 0;
-        });
+        // Manter ordem de criação (ordem natural recebida da API)
+        return filtered;
     }, [allClients, searchTerm, filters, activeTab]);
 
     // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
