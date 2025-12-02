@@ -26,19 +26,31 @@ No Render, vá em **Environment** e adicione:
 NODE_ENV=production
 PORT=3000
 DATABASE_URL=sua_url_do_neon_aqui
-CORS_ORIGIN=https://sistema-motive-react.vercel.app
+CORS_ORIGIN=https://sistema-motive.vercel.app
+SESSION_SECRET=gere_com_openssl_rand_hex_32
 
 # Timezone para os crons (mensal/semanais)
 TZ=America/Sao_Paulo
 
-# Configuração de SMTP (necessária para enviar os relatórios por e-mail)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=seu_email@gmail.com
-SMTP_PASS=sua_senha_de_app
+# === ENVIO DE E-MAIL (escolha uma das opções) ===
+
+# OPÇÃO 1: Resend (RECOMENDADO para Render - portas SMTP bloqueadas no Free tier)
+# Crie conta grátis em https://resend.com (3000 emails/mês)
+# Adicione e verifique seu domínio ou use onboarding@resend.dev para testes
+RESEND_API_KEY=re_sua_chave_aqui
 REPORT_TO=destinatario@exemplo.com
-REPORT_FROM=seu_email@gmail.com
+REPORT_FROM=onboarding@resend.dev
+
+# OPÇÃO 2: SMTP direto (pode não funcionar no Render Free - portas bloqueadas)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USER=seu_email@gmail.com
+# SMTP_PASS=sua_senha_de_app
+# REPORT_TO=destinatario@exemplo.com
+# REPORT_FROM=seu_email@gmail.com
 ```
+
+**⚠️ Importante:** O Render bloqueia portas SMTP (587, 465, 25) no plano Free. Use **Resend** (opção 1) para garantir o envio de relatórios.
 
 ### Passo 4: Deploy
 1. Clique em **"Create Web Service"**

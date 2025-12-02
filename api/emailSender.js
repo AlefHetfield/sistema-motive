@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import XLSX from 'xlsx';
 
 function ensureReportsDir() {
@@ -13,6 +14,7 @@ function ensureReportsDir() {
 
 export async function dispatchReport({ workbook, fileName, metrics, type = 'monthly', newClients = [] }) {
   const {
+    RESEND_API_KEY,
     SMTP_HOST,
     SMTP_PORT,
     SMTP_USER,
@@ -23,24 +25,18 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
 
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-  const canEmail = SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && REPORT_TO;
+  // Prioriza Resend (funciona no Render), fallback para SMTP
+  const canSendResend = RESEND_API_KEY && REPORT_TO && REPORT_FROM;
+  const canSendSMTP = SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && REPORT_TO;
 
-  if (!canEmail) {
+  if (!canSendResend && !canSendSMTP) {
     // Fallback: salva arquivo local e loga aviso
     const dir = ensureReportsDir();
     const filePath = path.join(dir, fileName);
     fs.writeFileSync(filePath, buffer);
-    console.log(`Relatório salvo localmente em ${filePath} (SMTP não configurado).`);
+    console.log(`Relatório salvo localmente em ${filePath} (email não configurado).`);
     return { delivered: false, filePath, metrics };
   }
-
-  // Cria transporter
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT),
-    secure: parseInt(SMTP_PORT) === 465, // heuristic
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  });
 
   let subject;
   let html;
@@ -271,17 +267,40 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
   }
 
   try {
-    await transporter.sendMail({
-      from: REPORT_FROM,
-      to: REPORT_TO,
-      subject,
-      html,
-      attachments: [
-        { filename: fileName, content: buffer }
-      ]
-    });
-    console.log('Relatório enviado por e-mail com sucesso.');
-    return { delivered: true, metrics, type };
+    if (canSendResend) {
+      // Usar Resend (recomendado para Render)
+      const resend = new Resend(RESEND_API_KEY);
+      await resend.emails.send({
+        from: REPORT_FROM,
+        to: REPORT_TO,
+        subject,
+        html,
+        attachments: [
+          { filename: fileName, content: buffer }
+        ]
+      });
+      console.log('Relatório enviado por e-mail com sucesso via Resend.');
+      return { delivered: true, metrics, type, method: 'resend' };
+    } else {
+      // Fallback: SMTP tradicional (pode não funcionar no Render Free)
+      const transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: parseInt(SMTP_PORT),
+        secure: parseInt(SMTP_PORT) === 465,
+        auth: { user: SMTP_USER, pass: SMTP_PASS }
+      });
+      await transporter.sendMail({
+        from: REPORT_FROM,
+        to: REPORT_TO,
+        subject,
+        html,
+        attachments: [
+          { filename: fileName, content: buffer }
+        ]
+      });
+      console.log('Relatório enviado por e-mail com sucesso via SMTP.');
+      return { delivered: true, metrics, type, method: 'smtp' };
+    }
   } catch (err) {
     console.error('Falha ao enviar e-mail, salvando localmente.', err);
     const dir = ensureReportsDir();
