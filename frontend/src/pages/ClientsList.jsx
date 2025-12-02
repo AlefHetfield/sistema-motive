@@ -14,6 +14,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = [
+    "Documentação Recebida",
     "Aprovado",
     "Engenharia",
     "Baixando FGTS",
@@ -26,6 +27,7 @@ const STATUS_OPTIONS = [
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
 
 const statusConfig = {
+    'Documentação Recebida': { style: 'bg-gray-50 text-gray-700 border border-gray-100', icon: FileCheck },
     Aprovado: { style: 'bg-emerald-50 text-emerald-700 border border-emerald-100', icon: CheckCircle2 },
     Engenharia: { style: 'bg-amber-50 text-amber-700 border border-amber-100', icon: Clock },
     'Baixando FGTS': { style: 'bg-yellow-50 text-yellow-700 border border-yellow-100', icon: Clock },
@@ -38,6 +40,7 @@ const statusConfig = {
 };
 
 const statusDotMap = {
+    'Documentação Recebida': 'bg-gray-400',
     Aprovado: 'bg-green-400',
     Engenharia: 'bg-amber-400',
     'Baixando FGTS': 'bg-yellow-400',
@@ -49,6 +52,7 @@ const statusDotMap = {
 };
 
 const statusBorderMap = {
+    'Documentação Recebida': 'border-gray-400',
     Aprovado: 'border-green-400',
     Engenharia: 'border-amber-400',
     'Baixando FGTS': 'border-yellow-400',

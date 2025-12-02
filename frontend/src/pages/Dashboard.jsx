@@ -34,6 +34,7 @@ ChartJS.register(
 
 // Constantes de Status (para consistência)
 const STATUS_OPTIONS = [
+    "Documentação Recebida",
     "Aprovado",
     "Engenharia",
     "Baixando FGTS",
@@ -52,6 +53,7 @@ const Dashboard = () => {
     // Estado para as contagens por status
     const [statusCounts, setStatusCounts] = useState({
         totalActive: 0,
+        'Documentação Recebida': 0,
         Aprovado: 0,
         Engenharia: 0,
         'Baixando FGTS': 0,
@@ -132,6 +134,7 @@ const Dashboard = () => {
 
             // Preparar dados para o gráfico de pizza (distribuição por status)
             const statusColors = {
+                'Documentação Recebida': 'rgb(156, 163, 175)', // gray
                 'Aprovado': 'rgb(16, 185, 129)', // green
                 'Engenharia': 'rgb(245, 158, 11)', // amber
                 'Baixando FGTS': 'rgb(234, 179, 8)', // yellow
@@ -229,6 +232,7 @@ const Dashboard = () => {
     };
 
     const statusIcons = {
+        'Documentação Recebida': FileCheck,
         'Aprovado': CheckCircle2,
         'Engenharia': Clock,
         'Baixando FGTS': Clock,
@@ -240,6 +244,7 @@ const Dashboard = () => {
     };
 
     const statusColorClasses = {
+        'Documentação Recebida': 'bg-gray-50 text-gray-700 border-gray-200',
         'Aprovado': 'bg-emerald-50 text-emerald-700 border-emerald-200',
         'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
         'Baixando FGTS': 'bg-yellow-50 text-yellow-700 border-yellow-200',
