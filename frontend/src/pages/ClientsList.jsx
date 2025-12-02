@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import LoadingAnimation from '../components/LoadingAnimation';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -475,6 +475,7 @@ const ClientsList = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
     const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '' });
+    const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
     
@@ -762,9 +763,35 @@ const ClientsList = () => {
             return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && textMatch;
         });
 
-        // Manter ordem de criação (ordem natural recebida da API)
+        // Aplicar ordenação se sortDescriptor estiver definido
+        if (sortDescriptor.column && sortDescriptor.direction) {
+            filtered.sort((a, b) => {
+                let first = a[sortDescriptor.column];
+                let second = b[sortDescriptor.column];
+
+                // Tratamento especial para campos específicos
+                if (sortDescriptor.column === 'nome' || sortDescriptor.column === 'imovel' || sortDescriptor.column === 'responsavel' || sortDescriptor.column === 'corretor' || sortDescriptor.column === 'agencia' || sortDescriptor.column === 'status') {
+                    // Ordenação de strings (case-insensitive)
+                    first = (first || '').toString().toLowerCase();
+                    second = (second || '').toString().toLowerCase();
+                } else if (sortDescriptor.column === 'createdAt' || sortDescriptor.column === 'dataAssinaturaContrato') {
+                    // Ordenação de datas
+                    first = first ? new Date(first).getTime() : 0;
+                    second = second ? new Date(second).getTime() : 0;
+                }
+
+                let cmp = first < second ? -1 : first > second ? 1 : 0;
+
+                if (sortDescriptor.direction === 'descending') {
+                    cmp *= -1;
+                }
+
+                return cmp;
+            });
+        }
+
         return filtered;
-    }, [allClients, searchTerm, filters, activeTab]);
+    }, [allClients, searchTerm, filters, activeTab, sortDescriptor]);
 
     // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
     const filterDropdownPortal = isFilterDropdownOpen ? createPortal(
@@ -1147,13 +1174,118 @@ const ClientsList = () => {
                         <table className="w-full text-left">
                         <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Imóvel</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Responsável</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Agência</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assinatura</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Tempo</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'nome',
+                                            direction: prev.column === 'nome' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Cliente
+                                        {sortDescriptor.column === 'nome' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'imovel',
+                                            direction: prev.column === 'imovel' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Imóvel
+                                        {sortDescriptor.column === 'imovel' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'responsavel',
+                                            direction: prev.column === 'responsavel' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Responsável
+                                        {sortDescriptor.column === 'responsavel' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'agencia',
+                                            direction: prev.column === 'agencia' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Agência
+                                        {sortDescriptor.column === 'agencia' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'status',
+                                            direction: prev.column === 'status' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Status
+                                        {sortDescriptor.column === 'status' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'dataAssinaturaContrato',
+                                            direction: prev.column === 'dataAssinaturaContrato' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors"
+                                    >
+                                        Assinatura
+                                        {sortDescriptor.column === 'dataAssinaturaContrato' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'createdAt',
+                                            direction: prev.column === 'createdAt' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
+                                    >
+                                        Tempo
+                                        {sortDescriptor.column === 'createdAt' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Ações</th>
                             </tr>
                         </thead>
