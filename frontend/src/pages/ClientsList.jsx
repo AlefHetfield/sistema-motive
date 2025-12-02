@@ -474,7 +474,7 @@ const ClientsList = () => {
     const [activeId, setActiveId] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', terrenoConstrucao: '' });
+    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '' });
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
     
@@ -715,7 +715,7 @@ const ClientsList = () => {
     }, [allClients]);
 
     const handleClearFilters = () => {
-        setFilters({ agencia: '', responsavel: '', status: '', processo: '', terrenoConstrucao: '' });
+        setFilters({ agencia: '', responsavel: '', status: '', processo: '', venda: '' });
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
@@ -740,11 +740,11 @@ const ClientsList = () => {
             const responsavelMatch = filters.responsavel === '' || (client.responsavel === filters.responsavel || client.corretor === filters.responsavel);
             const statusMatch = filters.status === '' || client.status === filters.status;
             const processoMatch = filters.processo === '' || (filters.processo === 'sim' ? client.processo : !client.processo);
-            const terrenoConstrucaoMatch = filters.terrenoConstrucao === '' || (filters.terrenoConstrucao === 'sim' ? client.terrenoConstrucao : !client.terrenoConstrucao);
+            const vendaMatch = filters.venda === '' || (filters.venda === 'sim' ? client.venda : !client.venda);
             
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && terrenoConstrucaoMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch;
             }
             
             // Busca em nome
@@ -759,7 +759,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && terrenoConstrucaoMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && textMatch;
         });
 
         // Manter ordem de criação (ordem natural recebida da API)
@@ -838,11 +838,11 @@ const ClientsList = () => {
                         <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-xl cursor-pointer transition-all group border border-transparent hover:border-gray-200">
                             <input
                                 type="checkbox"
-                                checked={filters.terrenoConstrucao === 'sim'}
-                                onChange={(e) => setFilters({ ...filters, terrenoConstrucao: e.target.checked ? 'sim' : '' })}
+                                checked={filters.venda === 'sim'}
+                                onChange={(e) => setFilters({ ...filters, venda: e.target.checked ? 'sim' : '' })}
                                 className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
                             />
-                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 select-none">Terreno & Construção</span>
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 select-none">Venda</span>
                         </label>
                     </div>
                 </div>

@@ -25,7 +25,7 @@ const initialFormData = {
     modalidade: '',
     observacoes: '',
     processo: false,
-    terrenoConstrucao: false,
+    venda: false,
 };
 
 const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
@@ -49,7 +49,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
                     processo: clientToEdit.processo || false,
-                    terrenoConstrucao: clientToEdit.terrenoConstrucao || false,
+                    venda: clientToEdit.venda || false,
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
                 });
@@ -187,12 +187,12 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit }) => {
                             <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 flex-1">
                                 <input
                                     type="checkbox"
-                                    id="terrenoConstrucao"
-                                    checked={formData.terrenoConstrucao}
+                                    id="venda"
+                                    checked={formData.venda}
                                     onChange={handleInputChange}
                                     className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
                                 />
-                                <span className="text-sm font-medium text-gray-700">Terreno & Construção</span>
+                                <span className="text-sm font-medium text-gray-700">Venda</span>
                             </label>
                         </div>
                     </div>
