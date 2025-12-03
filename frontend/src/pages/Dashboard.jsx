@@ -255,9 +255,30 @@ const Dashboard = () => {
         'Assinado': 'bg-indigo-50 text-indigo-700 border-indigo-200',
     };
 
+
+    // Função para envio manual do relatório/backup
+    const handleSendBackup = async () => {
+        setSendingBackup(true);
+        setBackupStatus(null);
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+            const res = await fetch(`${API_BASE_URL}/api/reports/weekly/run`, { method: 'GET', credentials: 'include' });
+            if (res.ok) {
+                setBackupStatus('success');
+            } else {
+                setBackupStatus('error');
+            }
+        } catch (e) {
+            setBackupStatus('error');
+        } finally {
+            setSendingBackup(false);
+        }
+    };
+
     if (isLoading) {
         return <LoadingAnimation fullScreen size="lg" message="Carregando dados do dashboard..." />;
     }
+
 
     return (
         <div className="p-6 space-y-6 animate-fade-in">

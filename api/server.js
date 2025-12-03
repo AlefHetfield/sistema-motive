@@ -428,7 +428,7 @@ cron.schedule('0 9 1 * *', async () => {
 
 // --- RELATÓRIO SEMANAL ---
 // Endpoint manual: /api/reports/weekly/run?start=2025-11-17&end=2025-11-24
-app.get('/api/reports/weekly/run', async (req, res) => {
+app.get('/api/reports/weekly/run', requireAuth, async (req, res) => {
   try {
     const end = req.query.end ? new Date(req.query.end) : new Date();
     const start = req.query.start ? new Date(req.query.start) : new Date(end.getTime() - 7*24*60*60*1000);

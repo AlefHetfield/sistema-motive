@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, FileText, Send } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -29,6 +29,9 @@ const Settings = () => {
         new: false,
         confirm: false,
     });
+
+    // Backup
+    const [sendingBackup, setSendingBackup] = useState(false);
 
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
@@ -60,6 +63,28 @@ const Settings = () => {
             showNotification('Erro ao conectar com o servidor', 'error');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleSendBackup = async () => {
+        setSendingBackup(true);
+        try {
+            const response = await fetch(`${API_URL}/api/reports/weekly/run`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            if (response.ok) {
+                showNotification('Relatório enviado com sucesso!', 'success');
+            } else {
+                const error = await response.json();
+                showNotification(error.error || 'Erro ao enviar relatório', 'error');
+            }
+        } catch (error) {
+            console.error('Erro ao enviar backup:', error);
+            showNotification('Erro ao conectar com o servidor', 'error');
+        } finally {
+            setSendingBackup(false);
         }
     };
 
@@ -105,6 +130,7 @@ const Settings = () => {
     const tabs = [
         { id: 'profile', label: 'Perfil', icon: User },
         { id: 'security', label: 'Segurança', icon: Lock },
+        ...(user?.role === 'ADM' ? [{ id: 'reports', label: 'Relatórios', icon: FileText }] : []),
     ];
 
     return (
@@ -301,6 +327,76 @@ const Settings = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                )}
+
+                {activeTab === 'reports' && (
+                    <div className="max-w-2xl">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Relatórios e Backup</h2>
+                        
+                        {/* Info sobre backup automático */}
+                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                            <Shield className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+                            <div>
+                                <p className="text-sm font-medium text-blue-900">
+                                    Relatórios Automáticos Configurados
+                                </p>
+                                <p className="text-xs text-blue-700 mt-1">
+                                    • Relatório Mensal: Todo dia 1 às 09:00<br />
+                                    • Relatório Semanal: Todas as segundas às 09:05
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Seção de envio manual */}
+                        <div className="space-y-4">
+                            <div className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border border-primary/20">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <Send className="text-primary" size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                            Enviar Relatório Manualmente
+                                        </h3>
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            Envie um relatório semanal imediatamente com os dados atuais do sistema.
+                                            O relatório será enviado por email com um arquivo Excel anexado.
+                                        </p>
+                                        <button
+                                            onClick={handleSendBackup}
+                                            disabled={sendingBackup}
+                                            className="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-white
+                                                     font-medium rounded-xl hover:shadow-lg disabled:opacity-60 
+                                                     disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+                                        >
+                                            {sendingBackup ? (
+                                                <>
+                                                    <LoadingSpinner size={18} />
+                                                    Enviando relatório...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Send size={18} />
+                                                    Enviar Relatório Agora
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Info adicional */}
+                            <div className="p-4 bg-gray-50 rounded-xl">
+                                <h4 className="text-sm font-semibold text-gray-900 mb-2">ℹ️ Informações sobre o Relatório</h4>
+                                <ul className="text-xs text-gray-600 space-y-1">
+                                    <li>• O relatório inclui todos os clientes ativos dos últimos 7 dias</li>
+                                    <li>• Formato: Excel (.xlsx) com métricas detalhadas</li>
+                                    <li>• Destinatários configurados nas variáveis de ambiente</li>
+                                    <li>• O envio pode levar alguns segundos para processar</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
