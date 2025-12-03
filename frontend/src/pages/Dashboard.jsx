@@ -42,6 +42,7 @@ const STATUS_OPTIONS = [
     "Aguardando Reserva",
     "Conformidade",
     "Inconforme",
+    "Emissão e Assinatura",
     "Assinado",
 ];
 const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
@@ -142,6 +143,7 @@ const Dashboard = () => {
                 'Aguardando Reserva': 'rgb(6, 182, 212)', // cyan
                 'Conformidade': 'rgb(249, 115, 22)', // orange
                 'Inconforme': 'rgb(239, 68, 68)', // red
+                'Emissão e Assinatura': 'rgb(59, 130, 246)', // blue
                 'Assinado': 'rgb(99, 102, 241)', // indigo
             };
 
