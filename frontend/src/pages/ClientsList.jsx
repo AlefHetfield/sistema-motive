@@ -468,6 +468,8 @@ const ClientsList = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [toasts, setToasts] = useState([]);
     const toastTimersRef = useRef({});
+    const kanbanScrollRef = useRef(null);
+    const scrollPositionRef = useRef(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [activeTab, setActiveTab] = useState('active');
@@ -557,7 +559,18 @@ const ClientsList = () => {
         loadClients();
     }, []);
 
+    // Restaurar posição do scroll após re-renderização
+    useEffect(() => {
+        if (kanbanScrollRef.current && viewMode === 'kanban') {
+            kanbanScrollRef.current.scrollLeft = scrollPositionRef.current;
+        }
+    });
+
     const handleOpenModal = (client = null) => {
+        // Salvar posição do scroll antes de abrir o modal
+        if (kanbanScrollRef.current) {
+            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
+        }
         setEditingClient(client);
         setIsModalOpen(true);
     };
@@ -901,6 +914,10 @@ const ClientsList = () => {
 
     // Atualização rápida de status com UI otimista: atualiza localmente e tenta persistir no backend
     const handleQuickStatusUpdate = async (clientId, newStatus) => {
+        // Salvar posição do scroll antes de atualizar o estado
+        if (kanbanScrollRef.current) {
+            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
+        }
         const prevClients = allClients;
         const prevClient = prevClients.find(c => c.id === clientId);
         const prevStatus = prevClient ? prevClient.status : null;
@@ -937,6 +954,10 @@ const ClientsList = () => {
 
     // Handler quando o arrasto começa
     const handleDragStart = (event) => {
+        // Salvar posição do scroll antes do drag
+        if (kanbanScrollRef.current) {
+            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
+        }
         setActiveId(event.active.id);
     };
 
@@ -947,6 +968,10 @@ const ClientsList = () => {
 
     // Handler para quando um card é solto em uma nova posição
     const handleDragEnd = async (event) => {
+        // Salvar posição do scroll antes de atualizar o estado
+        if (kanbanScrollRef.current) {
+            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
+        }
         setActiveId(null);
         const { active, over } = event;
 
@@ -1011,7 +1036,7 @@ const ClientsList = () => {
                 onDragEnd={handleDragEnd}
                 onDragCancel={handleDragCancel}
             >
-                <div className="overflow-x-auto">
+                <div ref={kanbanScrollRef} className="overflow-x-auto">
                     <div className="flex gap-6 px-2">
                         {statuses.map(status => {
                             const items = clients.filter(c => c.status === status);
