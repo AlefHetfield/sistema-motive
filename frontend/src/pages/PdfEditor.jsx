@@ -81,18 +81,29 @@ function SortablePageItem({ page, id, index, onRemove, isLoading }) {
                         <span className="text-xs">Carregando...</span>
                     </div>
                 ) : page.fileUrl ? (
-                    <div className="w-full h-full relative bg-white">
-                        <iframe
-                            src={`${page.fileUrl}#page=${page.pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=150`}
-                            className="w-full h-full border-0 pointer-events-none"
-                            title={`Preview página ${index + 1}`}
+                    page.isImage ? (
+                        <img
+                            src={page.fileUrl}
+                            alt={`Preview ${page.fileName}`}
+                            className="w-full h-full object-contain"
                             style={{ 
-                                transform: 'scale(1.1)', 
-                                transformOrigin: 'center center',
                                 filter: 'contrast(1.05) brightness(1.02)'
                             }}
                         />
-                    </div>
+                    ) : (
+                        <div className="w-full h-full relative bg-white">
+                            <iframe
+                                src={`${page.fileUrl}#page=${page.pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=150`}
+                                className="w-full h-full border-0 pointer-events-none"
+                                title={`Preview página ${index + 1}`}
+                                style={{ 
+                                    transform: 'scale(1.1)', 
+                                    transformOrigin: 'center center',
+                                    filter: 'contrast(1.05) brightness(1.02)'
+                                }}
+                            />
+                        </div>
+                    )
                 ) : (
                     <div className="flex flex-col items-center gap-3 text-gray-400">
                         <FileText size={48} className="text-gray-300" />
@@ -136,33 +147,54 @@ const PdfEditor = () => {
 
         try {
             for (const file of selectedFiles) {
-                // Carregar PDF para contar páginas
-                const arrayBuffer = await file.arrayBuffer();
-                const pdfDoc = await PDFDocument.load(arrayBuffer);
-                const pageCount = pdfDoc.getPageCount();
+                const fileType = file.type;
+                const isImage = fileType === 'image/jpeg' || fileType === 'image/jpg' || file.name.toLowerCase().match(/\.(jpg|jpeg)$/);
 
-                // Criar URL do blob para preview
-                const fileUrl = URL.createObjectURL(file);
-
-                // Criar entrada para cada página
-                for (let i = 0; i < pageCount; i++) {
-                    const pageId = `${file.name}-page-${i + 1}-${Date.now()}-${Math.random()}`;
+                if (isImage) {
+                    // Processar imagem JPG
+                    const fileUrl = URL.createObjectURL(file);
+                    const pageId = `${file.name}-image-${Date.now()}-${Math.random()}`;
+                    
                     newPages.push({
                         id: pageId,
                         file: file,
                         fileUrl: fileUrl,
                         fileName: file.name,
-                        pageNumber: i + 1,
-                        totalPages: pageCount,
+                        pageNumber: 1,
+                        totalPages: 1,
                         isLoading: false,
+                        isImage: true,
                     });
+                } else {
+                    // Processar PDF
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await PDFDocument.load(arrayBuffer);
+                    const pageCount = pdfDoc.getPageCount();
+
+                    // Criar URL do blob para preview
+                    const fileUrl = URL.createObjectURL(file);
+
+                    // Criar entrada para cada página
+                    for (let i = 0; i < pageCount; i++) {
+                        const pageId = `${file.name}-page-${i + 1}-${Date.now()}-${Math.random()}`;
+                        newPages.push({
+                            id: pageId,
+                            file: file,
+                            fileUrl: fileUrl,
+                            fileName: file.name,
+                            pageNumber: i + 1,
+                            totalPages: pageCount,
+                            isLoading: false,
+                            isImage: false,
+                        });
+                    }
                 }
             }
 
             setPages(current => [...current, ...newPages]);
         } catch (error) {
             console.error('Erro ao processar arquivos:', error);
-            alert('Erro ao processar os arquivos PDF. Verifique se são válidos.');
+            alert('Erro ao processar os arquivos. Verifique se são válidos.');
         } finally {
             setIsLoadingPages(false);
             event.target.value = null;
@@ -180,7 +212,7 @@ const PdfEditor = () => {
 
     const handleMergePdfs = async () => {
         if (pages.length < 1) {
-            alert('Por favor, adicione ao menos uma página PDF.');
+            alert('Por favor, adicione ao menos uma página.');
             return;
         }
 
@@ -194,19 +226,39 @@ const PdfEditor = () => {
             const fileCache = new Map();
 
             for (const pageData of pages) {
-                // Carregar PDF do cache ou criar novo
-                let sourcePdf;
-                if (fileCache.has(pageData.file)) {
-                    sourcePdf = fileCache.get(pageData.file);
-                } else {
+                if (pageData.isImage) {
+                    // Processar imagem JPG
                     const arrayBuffer = await pageData.file.arrayBuffer();
-                    sourcePdf = await PDFDocument.load(arrayBuffer);
-                    fileCache.set(pageData.file, sourcePdf);
-                }
+                    const imageBytes = new Uint8Array(arrayBuffer);
+                    
+                    // Embed a imagem no PDF
+                    const image = await mergedPdf.embedJpg(imageBytes);
+                    
+                    // Criar página com dimensões da imagem
+                    const page = mergedPdf.addPage([image.width, image.height]);
+                    
+                    // Desenhar a imagem na página
+                    page.drawImage(image, {
+                        x: 0,
+                        y: 0,
+                        width: image.width,
+                        height: image.height,
+                    });
+                } else {
+                    // Processar PDF
+                    let sourcePdf;
+                    if (fileCache.has(pageData.file)) {
+                        sourcePdf = fileCache.get(pageData.file);
+                    } else {
+                        const arrayBuffer = await pageData.file.arrayBuffer();
+                        sourcePdf = await PDFDocument.load(arrayBuffer);
+                        fileCache.set(pageData.file, sourcePdf);
+                    }
 
-                // Copiar apenas a página específica
-                const [copiedPage] = await mergedPdf.copyPages(sourcePdf, [pageData.pageNumber - 1]);
-                mergedPdf.addPage(copiedPage);
+                    // Copiar apenas a página específica
+                    const [copiedPage] = await mergedPdf.copyPages(sourcePdf, [pageData.pageNumber - 1]);
+                    mergedPdf.addPage(copiedPage);
+                }
             }
 
             const pdfBytes = await mergedPdf.save();
@@ -221,8 +273,8 @@ const PdfEditor = () => {
             setSuccessMessage(`PDF gerado com sucesso! ${pages.length} página${pages.length > 1 ? 's' : ''} combinada${pages.length > 1 ? 's' : ''}.`);
             setTimeout(() => setSuccessMessage(''), 5000);
         } catch (error) {
-            console.error("Erro ao juntar os PDFs:", error);
-            alert("Ocorreu um erro ao juntar os PDFs. Verifique se todos os arquivos são válidos.");
+            console.error("Erro ao juntar os arquivos:", error);
+            alert("Ocorreu um erro ao gerar o PDF. Verifique se todos os arquivos são válidos.");
         } finally {
             setIsMerging(false);
         }
@@ -264,7 +316,7 @@ const PdfEditor = () => {
             {/* Header */}
             <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-2">Editor de PDF</h2>
-                <p className="text-gray-500">Combine, reorganize e gerencie páginas de PDFs com visualização em tempo real</p>
+                <p className="text-gray-500">Combine PDFs e imagens JPG, reorganize e gerencie páginas com visualização em tempo real</p>
             </div>
 
             {/* Barra de ações */}
@@ -273,7 +325,7 @@ const PdfEditor = () => {
                     <input
                         type="file"
                         multiple
-                        accept=".pdf"
+                        accept=".pdf,.jpg,.jpeg,image/jpeg"
                         ref={fileInputRef}
                         onChange={handleFileChange}
                         className="hidden"
@@ -292,7 +344,7 @@ const PdfEditor = () => {
                         ) : (
                             <>
                                 <FileInput size={18} />
-                                Adicionar PDFs
+                                Adicionar PDFs/Imagens
                             </>
                         )}
                     </button>
@@ -352,14 +404,14 @@ const PdfEditor = () => {
                         </div>
                         <h3 className="font-semibold text-xl text-gray-600 mb-2">Nenhum arquivo carregado</h3>
                         <p className="text-gray-500 mb-6 max-w-md">
-                            Clique em "Adicionar PDFs" para começar a combinar e organizar suas páginas
+                            Clique em "Adicionar PDFs/Imagens" para começar a combinar e organizar suas páginas
                         </p>
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="py-2.5 px-6 bg-primary hover:bg-primary/90 text-white rounded-2xl font-medium shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-2"
                         >
                             <FileInput size={18} />
-                            Adicionar PDFs
+                            Adicionar PDFs/Imagens
                         </button>
                     </div>
                 ) : (
@@ -427,18 +479,29 @@ const PdfEditor = () => {
                                         {/* Preview */}
                                         <div className="aspect-[1/1.414] bg-white flex items-center justify-center relative overflow-hidden">
                                             {activePage.fileUrl ? (
-                                                <div className="w-full h-full relative bg-white">
-                                                    <iframe
-                                                        src={`${activePage.fileUrl}#page=${activePage.pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=150`}
-                                                        className="w-full h-full border-0 pointer-events-none"
-                                                        title={`Preview arrastando`}
+                                                activePage.isImage ? (
+                                                    <img
+                                                        src={activePage.fileUrl}
+                                                        alt={`Preview arrastando`}
+                                                        className="w-full h-full object-contain"
                                                         style={{ 
-                                                            transform: 'scale(1.1)', 
-                                                            transformOrigin: 'center center',
                                                             filter: 'contrast(1.05) brightness(1.02)'
                                                         }}
                                                     />
-                                                </div>
+                                                ) : (
+                                                    <div className="w-full h-full relative bg-white">
+                                                        <iframe
+                                                            src={`${activePage.fileUrl}#page=${activePage.pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=150`}
+                                                            className="w-full h-full border-0 pointer-events-none"
+                                                            title={`Preview arrastando`}
+                                                            style={{ 
+                                                                transform: 'scale(1.1)', 
+                                                                transformOrigin: 'center center',
+                                                                filter: 'contrast(1.05) brightness(1.02)'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )
                                             ) : (
                                                 <div className="flex flex-col items-center gap-2 text-primary">
                                                     <FileText size={36} />
