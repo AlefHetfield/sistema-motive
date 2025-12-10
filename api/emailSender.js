@@ -267,22 +267,8 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
   }
 
   try {
-    if (canSendResend) {
-      // Usar Resend (recomendado para Render)
-      const resend = new Resend(RESEND_API_KEY);
-      await resend.emails.send({
-        from: REPORT_FROM,
-        to: REPORT_TO,
-        subject,
-        html,
-        attachments: [
-          { filename: fileName, content: buffer }
-        ]
-      });
-      console.log('Relatório enviado por e-mail com sucesso via Resend.');
-      return { delivered: true, metrics, type, method: 'resend' };
-    } else {
-      // Fallback: SMTP tradicional (pode não funcionar no Render Free)
+    if (canSendSMTP) {
+      // Prioriza SMTP (mais confiável localmente)
       const transporter = nodemailer.createTransport({
         host: SMTP_HOST,
         port: parseInt(SMTP_PORT),
@@ -300,6 +286,20 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
       });
       console.log('Relatório enviado por e-mail com sucesso via SMTP.');
       return { delivered: true, metrics, type, method: 'smtp' };
+    } else if (canSendResend) {
+      // Fallback: Resend (para produção com domínio verificado)
+      const resend = new Resend(RESEND_API_KEY);
+      await resend.emails.send({
+        from: REPORT_FROM,
+        to: REPORT_TO,
+        subject,
+        html,
+        attachments: [
+          { filename: fileName, content: buffer }
+        ]
+      });
+      console.log('Relatório enviado por e-mail com sucesso via Resend.');
+      return { delivered: true, metrics, type, method: 'resend' };
     }
   } catch (err) {
     console.error('Falha ao enviar e-mail, salvando localmente.', err);
