@@ -267,8 +267,26 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
   }
 
   try {
-    if (canSendSMTP) {
-      // Prioriza SMTP (mais confiável localmente)
+    // Em desenvolvimento local: prioriza SMTP
+    // Em produção (Render/Vercel): usa Resend
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction && canSendResend) {
+      // Produção: usar Resend
+      const resend = new Resend(RESEND_API_KEY);
+      await resend.emails.send({
+        from: REPORT_FROM,
+        to: REPORT_TO,
+        subject,
+        html,
+        attachments: [
+          { filename: fileName, content: buffer }
+        ]
+      });
+      console.log('Relatório enviado por e-mail com sucesso via Resend.');
+      return { delivered: true, metrics, type, method: 'resend' };
+    } else if (canSendSMTP) {
+      // Desenvolvimento local ou fallback: usar SMTP
       const transporter = nodemailer.createTransport({
         host: SMTP_HOST,
         port: parseInt(SMTP_PORT),
@@ -286,8 +304,8 @@ export async function dispatchReport({ workbook, fileName, metrics, type = 'mont
       });
       console.log('Relatório enviado por e-mail com sucesso via SMTP.');
       return { delivered: true, metrics, type, method: 'smtp' };
-    } else if (canSendResend) {
-      // Fallback: Resend (para produção com domínio verificado)
+    } else if (isProduction && canSendResend) {
+      // Último fallback: Resend em produção
       const resend = new Resend(RESEND_API_KEY);
       await resend.emails.send({
         from: REPORT_FROM,
