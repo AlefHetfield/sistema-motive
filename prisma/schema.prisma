@@ -21,6 +21,8 @@ model Client {
   status                 String?
   processo               Boolean   @default(false)
   venda                  Boolean   @default(false)
+  remuneracaoPaga        Boolean   @default(false)
+  comissaoPaga           Boolean   @default(false)
   createdAt              DateTime  @default(now()) @map("createdAt")
   ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
   dataAssinaturaContrato DateTime? @db.Date

@@ -721,6 +721,42 @@ const ClientsList = () => {
         });
     };
 
+    const handleToggleRemuneracaoPaga = async (clientId, currentValue) => {
+        const prevClients = allClients;
+        const prevClient = prevClients.find(c => c.id === clientId);
+        
+        // Atualização otimista
+        setAllClients(list => list.map(c => c.id === clientId ? { ...c, remuneracaoPaga: !currentValue } : c));
+        
+        try {
+            await saveClient({ id: clientId, remuneracaoPaga: !currentValue });
+            logActivity && logActivity(`Remuneração Paga ${!currentValue ? 'marcada' : 'desmarcada'} para cliente ${clientId}`);
+            addToast(`Remuneração Paga ${!currentValue ? 'marcada' : 'desmarcada'}`, 'success');
+        } catch (error) {
+            console.error('Erro ao atualizar remuneração paga:', error);
+            setAllClients(prevClients);
+            addToast('Erro ao atualizar remuneração paga', 'error');
+        }
+    };
+
+    const handleToggleComissaoPaga = async (clientId, currentValue) => {
+        const prevClients = allClients;
+        const prevClient = prevClients.find(c => c.id === clientId);
+        
+        // Atualização otimista
+        setAllClients(list => list.map(c => c.id === clientId ? { ...c, comissaoPaga: !currentValue } : c));
+        
+        try {
+            await saveClient({ id: clientId, comissaoPaga: !currentValue });
+            logActivity && logActivity(`Comissão Paga ${!currentValue ? 'marcada' : 'desmarcada'} para cliente ${clientId}`);
+            addToast(`Comissão Paga ${!currentValue ? 'marcada' : 'desmarcada'}`, 'success');
+        } catch (error) {
+            console.error('Erro ao atualizar comissão paga:', error);
+            setAllClients(prevClients);
+            addToast('Erro ao atualizar comissão paga', 'error');
+        }
+    };
+
     // Obter valores únicos para os filtros
     const uniqueAgencias = useMemo(() => {
         const agencias = allClients.map(c => c.agencia).filter(Boolean);
@@ -1321,6 +1357,12 @@ const ClientsList = () => {
                                         )}
                                     </button>
                                 </th>
+                                {(activeTab === 'signed' || activeTab === 'archived') && (
+                                    <>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Remuneração Paga</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Comissão Paga</th>
+                                    </>
+                                )}
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Ações</th>
                             </tr>
                         </thead>
@@ -1393,6 +1435,43 @@ const ClientsList = () => {
                                             <td className="px-6 py-4 text-center">
                                                 <DayBadge creationDate={client.createdAt} />
                                             </td>
+                                            {(activeTab === 'signed' || activeTab === 'archived') && (
+                                                <>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            onClick={() => handleToggleRemuneracaoPaga(client.id, client.remuneracaoPaga)}
+                                                            className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                                client.remuneracaoPaga ? 'bg-green-500' : 'bg-gray-300'
+                                                            }`}
+                                                            title={client.remuneracaoPaga ? 'Remuneração Paga' : 'Remuneração Pendente'}
+                                                        >
+                                                            <span
+                                                                className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ${
+                                                                    client.remuneracaoPaga ? 'translate-x-6' : 'translate-x-1'
+                                                                }`}
+                                                            />
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            onClick={() => handleToggleComissaoPaga(client.id, client.comissaoPaga)}
+                                                            disabled={!client.venda}
+                                                            className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                                client.venda
+                                                                    ? (client.comissaoPaga ? 'bg-green-500' : 'bg-gray-300')
+                                                                    : 'bg-gray-200 cursor-not-allowed opacity-50'
+                                                            }`}
+                                                            title={!client.venda ? 'Disponível apenas para clientes com Venda' : (client.comissaoPaga ? 'Comissão Paga' : 'Comissão Pendente')}
+                                                        >
+                                                            <span
+                                                                className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ${
+                                                                    client.comissaoPaga ? 'translate-x-6' : 'translate-x-1'
+                                                                }`}
+                                                            />
+                                                        </button>
+                                                    </td>
+                                                </>
+                                            )}
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button
@@ -1457,7 +1536,7 @@ const ClientsList = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="8" className="text-center p-10 text-gray-500">
+                                    <td colSpan={(activeTab === 'signed' || activeTab === 'archived') ? "10" : "8"} className="text-center p-10 text-gray-500">
                                         Nenhum cliente encontrado.
                                     </td>
                                 </tr>
