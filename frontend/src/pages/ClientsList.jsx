@@ -74,7 +74,7 @@ const DroppableArea = ({ id }) => {
     return (
         <div 
             ref={setNodeRef}
-            className="text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center bg-gradient-to-br from-gray-50 to-gray-100/50 hover:border-primary/40 hover:bg-primary/10 hover:scale-105 transition-all duration-300 hover:shadow-lg"
+            className="text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center bg-gradient-to-br from-gray-50 to-gray-100/50 hover:border-primary/40 hover:bg-primary/10 hover:scale-105 transition-all duration-300 hover:shadow-lg"
         >
             <div className="animate-bounce">Arraste clientes aqui</div>
         </div>
@@ -104,7 +104,7 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
+            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-3.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
         >
             <div className="flex items-start justify-between">
                 <div 
@@ -113,10 +113,10 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
                     className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing"
                 >
                     <div className="text-gray-400 flex-shrink-0">
-                        <GripVertical size={16} />
+                        <GripVertical size={14} className="sm:w-4 sm:h-4" />
                     </div>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 truncate">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                        <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
                             {client.nome}
                         </div>
                         <NewBadge creationDate={client.createdAt} />
@@ -134,18 +134,18 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
                 </button>
             </div>
 
-            <div className="mt-3 space-y-2 text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
-                <div className="flex items-center gap-2">
-                    <Home size={14} />
+            <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2 text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Home size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" />
                     <span className="truncate">{client.imovel}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <User size={14} />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    <User size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" />
                     <span className="truncate">{client.corretor}</span>
                 </div>
             </div>
 
-            <div className="mt-3 border-t pt-2 flex justify-end text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
+            <div className="mt-2.5 sm:mt-3 border-t pt-1.5 sm:pt-2 flex justify-end text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
                 <div>{getDayCounter(client.createdAt).days} dias</div>
             </div>
         </div>
@@ -859,11 +859,11 @@ const ClientsList = () => {
             style={{
                 position: 'fixed',
                 top: (filterDropdownRef.current?.getBoundingClientRect().bottom || 0) + 8,
-                right: window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0),
+                right: Math.max(8, window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0)),
             }}
-            className="w-80 bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300"
+            className="w-[calc(100vw-1rem)] sm:w-80 bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200/50 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300 max-h-[80vh] overflow-y-auto"
         >
-            <div className="p-5 space-y-4">
+            <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
                 {/* Status */}
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Status</label>
@@ -1072,8 +1072,8 @@ const ClientsList = () => {
                 onDragEnd={handleDragEnd}
                 onDragCancel={handleDragCancel}
             >
-                <div ref={kanbanScrollRef} className="overflow-x-auto">
-                    <div className="flex gap-6 px-2">
+                <div ref={kanbanScrollRef} className="overflow-x-auto pb-4">
+                    <div className="flex gap-3 sm:gap-6 px-3 sm:px-2">
                         {statuses.map(status => {
                             const items = clients.filter(c => c.status === status);
                             const itemIds = items.map(c => c.id);
@@ -1081,16 +1081,16 @@ const ClientsList = () => {
                             const droppableId = `droppable-${status}`;
 
                             return (
-                                <div key={status} className="min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-3xl p-5 border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
-                                    <div className="flex items-center justify-between mb-5">
-                                        <h4 className="text-sm font-bold text-gray-800">
+                                <div key={status} className="min-w-[280px] sm:min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+                                    <div className="flex items-center justify-between mb-4 sm:mb-5">
+                                        <h4 className="text-xs sm:text-sm font-bold text-gray-800">
                                             {status}
                                         </h4>
-                                        <span className="text-xs font-bold text-gray-600 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-gray-200">{items.length}</span>
+                                        <span className="text-xs font-bold text-gray-600 bg-white/80 backdrop-blur-sm px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-sm border border-gray-200">{items.length}</span>
                                     </div>
 
                                     <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
-                                        <div className="overflow-y-auto max-h-[60vh] space-y-3 pr-2 min-h-[100px]">
+                                        <div className="overflow-y-auto max-h-[60vh] space-y-2.5 sm:space-y-3 pr-1 sm:pr-2 min-h-[100px]">
                                             {items.length === 0 ? (
                                                 <DroppableArea id={droppableId} />
                                             ) : items.map(client => (
@@ -1130,43 +1130,43 @@ const ClientsList = () => {
     }
 
     return (
-        <div id="active-clients-content" className="fade-in p-6">
+        <div id="active-clients-content" className="fade-in p-3 sm:p-6">
             <div className="mb-8">
-                <div className="mb-8 relative">
+                <div className="mb-6 sm:mb-8 relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 rounded-3xl blur-3xl"></div>
                     <div className="relative">
-                        <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-3">Gerenciamento de Clientes</h2>
-                        <p className="text-gray-600 text-lg">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+                        <h2 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-2 sm:mb-3">Gerenciamento de Clientes</h2>
+                        <p className="text-gray-600 text-sm sm:text-lg">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
                     </div>
                 </div>
 
-                <div className="relative bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl inline-flex gap-1 mb-8 shadow-sm border border-gray-100">
+                <div className="relative bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl inline-flex gap-1 mb-6 sm:mb-8 shadow-sm border border-gray-100 w-full sm:w-auto overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('active')}
-                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'active' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
+                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'active' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
                         <span className="relative z-10">Processos Ativos</span>
                         {activeTab === 'active' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                     <button
                         onClick={() => setActiveTab('signed')}
-                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'signed' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
+                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'signed' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
                         <span className="relative z-10">Assinados</span>
                         {activeTab === 'signed' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                     <button
                         onClick={() => setActiveTab('archived')}
-                        className={`relative px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 ${activeTab === 'archived' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
+                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'archived' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
                     >
                         <span className="relative z-10">Arquivados</span>
                         {activeTab === 'archived' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
                     </button>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-lg shadow-gray-200/50 border border-white mb-8 animate-fade-in hover:shadow-xl transition-shadow duration-300">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
+                <div className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-lg shadow-gray-200/50 border border-white mb-6 sm:mb-8 animate-fade-in hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 w-full sm:w-auto">
                             <ModernInput
                                 id="search-client"
                                 Icon={Search}
@@ -1177,31 +1177,31 @@ const ClientsList = () => {
                             />
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 justify-end">
                             {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
                             {activeTab === 'active' && (
                                 <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100/80 rounded-xl p-1 border border-gray-200 shadow-sm">
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-3 rounded-lg transition-all duration-300 ${
+                                        className={`p-2 sm:p-3 rounded-lg transition-all duration-300 ${
                                             viewMode === 'list'
                                                 ? 'bg-white text-primary shadow-md scale-105'
                                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                                         }`}
                                         title="Visualizar em Lista"
                                     >
-                                        <List size={18} />
+                                        <List size={16} className="sm:w-[18px] sm:h-[18px]" />
                                     </button>
                                     <button
                                         onClick={() => setViewMode('kanban')}
-                                        className={`p-3 rounded-lg transition-all duration-300 ${
+                                        className={`p-2 sm:p-3 rounded-lg transition-all duration-300 ${
                                             viewMode === 'kanban'
                                                 ? 'bg-white text-primary shadow-md scale-105'
                                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                                         }`}
                                         title="Visualizar em Kanban"
                                     >
-                                        <LayoutGrid size={18} />
+                                        <LayoutGrid size={16} className="sm:w-[18px] sm:h-[18px]" />
                                     </button>
                                 </div>
                             )}
@@ -1210,29 +1210,30 @@ const ClientsList = () => {
                             <div className="relative" ref={filterDropdownRef}>
                                 <button 
                                     onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                                    className={`px-5 py-3 border rounded-2xl text-sm transition-all duration-300 flex items-center gap-2.5 font-semibold relative shadow-sm hover:shadow-md ${
+                                    className={`px-3 sm:px-5 py-2 sm:py-3 border rounded-2xl text-xs sm:text-sm transition-all duration-300 flex items-center gap-1.5 sm:gap-2.5 font-semibold relative shadow-sm hover:shadow-md ${
                                         activeFiltersCount > 0 
                                             ? 'border-primary bg-gradient-to-br from-primary/10 to-primary/5 text-primary hover:from-primary/15 hover:to-primary/10' 
                                             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
-                                    <Filter size={16} />
-                                    Filtros
+                                    <Filter size={14} className="sm:w-4 sm:h-4" />
+                                    <span className="hidden sm:inline">Filtros</span>
                                     {activeFiltersCount > 0 && (
-                                        <span className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-primary to-primary/90 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg shadow-primary/30 animate-pulse">
+                                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-br from-primary to-primary/90 text-white text-[10px] sm:text-xs rounded-full flex items-center justify-center font-bold shadow-lg shadow-primary/30 animate-pulse">
                                             {activeFiltersCount}
                                         </span>
                                     )}
-                                    <ChevronDown size={14} className={`transition-transform duration-300 ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown size={12} className={`sm:w-3.5 sm:h-3.5 transition-transform duration-300 ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {/* Dropdown Panel */}
                                 {filterDropdownPortal}
                             </div>
-                            <button onClick={() => handleOpenModal()} className="relative py-3 px-6 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 text-white rounded-2xl text-sm flex items-center gap-2.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 overflow-hidden group">
+                            <button onClick={() => handleOpenModal()} className="relative py-2 sm:py-3 px-3 sm:px-6 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 text-white rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 overflow-hidden group whitespace-nowrap">
                                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                                <PlusCircle size={18} className="relative z-10" />
-                                <span className="relative z-10">Novo Cliente</span>
+                                <PlusCircle size={16} className="relative z-10 sm:w-[18px] sm:h-[18px]" />
+                                <span className="relative z-10 hidden sm:inline">Novo Cliente</span>
+                                <span className="relative z-10 sm:hidden">Novo</span>
                             </button>
                         </div>
                     </div>
@@ -1240,7 +1241,9 @@ const ClientsList = () => {
             </div>
 
             {(activeTab !== 'active' || viewMode === 'list') ? (
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white overflow-hidden animate-fade-in">
+                <>
+                {/* Visualização Desktop - Tabela */}
+                <div className="hidden lg:block bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white overflow-hidden animate-fade-in">
                     <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
                         <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
@@ -1545,8 +1548,223 @@ const ClientsList = () => {
                     </table>
                     </div>
                 </div>
+
+                {/* Visualização Mobile - Cards */}
+                <div className="lg:hidden space-y-3 animate-fade-in">
+                    {filteredClients.length > 0 ? (
+                        filteredClients.map(client => {
+                            const initials = getInitials(client.nome);
+                            const palette = pickAvatarPalette(client.nome);
+                            const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
+                            
+                            return (
+                                <div key={client.id} className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                                    {/* Header do Card */}
+                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-4 border-b border-gray-200">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${palette} font-medium text-sm shrink-0`}>
+                                                    {initials}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h3 className="font-semibold text-gray-900 truncate">{client.nome}</h3>
+                                                        <NewBadge creationDate={client.createdAt} />
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 truncate">{formatCPF(client.cpf)}</p>
+                                                </div>
+                                            </div>
+                                            <DayBadge creationDate={client.createdAt} />
+                                        </div>
+                                    </div>
+
+                                    {/* Corpo do Card */}
+                                    <div className="p-4 space-y-3">
+                                        {/* Imóvel */}
+                                        <div className="flex items-start gap-2">
+                                            <Home size={16} className="text-gray-400 mt-0.5 shrink-0" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{imovelName}</p>
+                                                {imovelMeta && <p className="text-xs text-gray-500">{imovelMeta}</p>}
+                                            </div>
+                                        </div>
+
+                                        {/* Responsável */}
+                                        <div className="flex items-center gap-2">
+                                            <User size={16} className="text-gray-400 shrink-0" />
+                                            <p className="text-sm text-gray-700 truncate">{client.responsavel || client.corretor}</p>
+                                        </div>
+
+                                        {/* Agência */}
+                                        {client.agencia && (
+                                            <div className="flex items-center gap-2">
+                                                <Building size={16} className="text-gray-400 shrink-0" />
+                                                <p className="text-sm text-gray-700 truncate">{client.agencia}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Status */}
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs text-gray-500 shrink-0">Status:</div>
+                                            <StatusSelect 
+                                                currentStatus={client.status} 
+                                                clientId={client.id} 
+                                                onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} 
+                                                disabled={!!updatingStatusMap[client.id]} 
+                                                loading={!!updatingStatusMap[client.id]} 
+                                            />
+                                        </div>
+
+                                        {/* Data de Assinatura */}
+                                        {(client.status === 'Assinado' || client.dataAssinaturaContrato) && (
+                                            <div className="flex items-center gap-2">
+                                                <Calendar size={16} className="text-gray-400 shrink-0" />
+                                                {client.status === 'Assinado' ? (
+                                                    <input
+                                                        type="date"
+                                                        value={
+                                                            signatureDrafts[client.id] !== undefined
+                                                                ? signatureDrafts[client.id]
+                                                                : (client.dataAssinaturaContrato
+                                                                    ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0]
+                                                                    : '')
+                                                        }
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setSignatureDrafts(prev => ({ ...prev, [client.id]: val }));
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            const val = e.target.value;
+                                                            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                                                                handleSignatureDate(client.id, val);
+                                                                setSignatureDrafts(prev => ({ ...prev, [client.id]: undefined }));
+                                                            }
+                                                        }}
+                                                        className="flex-1 px-3 py-1.5 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm text-gray-600">{formatDate(client.dataAssinaturaContrato)}</span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Toggles de Remuneração e Comissão - apenas nas abas signed e archived */}
+                                        {(activeTab === 'signed' || activeTab === 'archived') && (
+                                            <div className="flex items-center gap-4 pt-2 border-t border-gray-100">
+                                                {/* Remuneração Paga */}
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="text-xs text-gray-600">Remuneração:</span>
+                                                    <button
+                                                        onClick={() => handleToggleRemuneracaoPaga(client.id, client.remuneracaoPaga)}
+                                                        className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                            client.remuneracaoPaga ? 'bg-green-500' : 'bg-gray-300'
+                                                        }`}
+                                                        title={client.remuneracaoPaga ? 'Remuneração Paga' : 'Remuneração Pendente'}
+                                                    >
+                                                        <span
+                                                            className={`inline-block w-3.5 h-3.5 transform bg-white rounded-full transition-transform duration-200 ${
+                                                                client.remuneracaoPaga ? 'translate-x-5' : 'translate-x-0.5'
+                                                            }`}
+                                                        />
+                                                    </button>
+                                                </div>
+
+                                                {/* Comissão Paga */}
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="text-xs text-gray-600">Comissão:</span>
+                                                    <button
+                                                        onClick={() => handleToggleComissaoPaga(client.id, client.comissaoPaga)}
+                                                        disabled={!client.venda}
+                                                        className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                            client.venda
+                                                                ? (client.comissaoPaga ? 'bg-green-500' : 'bg-gray-300')
+                                                                : 'bg-gray-200 cursor-not-allowed opacity-50'
+                                                        }`}
+                                                        title={!client.venda ? 'Disponível apenas para clientes com Venda' : (client.comissaoPaga ? 'Comissão Paga' : 'Comissão Pendente')}
+                                                    >
+                                                        <span
+                                                            className={`inline-block w-3.5 h-3.5 transform bg-white rounded-full transition-transform duration-200 ${
+                                                                client.comissaoPaga ? 'translate-x-5' : 'translate-x-0.5'
+                                                            }`}
+                                                        />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Footer com ações */}
+                                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleOpenModal(client)}
+                                                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300"
+                                                title="Editar"
+                                            >
+                                                <FilePenLine size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(client)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                            {activeTab === 'active' && client.status === 'Assinado' && (
+                                                <button
+                                                    onClick={() => handleFinalize(client)}
+                                                    disabled={!client.dataAssinaturaContrato}
+                                                    className={`p-2 rounded-lg transition-all duration-300 ${
+                                                        client.dataAssinaturaContrato
+                                                            ? 'text-green-600 hover:bg-green-50'
+                                                            : 'text-gray-300 cursor-not-allowed'
+                                                    }`}
+                                                    title={client.dataAssinaturaContrato ? 'Finalizar' : 'Preencha a data de assinatura'}
+                                                >
+                                                    <Check size={18} />
+                                                </button>
+                                            )}
+                                            {activeTab === 'signed' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleArchive(client)}
+                                                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-300"
+                                                        title="Arquivar"
+                                                    >
+                                                        <Archive size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRestore(client)}
+                                                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-300"
+                                                        title="Restaurar para Processos Ativos"
+                                                    >
+                                                        <RotateCcw size={18} />
+                                                    </button>
+                                                </>
+                                            )}
+                                            {activeTab === 'archived' && (
+                                                <button
+                                                    onClick={() => handleRestoreToSigned(client)}
+                                                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300"
+                                                    title="Restaurar para Assinados"
+                                                >
+                                                    <RotateCcw size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-100 p-10 text-center">
+                            <p className="text-gray-500">Nenhum cliente encontrado.</p>
+                        </div>
+                    )}
+                </div>
+                </>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 -mx-3 sm:mx-0">
                     <KanbanBoard clients={filteredClients} />
                 </div>
             )}
@@ -1567,24 +1785,24 @@ const ClientsList = () => {
                 confirmColor={confirmModal.confirmColor}
             />
             {/* Toasts empilhados com animação */}
-            <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2" aria-live="polite">
+            <div className="fixed right-2 sm:right-4 bottom-2 sm:bottom-4 left-2 sm:left-auto z-50 flex flex-col items-end gap-2" aria-live="polite">
                 {toasts.map(t => (
-                    <div key={t.id} className={`transform transition-all duration-200 ${t.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                    <div key={t.id} className={`w-full sm:w-auto transform transition-all duration-200 ${t.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
                         {t.type === 'success' && (
-                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
-                                <CheckCircle2 size={16} className="text-emerald-600" />
-                                <div className="text-sm">{t.message}</div>
+                            <div className="px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 sm:gap-3 border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
+                                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                <div className="text-xs sm:text-sm">{t.message}</div>
                             </div>
                         )}
                         {t.type === 'error' && (
-                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-red-200 bg-red-50 text-red-700 shadow-sm">
-                                <AlertCircle size={16} className="text-red-600" />
-                                <div className="text-sm">{t.message}</div>
+                            <div className="px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 sm:gap-3 border border-red-200 bg-red-50 text-red-700 shadow-sm">
+                                <AlertCircle size={16} className="text-red-600 shrink-0" />
+                                <div className="text-xs sm:text-sm">{t.message}</div>
                             </div>
                         )}
                         {t.type !== 'success' && t.type !== 'error' && (
-                            <div className="px-4 py-2 rounded-lg flex items-center gap-3 border border-gray-200 bg-white text-gray-800 shadow-sm">
-                                <div className="text-sm">{t.message}</div>
+                            <div className="px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 sm:gap-3 border border-gray-200 bg-white text-gray-800 shadow-sm">
+                                <div className="text-xs sm:text-sm">{t.message}</div>
                             </div>
                         )}
                     </div>
