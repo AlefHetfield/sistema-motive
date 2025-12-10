@@ -1130,54 +1130,89 @@ const ClientsList = () => {
     }
 
     return (
-        <div id="active-clients-content" className="fade-in p-3 sm:p-6">
-            <div className="mb-8">
-                <div className="mb-6 sm:mb-8 relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 rounded-3xl blur-3xl"></div>
-                    <div className="relative">
-                        <h2 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-2 sm:mb-3">Gerenciamento de Clientes</h2>
-                        <p className="text-gray-600 text-sm sm:text-lg">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+        <div id="active-clients-content" className="fade-in min-h-screen bg-gray-50 sm:p-6 sm:bg-transparent">
+            {/* Header fixo tipo app mobile */}
+            <div className="sticky top-0 z-40 bg-white sm:bg-transparent sm:relative">
+                <div className="sm:mb-8">
+                    <div className="bg-gradient-to-br from-primary to-primary/90 sm:bg-none p-4 sm:p-0 sm:mb-6 shadow-lg sm:shadow-none">
+                        <div className="sm:absolute sm:inset-0 sm:bg-gradient-to-r sm:from-primary/5 sm:via-transparent sm:to-primary/5 sm:rounded-3xl sm:blur-3xl"></div>
+                        <div className="relative">
+                            <h2 className="text-xl sm:text-4xl font-bold text-white sm:bg-gradient-to-r sm:from-gray-900 sm:via-gray-800 sm:to-gray-900 sm:bg-clip-text sm:text-transparent mb-1 sm:mb-3">Clientes</h2>
+                            <p className="text-white/90 sm:text-gray-600 text-xs sm:text-lg hidden sm:block">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="relative bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl inline-flex gap-1 mb-6 sm:mb-8 shadow-sm border border-gray-100 w-full sm:w-auto overflow-x-auto">
-                    <button
-                        onClick={() => setActiveTab('active')}
-                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'active' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
-                    >
-                        <span className="relative z-10">Processos Ativos</span>
-                        {activeTab === 'active' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('signed')}
-                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'signed' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
-                    >
-                        <span className="relative z-10">Assinados</span>
-                        {activeTab === 'signed' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('archived')}
-                        className={`relative px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'archived' ? 'bg-gradient-to-br from-primary to-primary/90 text-white shadow-lg shadow-primary/25 scale-105' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'}`}
-                    >
-                        <span className="relative z-10">Arquivados</span>
-                        {activeTab === 'archived' && <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>}
-                    </button>
+                {/* Navegação em abas estilo app mobile */}
+                <div className="bg-white sm:bg-white/80 sm:backdrop-blur-sm shadow-sm sm:rounded-2xl sm:inline-flex sm:p-1.5 sm:gap-1 sm:mb-8 sm:border sm:border-gray-100 w-full sm:w-auto">
+                    <div className="flex sm:contents">
+                        <button
+                            onClick={() => setActiveTab('active')}
+                            className={`relative flex-1 sm:flex-initial sm:px-8 py-3 sm:py-3.5 font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${
+                                activeTab === 'active' 
+                                    ? 'text-primary sm:bg-gradient-to-br sm:from-primary sm:to-primary/90 sm:text-white sm:shadow-lg sm:shadow-primary/25 sm:rounded-xl' 
+                                    : 'text-gray-600 hover:text-gray-900 sm:hover:bg-gray-50/80 sm:rounded-xl'
+                            }`}
+                        >
+                            <span className="relative z-10">Ativos</span>
+                            {activeTab === 'active' && (
+                                <>
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-t-full sm:hidden"></div>
+                                    <div className="hidden sm:block absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('signed')}
+                            className={`relative flex-1 sm:flex-initial sm:px-8 py-3 sm:py-3.5 font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${
+                                activeTab === 'signed' 
+                                    ? 'text-primary sm:bg-gradient-to-br sm:from-primary sm:to-primary/90 sm:text-white sm:shadow-lg sm:shadow-primary/25 sm:rounded-xl' 
+                                    : 'text-gray-600 hover:text-gray-900 sm:hover:bg-gray-50/80 sm:rounded-xl'
+                            }`}
+                        >
+                            <span className="relative z-10">Assinados</span>
+                            {activeTab === 'signed' && (
+                                <>
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-t-full sm:hidden"></div>
+                                    <div className="hidden sm:block absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`relative flex-1 sm:flex-initial sm:px-8 py-3 sm:py-3.5 font-semibold text-xs sm:text-sm transition-all duration-300 whitespace-nowrap ${
+                                activeTab === 'archived' 
+                                    ? 'text-primary sm:bg-gradient-to-br sm:from-primary sm:to-primary/90 sm:text-white sm:shadow-lg sm:shadow-primary/25 sm:rounded-xl' 
+                                    : 'text-gray-600 hover:text-gray-900 sm:hover:bg-gray-50/80 sm:rounded-xl'
+                            }`}
+                        >
+                            <span className="relative z-10">Arquivados</span>
+                            {activeTab === 'archived' && (
+                                <>
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-t-full sm:hidden"></div>
+                                    <div className="hidden sm:block absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <div className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-lg shadow-gray-200/50 border border-white mb-6 sm:mb-8 animate-fade-in hover:shadow-xl transition-shadow duration-300">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+                {/* Barra de ações estilo app */}
+                <div className="bg-white sm:bg-white/80 sm:backdrop-blur-xl p-3 sm:p-6 sm:rounded-3xl shadow-sm sm:shadow-lg sm:shadow-gray-200/50 sm:border sm:border-white mb-3 sm:mb-8 sticky top-[72px] sm:top-0 z-30 sm:relative">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
                         <div className="flex-1 w-full sm:w-auto">
                             <ModernInput
                                 id="search-client"
                                 Icon={Search}
                                 type="text"
-                                placeholder="Buscar por nome, CPF ou imóvel..."
+                                placeholder="Buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 sm:gap-3 justify-end">
+                        <div className="flex items-center gap-2 justify-between sm:justify-end">
                             {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
                             {activeTab === 'active' && (
                                 <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100/80 rounded-xl p-1 border border-gray-200 shadow-sm">
@@ -1229,16 +1264,14 @@ const ClientsList = () => {
                                 {/* Dropdown Panel */}
                                 {filterDropdownPortal}
                             </div>
-                            <button onClick={() => handleOpenModal()} className="relative py-2 sm:py-3 px-3 sm:px-6 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 text-white rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 overflow-hidden group whitespace-nowrap">
+                            <button onClick={() => handleOpenModal()} className="relative py-2 sm:py-3 px-4 sm:px-6 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 text-white rounded-full sm:rounded-2xl text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 overflow-hidden group whitespace-nowrap active:scale-95">
                                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                                <PlusCircle size={16} className="relative z-10 sm:w-[18px] sm:h-[18px]" />
-                                <span className="relative z-10 hidden sm:inline">Novo Cliente</span>
-                                <span className="relative z-10 sm:hidden">Novo</span>
+                                <PlusCircle size={18} className="relative z-10" />
+                                <span className="relative z-10">Novo</span>
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
             {(activeTab !== 'active' || viewMode === 'list') ? (
                 <>
@@ -1549,8 +1582,8 @@ const ClientsList = () => {
                     </div>
                 </div>
 
-                {/* Visualização Mobile - Cards */}
-                <div className="lg:hidden space-y-3 animate-fade-in">
+                {/* Visualização Mobile - Cards estilo app */}
+                <div className="lg:hidden px-3 pb-3 space-y-2.5 animate-fade-in">
                     {filteredClients.length > 0 ? (
                         filteredClients.map(client => {
                             const initials = getInitials(client.nome);
@@ -1558,54 +1591,69 @@ const ClientsList = () => {
                             const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                             
                             return (
-                                <div key={client.id} className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                                <div key={client.id} className="bg-white rounded-xl shadow-md border border-gray-100/50 overflow-hidden active:scale-[0.98] transition-all duration-200">
                                     {/* Header do Card */}
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 p-4 border-b border-gray-200">
+                                    <div className="p-3 border-b border-gray-100">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${palette} font-medium text-sm shrink-0`}>
+                                                <div className={`w-11 h-11 rounded-full flex items-center justify-center ${palette} font-semibold text-sm shrink-0 shadow-sm`}>
                                                     {initials}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <h3 className="font-semibold text-gray-900 truncate">{client.nome}</h3>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <h3 className="font-semibold text-gray-900 truncate text-sm">{client.nome}</h3>
                                                         <NewBadge creationDate={client.createdAt} />
                                                     </div>
-                                                    <p className="text-xs text-gray-500 truncate">{formatCPF(client.cpf)}</p>
+                                                    <p className="text-xs text-gray-500 truncate mt-0.5">{formatCPF(client.cpf)}</p>
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div className="mt-2">
                                             <DayBadge creationDate={client.createdAt} />
                                         </div>
                                     </div>
 
                                     {/* Corpo do Card */}
-                                    <div className="p-4 space-y-3">
+                                    <div className="p-3 space-y-2.5">
                                         {/* Imóvel */}
-                                        <div className="flex items-start gap-2">
-                                            <Home size={16} className="text-gray-400 mt-0.5 shrink-0" />
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                                                <Home size={16} className="text-blue-600" />
+                                            </div>
                                             <div className="min-w-0 flex-1">
+                                                <p className="text-xs text-gray-500 mb-0.5">Imóvel</p>
                                                 <p className="text-sm font-medium text-gray-900 truncate">{imovelName}</p>
-                                                {imovelMeta && <p className="text-xs text-gray-500">{imovelMeta}</p>}
+                                                {imovelMeta && <p className="text-xs text-gray-500 mt-0.5">{imovelMeta}</p>}
                                             </div>
                                         </div>
 
                                         {/* Responsável */}
-                                        <div className="flex items-center gap-2">
-                                            <User size={16} className="text-gray-400 shrink-0" />
-                                            <p className="text-sm text-gray-700 truncate">{client.responsavel || client.corretor}</p>
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+                                                <User size={16} className="text-purple-600" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs text-gray-500 mb-0.5">Responsável</p>
+                                                <p className="text-sm font-medium text-gray-700 truncate">{client.responsavel || client.corretor}</p>
+                                            </div>
                                         </div>
 
                                         {/* Agência */}
                                         {client.agencia && (
-                                            <div className="flex items-center gap-2">
-                                                <Building size={16} className="text-gray-400 shrink-0" />
-                                                <p className="text-sm text-gray-700 truncate">{client.agencia}</p>
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                                                    <Building size={16} className="text-orange-600" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs text-gray-500 mb-0.5">Agência</p>
+                                                    <p className="text-sm font-medium text-gray-700 truncate">{client.agencia}</p>
+                                                </div>
                                             </div>
                                         )}
 
                                         {/* Status */}
-                                        <div className="flex items-center gap-2">
-                                            <div className="text-xs text-gray-500 shrink-0">Status:</div>
+                                        <div className="pt-2 border-t border-gray-100">
+                                            <p className="text-xs text-gray-500 mb-2">Status atual</p>
                                             <StatusSelect 
                                                 currentStatus={client.status} 
                                                 clientId={client.id} 
@@ -1617,65 +1665,77 @@ const ClientsList = () => {
 
                                         {/* Data de Assinatura */}
                                         {(client.status === 'Assinado' || client.dataAssinaturaContrato) && (
-                                            <div className="flex items-center gap-2">
-                                                <Calendar size={16} className="text-gray-400 shrink-0" />
-                                                {client.status === 'Assinado' ? (
-                                                    <input
-                                                        type="date"
-                                                        value={
-                                                            signatureDrafts[client.id] !== undefined
-                                                                ? signatureDrafts[client.id]
-                                                                : (client.dataAssinaturaContrato
-                                                                    ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0]
-                                                                    : '')
-                                                        }
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setSignatureDrafts(prev => ({ ...prev, [client.id]: val }));
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            const val = e.target.value;
-                                                            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-                                                                handleSignatureDate(client.id, val);
-                                                                setSignatureDrafts(prev => ({ ...prev, [client.id]: undefined }));
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                                                    <Calendar size={16} className="text-green-600" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-xs text-gray-500 mb-1">Data de Assinatura</p>
+                                                    {client.status === 'Assinado' ? (
+                                                        <input
+                                                            type="date"
+                                                            value={
+                                                                signatureDrafts[client.id] !== undefined
+                                                                    ? signatureDrafts[client.id]
+                                                                    : (client.dataAssinaturaContrato
+                                                                        ? new Date(client.dataAssinaturaContrato).toISOString().split('T')[0]
+                                                                        : '')
                                                             }
-                                                        }}
-                                                        className="flex-1 px-3 py-1.5 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm text-gray-600">{formatDate(client.dataAssinaturaContrato)}</span>
-                                                )}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setSignatureDrafts(prev => ({ ...prev, [client.id]: val }));
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                const val = e.target.value;
+                                                                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                                                                    handleSignatureDate(client.id, val);
+                                                                    setSignatureDrafts(prev => ({ ...prev, [client.id]: undefined }));
+                                                                }
+                                                            }}
+                                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary bg-white"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-gray-700">{formatDate(client.dataAssinaturaContrato)}</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
 
                                         {/* Toggles de Remuneração e Comissão - apenas nas abas signed e archived */}
                                         {(activeTab === 'signed' || activeTab === 'archived') && (
-                                            <div className="flex items-center gap-4 pt-2 border-t border-gray-100">
+                                            <div className="pt-2 border-t border-gray-100 space-y-2">
                                                 {/* Remuneração Paga */}
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <span className="text-xs text-gray-600">Remuneração:</span>
+                                                <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                        <span className="text-xs font-medium text-gray-700">Remuneração Paga</span>
+                                                    </div>
                                                     <button
                                                         onClick={() => handleToggleRemuneracaoPaga(client.id, client.remuneracaoPaga)}
-                                                        className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary active:scale-95 ${
                                                             client.remuneracaoPaga ? 'bg-green-500' : 'bg-gray-300'
                                                         }`}
                                                         title={client.remuneracaoPaga ? 'Remuneração Paga' : 'Remuneração Pendente'}
                                                     >
                                                         <span
-                                                            className={`inline-block w-3.5 h-3.5 transform bg-white rounded-full transition-transform duration-200 ${
-                                                                client.remuneracaoPaga ? 'translate-x-5' : 'translate-x-0.5'
+                                                            className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                                                                client.remuneracaoPaga ? 'translate-x-6' : 'translate-x-1'
                                                             }`}
                                                         />
                                                     </button>
                                                 </div>
 
                                                 {/* Comissão Paga */}
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <span className="text-xs text-gray-600">Comissão:</span>
+                                                <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                                        <span className="text-xs font-medium text-gray-700">Comissão Paga</span>
+                                                        {!client.venda && <span className="text-[10px] text-gray-400">(Só venda)</span>}
+                                                    </div>
                                                     <button
                                                         onClick={() => handleToggleComissaoPaga(client.id, client.comissaoPaga)}
                                                         disabled={!client.venda}
-                                                        className={`relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                                                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary active:scale-95 ${
                                                             client.venda
                                                                 ? (client.comissaoPaga ? 'bg-green-500' : 'bg-gray-300')
                                                                 : 'bg-gray-200 cursor-not-allowed opacity-50'
@@ -1683,8 +1743,8 @@ const ClientsList = () => {
                                                         title={!client.venda ? 'Disponível apenas para clientes com Venda' : (client.comissaoPaga ? 'Comissão Paga' : 'Comissão Pendente')}
                                                     >
                                                         <span
-                                                            className={`inline-block w-3.5 h-3.5 transform bg-white rounded-full transition-transform duration-200 ${
-                                                                client.comissaoPaga ? 'translate-x-5' : 'translate-x-0.5'
+                                                            className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 shadow-sm ${
+                                                                client.comissaoPaga ? 'translate-x-6' : 'translate-x-1'
                                                             }`}
                                                         />
                                                     </button>
@@ -1694,18 +1754,18 @@ const ClientsList = () => {
                                     </div>
 
                                     {/* Footer com ações */}
-                                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <div className="bg-gray-50/50 px-3 py-2.5 border-t border-gray-100">
+                                        <div className="flex items-center justify-end gap-1.5">
                                             <button
                                                 onClick={() => handleOpenModal(client)}
-                                                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300"
+                                                className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 active:scale-95"
                                                 title="Editar"
                                             >
                                                 <FilePenLine size={18} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(client)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300"
+                                                className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 active:scale-95"
                                                 title="Excluir"
                                             >
                                                 <Trash2 size={18} />
@@ -1714,7 +1774,7 @@ const ClientsList = () => {
                                                 <button
                                                     onClick={() => handleFinalize(client)}
                                                     disabled={!client.dataAssinaturaContrato}
-                                                    className={`p-2 rounded-lg transition-all duration-300 ${
+                                                    className={`p-2.5 rounded-lg transition-all duration-200 active:scale-95 ${
                                                         client.dataAssinaturaContrato
                                                             ? 'text-green-600 hover:bg-green-50'
                                                             : 'text-gray-300 cursor-not-allowed'
@@ -1728,14 +1788,14 @@ const ClientsList = () => {
                                                 <>
                                                     <button
                                                         onClick={() => handleArchive(client)}
-                                                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-300"
+                                                        className="p-2.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200 active:scale-95"
                                                         title="Arquivar"
                                                     >
                                                         <Archive size={18} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleRestore(client)}
-                                                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-300"
+                                                        className="p-2.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200 active:scale-95"
                                                         title="Restaurar para Processos Ativos"
                                                     >
                                                         <RotateCcw size={18} />
@@ -1745,7 +1805,7 @@ const ClientsList = () => {
                                             {activeTab === 'archived' && (
                                                 <button
                                                     onClick={() => handleRestoreToSigned(client)}
-                                                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-300"
+                                                    className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 active:scale-95"
                                                     title="Restaurar para Assinados"
                                                 >
                                                     <RotateCcw size={18} />
@@ -1757,8 +1817,12 @@ const ClientsList = () => {
                             );
                         })
                     ) : (
-                        <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-100 p-10 text-center">
-                            <p className="text-gray-500">Nenhum cliente encontrado.</p>
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-12 text-center">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Search size={24} className="text-gray-400" />
+                            </div>
+                            <p className="text-gray-500 text-sm">Nenhum cliente encontrado</p>
+                            <p className="text-gray-400 text-xs mt-1">Tente ajustar os filtros ou busca</p>
                         </div>
                     )}
                 </div>
