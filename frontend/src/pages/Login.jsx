@@ -87,8 +87,8 @@ const Login = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Senha
                             </label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <div className="relative group rounded-xl border border-gray-200 bg-gray-50/70 hover:border-gray-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all duration-200">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-primary">
                                     <Lock size={18} />
                                 </div>
                                 <input
@@ -97,18 +97,24 @@ const Login = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     autoComplete="current-password"
-                                    className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-xl
-                                             focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                             transition-all duration-200 outline-none"
+                                    className="w-full pl-10 pr-12 py-3 rounded-xl bg-transparent border-none focus:ring-0 outline-none"
                                     placeholder="Digite sua senha"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 
-                                             hover:text-gray-600 transition-colors"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 group-focus-within:text-primary transition-colors px-2 py-2 rounded-lg hover:bg-gray-100 active:scale-95"
                                 >
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <div className="mt-2 text-right">
+                                <button
+                                    type="button"
+                                    onClick={() => alert('Contate o administrador para redefinir sua senha.')}
+                                    className="text-xs font-medium text-primary hover:text-secondary transition-colors underline-offset-4 hover:underline"
+                                >
+                                    Esqueci minha senha
                                 </button>
                             </div>
                         </div>
@@ -126,21 +132,23 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-primary to-secondary
+                            className="w-full min-h-[52px] py-3 px-4 bg-gradient-to-r from-primary to-secondary
                                      text-white font-medium rounded-xl shadow-md
-                                     hover:shadow-lg hover:scale-[1.02]
-                                     active:scale-[0.98]
-                                     disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100
-                                     transition-all duration-200 flex items-center justify-center gap-2"
+                                     hover:shadow-xl hover:-translate-y-0.5
+                                     active:translate-y-0 active:scale-[0.99]
+                                     disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md
+                                     transition-[transform,box-shadow] duration-200 flex items-center justify-center"
                         >
-                            {isSubmitting ? (
-                                <>
-                                    <LoadingSpinner size={18} />
-                                    <span>Entrando...</span>
-                                </>
-                            ) : (
-                                'Entrar no Sistema'
-                            )}
+                            <span className="inline-flex items-center justify-center gap-2 min-w-[170px] transition-opacity duration-200">
+                                {isSubmitting ? (
+                                    <>
+                                        <LoadingSpinner size={18} />
+                                        <span>Entrando...</span>
+                                    </>
+                                ) : (
+                                    'Entrar no Sistema'
+                                )}
+                            </span>
                         </button>
                     </form>
 
