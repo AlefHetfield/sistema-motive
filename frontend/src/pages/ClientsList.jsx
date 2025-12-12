@@ -1345,22 +1345,24 @@ const ClientsList = () => {
                                         )}
                                     </button>
                                 </th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    <button
-                                        onClick={() => setSortDescriptor(prev => ({
-                                            column: 'status',
-                                            direction: prev.column === 'status' && prev.direction === 'ascending' ? 'descending' : 'ascending'
-                                        }))}
-                                        className="flex items-center gap-2 hover:text-primary transition-colors"
-                                    >
-                                        Status
-                                        {sortDescriptor.column === 'status' ? (
-                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
-                                        ) : (
-                                            <ArrowUpDown size={14} className="opacity-40" />
-                                        )}
-                                    </button>
-                                </th>
+                                {activeTab === 'active' && (
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        <button
+                                            onClick={() => setSortDescriptor(prev => ({
+                                                column: 'status',
+                                                direction: prev.column === 'status' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                            }))}
+                                            className="flex items-center gap-2 hover:text-primary transition-colors"
+                                        >
+                                            Status
+                                            {sortDescriptor.column === 'status' ? (
+                                                sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="opacity-40" />
+                                            )}
+                                        </button>
+                                    </th>
+                                )}
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     <button
                                         onClick={() => setSortDescriptor(prev => ({
@@ -1395,11 +1397,11 @@ const ClientsList = () => {
                                 </th>
                                 {(activeTab === 'signed' || activeTab === 'archived') && (
                                     <>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Remuneração Paga</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Comissão Paga</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 tracking-wider text-center">Remuneração Paga</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 tracking-wider text-center">Comissão Paga</th>
                                     </>
                                 )}
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Ações</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 tracking-wider text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1429,11 +1431,13 @@ const ClientsList = () => {
                                             </td>
                                             <td className="px-6 py-4 text-gray-700">{client.responsavel || client.corretor}</td>
                                             <td className="px-6 py-4 text-gray-700">{client.agencia || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center">
-                                                    <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} disabled={!!updatingStatusMap[client.id]} loading={!!updatingStatusMap[client.id]} />
-                                                </div>
-                                            </td>
+                                            {activeTab === 'active' && (
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center">
+                                                        <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} disabled={!!updatingStatusMap[client.id]} loading={!!updatingStatusMap[client.id]} />
+                                                    </div>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4">
                                                 {client.status === 'Assinado' ? (
                                                     <input
@@ -1572,7 +1576,7 @@ const ClientsList = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={(activeTab === 'signed' || activeTab === 'archived') ? "10" : "8"} className="text-center p-10 text-gray-500">
+                                    <td colSpan={activeTab === 'active' ? "8" : "9"} className="text-center p-10 text-gray-500">
                                         Nenhum cliente encontrado.
                                     </td>
                                 </tr>
@@ -1651,17 +1655,18 @@ const ClientsList = () => {
                                             </div>
                                         )}
 
-                                        {/* Status */}
-                                        <div className="pt-2 border-t border-gray-100">
-                                            <p className="text-xs text-gray-500 mb-2">Status atual</p>
-                                            <StatusSelect 
-                                                currentStatus={client.status} 
-                                                clientId={client.id} 
-                                                onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} 
-                                                disabled={!!updatingStatusMap[client.id]} 
-                                                loading={!!updatingStatusMap[client.id]} 
-                                            />
-                                        </div>
+                                        {activeTab === 'active' && (
+                                            <div className="pt-2 border-t border-gray-100">
+                                                <p className="text-xs text-gray-500 mb-2">Status atual</p>
+                                                <StatusSelect 
+                                                    currentStatus={client.status} 
+                                                    clientId={client.id} 
+                                                    onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} 
+                                                    disabled={!!updatingStatusMap[client.id]} 
+                                                    loading={!!updatingStatusMap[client.id]} 
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* Data de Assinatura */}
                                         {(client.status === 'Assinado' || client.dataAssinaturaContrato) && (
