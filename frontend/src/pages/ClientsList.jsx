@@ -1133,16 +1133,6 @@ const ClientsList = () => {
         <div id="active-clients-content" className="fade-in min-h-screen bg-gray-50 sm:p-6 sm:bg-transparent">
             {/* Header fixo tipo app mobile */}
             <div className="sticky top-0 z-40 bg-white sm:bg-transparent sm:relative">
-                <div className="sm:mb-8">
-                    <div className="bg-gradient-to-br from-primary to-primary/90 sm:bg-none p-4 sm:p-0 sm:mb-6 shadow-lg sm:shadow-none">
-                        <div className="sm:absolute sm:inset-0 sm:bg-gradient-to-r sm:from-primary/5 sm:via-transparent sm:to-primary/5 sm:rounded-3xl sm:blur-3xl"></div>
-                        <div className="relative">
-                            <h2 className="text-xl sm:text-4xl font-bold text-white sm:bg-gradient-to-r sm:from-gray-900 sm:via-gray-800 sm:to-gray-900 sm:bg-clip-text sm:text-transparent mb-1 sm:mb-3">Clientes</h2>
-                            <p className="text-white/90 sm:text-gray-600 text-xs sm:text-lg hidden sm:block">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Navegação em abas estilo app mobile */}
                 <div className="bg-white sm:bg-white/80 sm:backdrop-blur-sm shadow-sm sm:rounded-2xl sm:inline-flex sm:p-1.5 sm:gap-1 sm:mb-8 sm:border sm:border-gray-100 w-full sm:w-auto">
                     <div className="flex sm:contents">

@@ -171,9 +171,14 @@ const AppLayout = () => {
                                 <currentPage.icon className="w-5 h-5 text-primary" />
                             </div>
                         )}
-                        <h1 id="page-title" className="text-xl font-bold text-gray-800">
-                            {currentPage?.label || 'Sistema Motive'}
-                        </h1>
+                        <div>
+                            <h1 id="page-title" className="text-xl font-bold text-gray-800">
+                                {currentPage?.label || 'Sistema Motive'}
+                            </h1>
+                            {currentPage?.label === 'Clientes' && (
+                                <p className="text-xs text-gray-500 mt-0.5">Visualize e gerencie o progresso dos financiamentos em tempo real</p>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
