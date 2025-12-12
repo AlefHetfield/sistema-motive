@@ -115,11 +115,33 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
                     <div className="text-gray-400 flex-shrink-0">
                         <GripVertical size={14} className="sm:w-4 sm:h-4" />
                     </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-                            {client.nome}
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                            <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
+                                {client.nome}
+                            </div>
+                            <NewBadge creationDate={client.createdAt} />
                         </div>
-                        <NewBadge creationDate={client.createdAt} />
+                        {/* Badges de Contexto */}
+                        {(client.processo || client.venda || client.modalidade) && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                                {client.processo && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                        Processo
+                                    </span>
+                                )}
+                                {client.venda && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                                        Venda
+                                    </span>
+                                )}
+                                {client.modalidade && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                        {client.modalidade}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <button
@@ -163,10 +185,30 @@ const ClientCard = ({ client, status, onEdit }) => {
         >
             <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-1">
                         <div className="text-sm font-semibold text-gray-900 truncate">{client.nome}</div>
                         <NewBadge creationDate={client.createdAt} />
                     </div>
+                    {/* Badges de Contexto */}
+                    {(client.processo || client.venda || client.modalidade) && (
+                        <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                            {client.processo && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                    Processo
+                                </span>
+                            )}
+                            {client.venda && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                                    Venda
+                                </span>
+                            )}
+                            {client.modalidade && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                    {client.modalidade}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); onEdit && onEdit(client); }}
@@ -1599,6 +1641,27 @@ const ClientsList = () => {
                                                         <NewBadge creationDate={client.createdAt} />
                                                     </div>
                                                     <p className="text-xs text-gray-500 truncate mt-0.5">{formatCPF(client.cpf)}</p>
+                                                    
+                                                    {/* Badges de Contexto */}
+                                                    {(client.processo || client.venda || client.modalidade) && (
+                                                        <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                                            {client.processo && (
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                                    Processo
+                                                                </span>
+                                                            )}
+                                                            {client.venda && (
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                                                                    Venda
+                                                                </span>
+                                                            )}
+                                                            {client.modalidade && (
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                                                    {client.modalidade}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
