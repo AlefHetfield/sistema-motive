@@ -95,10 +95,10 @@ const AppLayout = () => {
 
     return (
         <div id="app-structure" className="h-screen w-full flex">
-            {/* Sidebar (Menu Lateral) - Slim com expansão ao hover */}
+            {/* Sidebar (Menu Lateral) - Overlay com expansão ao hover */}
             <aside 
                 id="sidebar" 
-                className={`bg-secondary text-white flex flex-col shrink-0 shadow-2xl relative transition-all duration-300 ${
+                className={`fixed left-0 top-0 h-full bg-secondary text-white flex flex-col shadow-2xl z-50 transition-all duration-300 ${
                     sidebarExpanded ? 'w-64' : 'w-20'
                 }`}
                 onMouseEnter={() => setSidebarExpanded(true)}
@@ -162,8 +162,8 @@ const AppLayout = () => {
                 <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
             </aside>
             
-            {/* Conteúdo Principal */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+            {/* Conteúdo Principal - Agora com padding-left para compensar a sidebar */}
+            <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 pl-20 transition-all duration-300">
                 <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
                     <div className="flex items-center gap-3">
                         {currentPage?.icon && (
