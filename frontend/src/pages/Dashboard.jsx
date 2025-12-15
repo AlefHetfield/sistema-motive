@@ -37,6 +37,7 @@ const STATUS_OPTIONS = [
     "Aprovado",
     "Engenharia",
     "Baixando FGTS",
+    "Fichas e Cadastros",
     "Finalização",
     "Aguardando Reserva",
     "Conformidade",
@@ -57,6 +58,7 @@ const Dashboard = () => {
         Aprovado: 0,
         Engenharia: 0,
         'Baixando FGTS': 0,
+        'Fichas e Cadastros': 0,
         Finalização: 0,
         'Aguardando Reserva': 0,
         Conformidade: 0,
@@ -138,6 +140,7 @@ const Dashboard = () => {
                 'Aprovado': 'rgb(16, 185, 129)', // green
                 'Engenharia': 'rgb(245, 158, 11)', // amber
                 'Baixando FGTS': 'rgb(234, 179, 8)', // yellow
+                'Fichas e Cadastros': 'rgb(20, 184, 166)', // teal
                 'Finalização': 'rgb(168, 85, 247)', // purple
                 'Aguardando Reserva': 'rgb(6, 182, 212)', // cyan
                 'Conformidade': 'rgb(249, 115, 22)', // orange
@@ -237,6 +240,7 @@ const Dashboard = () => {
         'Aprovado': CheckCircle2,
         'Engenharia': Clock,
         'Baixando FGTS': Clock,
+        'Fichas e Cadastros': FileCheck,
         'Finalização': FileCheck,
         'Aguardando Reserva': Calendar,
         'Conformidade': AlertCircle,
@@ -249,6 +253,7 @@ const Dashboard = () => {
         'Aprovado': 'bg-emerald-50 text-emerald-700 border-emerald-200',
         'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
         'Baixando FGTS': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+        'Fichas e Cadastros': 'bg-teal-50 text-teal-700 border-teal-200',
         'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
         'Aguardando Reserva': 'bg-cyan-50 text-cyan-700 border-cyan-200',
         'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
