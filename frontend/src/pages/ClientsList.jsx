@@ -526,7 +526,7 @@ const ClientsList = () => {
     const [activeId, setActiveId] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '' });
+    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
     const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
@@ -814,8 +814,13 @@ const ClientsList = () => {
         return [...new Set(responsaveis)].sort();
     }, [allClients]);
 
+    const uniqueModalidades = useMemo(() => {
+        const modalidades = allClients.map(c => c.modalidade).filter(Boolean);
+        return [...new Set(modalidades)].sort();
+    }, [allClients]);
+
     const handleClearFilters = () => {
-        setFilters({ agencia: '', responsavel: '', status: '', processo: '', venda: '' });
+        setFilters({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
@@ -841,10 +846,11 @@ const ClientsList = () => {
             const statusMatch = filters.status === '' || client.status === filters.status;
             const processoMatch = filters.processo === '' || (filters.processo === 'sim' ? client.processo : !client.processo);
             const vendaMatch = filters.venda === '' || (filters.venda === 'sim' ? client.venda : !client.venda);
+            const modalidadeMatch = filters.modalidade === '' || client.modalidade === filters.modalidade;
             
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch;
             }
             
             // Busca em nome
@@ -859,7 +865,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && textMatch;
         });
 
         // Aplicar ordenação se sortDescriptor estiver definido
@@ -945,6 +951,19 @@ const ClientsList = () => {
                             onChange={(val) => setFilters({ ...filters, responsavel: val })}
                             placeholder="Todos os responsáveis"
                             options={[{ label: 'Todos os responsáveis', value: '' }, ...uniqueResponsaveis.map(r => ({ label: r, value: r }))]}
+                        />
+                    </div>
+                </div>
+
+                {/* Modalidade */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Modalidade</label>
+                    <div className="relative">
+                        <FancySelect
+                            value={filters.modalidade}
+                            onChange={(val) => setFilters({ ...filters, modalidade: val })}
+                            placeholder="Todas as modalidades"
+                            options={[{ label: 'Todas as modalidades', value: '' }, ...uniqueModalidades.map(m => ({ label: m, value: m }))]}
                         />
                     </div>
                 </div>
