@@ -99,12 +99,17 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Migração automática: se a senha atual usa rounds antigos (>8), rehash com 8 rounds
     // Isso melhora a performance nos próximos logins sem comprometer segurança
-    const currentRounds = parseInt(user.passwordHash.split('$')[2]);
     const updateData = { lastLogin: new Date() };
     
-    if (currentRounds > 8) {
-      console.log(`Migrando hash de ${currentRounds} para 8 rounds para usuário:`, email);
-      updateData.passwordHash = await bcrypt.hash(password, 8);
+    // Bcrypt hash format: $2a$<rounds>$<salt><hash>
+    // Valida e extrai o número de rounds do hash
+    const hashParts = user.passwordHash.split('$');
+    if (hashParts.length >= 4 && hashParts[2]) {
+      const currentRounds = parseInt(hashParts[2], 10);
+      if (!isNaN(currentRounds) && currentRounds > 8) {
+        console.log(`Migrando hash de ${currentRounds} para 8 rounds para usuário:`, email);
+        updateData.passwordHash = await bcrypt.hash(password, 8);
+      }
     }
 
     // Atualiza último login e opcionalmente o hash da senha em uma única query
