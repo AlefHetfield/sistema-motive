@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { PrismaClient } from '@prisma/client';
 import cron from 'node-cron';
 import { buildMonthlyReport, buildFileName, buildWeeklyReport, buildWeeklyFileName } from './reportGenerator.js';
@@ -16,6 +17,13 @@ const prisma = new PrismaClient({
 const app = express();
 
 // Middleware
+// Compressão Gzip para reduzir tamanho das respostas (até 70% de redução)
+app.use(compression({
+  level: 6, // Nível de compressão (0-9, 6 é bom balanço)
+  threshold: 1024, // Só comprime respostas > 1KB
+  type: ['application/json', 'text/html', 'text/css', 'text/javascript', 'application/javascript']
+}));
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true,
