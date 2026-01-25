@@ -39,7 +39,12 @@ function createSession(res, payload) {
 }
 
 function destroySession(res) {
-  res.clearCookie(SESSION_COOKIE);
+  res.clearCookie(SESSION_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+  });
 }
 
 function readSession(req) {

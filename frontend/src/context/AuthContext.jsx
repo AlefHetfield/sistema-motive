@@ -98,13 +98,21 @@ export const AuthProvider = ({ children }) => {
             });
 
             if (!response.ok) {
+                // Sessão inválida no servidor
                 setUser(null);
                 setIsAuthenticated(false);
                 clearCachedSession();
+            } else {
+                // Sessão válida - atualiza o cache
+                const userData = await response.json();
+                setCachedSession(userData);
             }
         } catch (error) {
-            // Falha silenciosa - usa cache
-            console.debug('Validação de sessão falhou, usando cache:', error);
+            // Em caso de erro de conexão, limpa a sessão por segurança
+            console.debug('Validação de sessão falhou, limpando cache:', error);
+            setUser(null);
+            setIsAuthenticated(false);
+            clearCachedSession();
         }
     };
 
@@ -139,6 +147,10 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
+            // Primeiro limpa o cache local
+            clearCachedSession();
+            
+            // Depois faz a chamada ao servidor para limpar o cookie
             await fetch(`${API_URL}/api/auth/logout`, {
                 method: 'POST',
                 credentials: 'include',
@@ -146,9 +158,16 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Erro ao fazer logout:', error);
         } finally {
+            // Garante que o estado é limpo mesmo se a requisição falhar
             setUser(null);
             setIsAuthenticated(false);
             clearCachedSession();
+            
+            // Aguarda um pouco antes de redirecionar para garantir limpeza
+            // Força reload da página para limpar qualquer cache do navegador
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 100);
         }
     };
 
