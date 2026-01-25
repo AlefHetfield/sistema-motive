@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const SESSION_CACHE_KEY = 'motive_session_cache';
 const SESSION_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const LOGOUT_FLAG_KEY = 'motive_logout_intent'; // Flag para logout intencional
 
 // Cache local para sessão
 function getCachedSession() {
@@ -41,6 +42,34 @@ function clearCachedSession() {
   } catch {}
 }
 
+function setLogoutIntent() {
+  try {
+    localStorage.setItem(LOGOUT_FLAG_KEY, Date.now().toString());
+  } catch {}
+}
+
+function getLogoutIntent() {
+  try {
+    const intent = localStorage.getItem(LOGOUT_FLAG_KEY);
+    if (!intent) return null;
+    // Limpa após 2 segundos
+    const age = Date.now() - parseInt(intent);
+    if (age > 2000) {
+      localStorage.removeItem(LOGOUT_FLAG_KEY);
+      return null;
+    }
+    return intent;
+  } catch {
+    return null;
+  }
+}
+
+function clearLogoutIntent() {
+  try {
+    localStorage.removeItem(LOGOUT_FLAG_KEY);
+  } catch {}
+}
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -53,6 +82,15 @@ export const AuthProvider = ({ children }) => {
 
     const checkAuth = async () => {
         try {
+            // Se foi deslogado intencionalmente, não tenta restaurar sessão
+            if (getLogoutIntent()) {
+                setUser(null);
+                setIsAuthenticated(false);
+                clearCachedSession();
+                setIsLoading(false);
+                return;
+            }
+
             // Primeiro, verifica o cache local
             const cachedUser = getCachedSession();
             if (cachedUser) {
@@ -93,6 +131,14 @@ export const AuthProvider = ({ children }) => {
     // Valida a sessão sem bloquear a UI
     const validateSessionInBackground = async () => {
         try {
+            // Se foi deslogado intencionalmente, não valida
+            if (getLogoutIntent()) {
+                clearCachedSession();
+                setUser(null);
+                setIsAuthenticated(false);
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/auth/me`, {
                 credentials: 'include',
             });
@@ -147,10 +193,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            // Primeiro limpa o cache local
+            // Marca a intenção de logout ANTES de tudo
+            setLogoutIntent();
+            
+            // Limpa o cache local
             clearCachedSession();
             
-            // Depois faz a chamada ao servidor para limpar o cookie
+            // Faz a chamada ao servidor para limpar o cookie
             await fetch(`${API_URL}/api/auth/logout`, {
                 method: 'POST',
                 credentials: 'include',
@@ -158,13 +207,12 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Erro ao fazer logout:', error);
         } finally {
-            // Garante que o estado é limpo mesmo se a requisição falhar
+            // Garante que o estado é limpo
             setUser(null);
             setIsAuthenticated(false);
             clearCachedSession();
             
-            // Redireciona para login usando window.location
-            // Isso força reload completo e limpa todo cache do navegador
+            // Redireciona para login
             window.location.href = '/login';
         }
     };
