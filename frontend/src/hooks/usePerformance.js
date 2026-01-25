@@ -67,24 +67,30 @@ export const useRequestPerformance = () => {
 };
 
 /**
- * Hook para monitorar Web Vitals
+ * Hook para monitorar Web Vitals nativos do navegador
  * 
  * Uso:
  * useWebVitals();
  */
 export const useWebVitals = () => {
   useEffect(() => {
-    if ('web-vital' in window) {
-      import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-        getCLS(console.log);
-        getFID(console.log);
-        getFCP(console.log);
-        getLCP(console.log);
-        getTTFB(console.log);
-      }).catch(e => {
-        // web-vitals não disponível
-        console.debug('web-vitals não disponível');
-      });
+    // Usa Web Performance API nativa do navegador
+    if (typeof PerformanceObserver !== 'undefined') {
+      try {
+        // Monitora Largest Contentful Paint (LCP)
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const lastEntry = entries[entries.length - 1];
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`📊 [LCP] ${lastEntry.renderTime || lastEntry.loadTime}ms`);
+          }
+        });
+        observer.observe({ entryTypes: ['largest-contentful-paint'] });
+        
+        return () => observer.disconnect();
+      } catch (e) {
+        console.debug('PerformanceObserver não disponível');
+      }
     }
   }, []);
 };
