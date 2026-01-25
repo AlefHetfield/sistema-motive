@@ -70,10 +70,17 @@ const NavLink = ({ to, icon: Icon, label, expanded }) => {
 };
 
 const AppLayout = () => {
-    const { logout, user, isAdmin, checkAuth } = useAuth();
+    const { logout, user, isAdmin, checkAuth, isAuthenticated } = useAuth();
     const location = useLocation();
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [sidebarExpanded, setSidebarExpanded] = useState(false);
+    
+    // Redireciona para login se deslogou
+    useEffect(() => {
+        if (!isAuthenticated) {
+            window.location.href = '/login';
+        }
+    }, [isAuthenticated]);
     
     // Verifica se precisa trocar senha ao carregar
     useEffect(() => {

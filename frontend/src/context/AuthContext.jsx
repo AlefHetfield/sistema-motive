@@ -163,11 +163,9 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
             clearCachedSession();
             
-            // Aguarda um pouco antes de redirecionar para garantir limpeza
-            // Força reload da página para limpar qualquer cache do navegador
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 100);
+            // Redireciona para login usando window.location
+            // Isso força reload completo e limpa todo cache do navegador
+            window.location.href = '/login';
         }
     };
 
