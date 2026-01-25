@@ -1,9 +1,24 @@
 import { X } from 'lucide-react';
+import { useToast } from '../hooks/useToast';
 
 const ConfirmModal = ({ isOpen, onClose, onCancel, onConfirm, title, message, confirmText = "OK", cancelText = "Cancelar", confirmColor = "blue" }) => {
+    const notify = useToast();
+    
     if (!isOpen) return null;
 
     const handleCancel = onCancel || onClose;
+    
+    const handleConfirm = () => {
+        onConfirm();
+        onClose();
+        
+        // Mostrar mensagem apropriada baseada na ação
+        if (confirmText === 'Deletar' || confirmText === 'Delete') {
+            notify.success('Item deletado com sucesso! 🗑️');
+        } else {
+            notify.success('Ação confirmada com sucesso! ✅');
+        }
+    };
 
     const colorClasses = {
         blue: "bg-blue-500 hover:bg-blue-600",
@@ -56,7 +71,7 @@ const ConfirmModal = ({ isOpen, onClose, onCancel, onConfirm, title, message, co
                         {cancelText}
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={handleConfirm}
                         className={`px-4 py-2 text-white rounded-lg transition-colors font-medium ${colorClasses[confirmColor] || colorClasses.blue}`}
                     >
                         {confirmText}

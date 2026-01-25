@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
+import { useToast } from '../hooks/useToast'; // Importar toast
 import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2 } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
 
@@ -32,6 +33,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const [formData, setFormData] = useState(initialFormData);
     const [isSaving, setIsSaving] = useState(false);
     const { logActivity } = useActivityLog(); // Usar o hook de log
+    const notify = useToast(); // Usar toast notifications
 
     useEffect(() => {
         // Popula o formulário quando um cliente é passado para edição,
@@ -105,11 +107,15 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             // Log de atividade
             if (isNewClient) {
                 logActivity(`Cliente '${savedClient.nome}' adicionado.`);
+                notify.success(`Cliente ${savedClient.nome} adicionado com sucesso! 🎉`);
             } else {
                 logActivity(`Cliente '${savedClient.nome}' atualizado.`);
                 // Se o status foi alterado, loga também
                 if (clientToEdit && clientToEdit.status !== savedClient.status) {
                     logActivity(`Status de '${savedClient.nome}' alterado para '${savedClient.status}'.`);
+                    notify.success(`Status atualizado para ${savedClient.status}! ✅`);
+                } else {
+                    notify.success(`Cliente ${savedClient.nome} atualizado com sucesso! ✅`);
                 }
             }
 
@@ -117,6 +123,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             onClose(); // Fecha o modal
         } catch (error) {
             console.error("Erro ao salvar cliente:", error);
+            notify.error(`Erro ao salvar cliente: ${error.message || 'Tente novamente'}`);
+
         } finally {
             setIsSaving(false);
         }

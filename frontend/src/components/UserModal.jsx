@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Mail, User, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 import ModernInput from './ModernInput';
+import { useToast } from '../hooks/useToast';
 
 const UserModal = ({ user, onClose, onSave }) => {
     const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const UserModal = ({ user, onClose, onSave }) => {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const notify = useToast();
 
     useEffect(() => {
         if (user) {
@@ -43,8 +45,18 @@ const UserModal = ({ user, onClose, onSave }) => {
             }
 
             await onSave(dataToSend);
+            
+            // Mostrar mensagem de sucesso
+            if (user) {
+                notify.success(`Usuário ${formData.nome} atualizado com sucesso! ✅`);
+            } else {
+                notify.success(`Usuário ${formData.nome} criado com sucesso! 🎉`);
+            }
+            
+            onClose();
         } catch (error) {
             console.error('Erro ao salvar usuário:', error);
+            notify.error(`Erro ao salvar usuário: ${error.message || 'Tente novamente'}`);
         } finally {
             setIsSaving(false);
         }

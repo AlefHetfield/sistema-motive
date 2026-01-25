@@ -11,6 +11,7 @@ import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percen
 import LoadingSpinner from '../components/LoadingSpinner';
 import ReceiptPreview from '../components/ReceiptPreview';
 import { ModernInput } from '../components/ModernInput';
+import { useToast } from '../hooks/useToast';
 
 
 const initialTaxes = {
@@ -45,6 +46,8 @@ const ReceiptGenerator = () => {
     const [calculatedTaxes, setCalculatedTaxes] = useState(initialTaxes);
     const [inputError, setInputError] = useState('');
     const [isEditingEmitter, setIsEditingEmitter] = useState(false);
+    
+    const notify = useToast();
 
 
     const isFormValid = prolaboreBruto > 0 && !inputError && empresaNome && empresaCnpj && socioNome && mesReferencia;
@@ -69,7 +72,7 @@ const ReceiptGenerator = () => {
     const handleCnpjSearch = async () => {
         const cnpj = empresaCnpj.replace(/\D/g, '');
         if (cnpj.length !== 14) {
-            alert('CNPJ inválido. Digite 14 números.');
+            notify.warning('CNPJ inválido. Digite 14 números.');
             return;
         }
 
@@ -117,7 +120,7 @@ const ReceiptGenerator = () => {
             setAddressLocked(true);
         } catch (error) {
             console.error('Erro ao buscar CNPJ:', error);
-            alert(error.message || 'Erro ao buscar dados do CNPJ. Tente novamente.');
+            notify.error(error.message || 'Erro ao buscar dados do CNPJ. Tente novamente.');
             setAddressLocked(false);
         } finally {
             setIsCnpjLoading(false);
@@ -163,40 +166,41 @@ const ReceiptGenerator = () => {
     };
 
     const handleGeneratePdf = () => {
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        try {
+            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+            
+            const brutoProlabore = parseFloat(prolaboreBruto);
+            const inss = calculatedTaxes.inss;
+            const ir = calculatedTaxes.ir;
+            const totalDescontos = inss.valor + ir.valor;
+            const liquido = calculatedTaxes.liquido;
+            const salariosMinimos = (brutoProlabore / SALARIO_MINIMO_2025).toFixed(1).replace('.', ',');
+            
+            // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF ---
+            const pageW = doc.internal.pageSize.getWidth();
+            const margin = 15;
+            let y = 20;
         
-        const brutoProlabore = parseFloat(prolaboreBruto);
-        const inss = calculatedTaxes.inss;
-        const ir = calculatedTaxes.ir;
-        const totalDescontos = inss.valor + ir.valor;
-        const liquido = calculatedTaxes.liquido;
-        const salariosMinimos = (brutoProlabore / SALARIO_MINIMO_2025).toFixed(1).replace('.', ',');
-        
-        // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF ---
-        const pageW = doc.internal.pageSize.getWidth();
-        const margin = 15;
-        let y = 20;
-    
-        // Título
-        doc.setFont('helvetica', 'bold').setFontSize(14);
-        doc.text("Recibo de Pagamento de Pró-Labore", pageW / 2, y, { align: 'center' });
-        y += 10;
+            // Título
+            doc.setFont('helvetica', 'bold').setFontSize(14);
+            doc.text("Recibo de Pagamento de Pró-Labore", pageW / 2, y, { align: 'center' });
+            y += 10;
 
-        // Dados da Empresa
-        doc.setFont('helvetica', 'bold').setFontSize(10);
-        doc.text(empresaNome, margin, y); y += 4;
-        doc.setFont('helvetica', 'normal').setFontSize(9);
-        doc.text(empresaEndereco, margin, y); y += 4;
-        doc.text(`${empresaCep}   ${empresaCidade}`, margin, y); y += 4;
-        doc.text(`CNPJ: ${empresaCnpj}`, margin, y);
+            // Dados da Empresa
+            doc.setFont('helvetica', 'bold').setFontSize(10);
+            doc.text(empresaNome, margin, y); y += 4;
+            doc.setFont('helvetica', 'normal').setFontSize(9);
+            doc.text(empresaEndereco, margin, y); y += 4;
+            doc.text(`${empresaCep}   ${empresaCidade}`, margin, y); y += 4;
+            doc.text(`CNPJ: ${empresaCnpj}`, margin, y);
+            
+            // Mês de referência
+            doc.setFont('helvetica', 'bold').setFontSize(9).text(`Referente ao mês: ${mesReferencia}`, pageW - margin, 30, { align: 'right' });
+            
+            y += 12;
         
-        // Mês de referência
-        doc.setFont('helvetica', 'bold').setFontSize(9).text(`Referente ao mês: ${mesReferencia}`, pageW - margin, 30, { align: 'right' });
-        
-        y += 12;
-    
-        // Dados do Sócio
-        doc.setFont('helvetica', 'bold').setFontSize(10).text(`Nome: ${socioNome}`, margin, y);
+            // Dados do Sócio
+            doc.setFont('helvetica', 'bold').setFontSize(10).text(`Nome: ${socioNome}`, margin, y);
         doc.setFont('helvetica', 'normal').setFontSize(9).text(`Função: ${socioFuncao}`, margin, y + 5);
         y += 12;
         
@@ -263,6 +267,13 @@ const ReceiptGenerator = () => {
         doc.text(socioNome, pageW / 2, y, { align: 'center' });
     
         doc.save(`recibo_prolabore_${socioNome.split(' ')[0]}_${mesReferencia.replace('/', '-')}.pdf`);
+        
+        // Mostrar toast de sucesso
+        notify.success(`Recibo de ${socioNome} gerado com sucesso! 📄`);
+    } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        notify.error(`Erro ao gerar PDF: ${error.message || 'Tente novamente'}`);
+    }
     };
 
     const brutoValue = parseFloat(prolaboreBruto) || 0;
