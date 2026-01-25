@@ -97,10 +97,20 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    // Atualiza último login
+    // Migração automática: se a senha atual usa rounds antigos (>8), rehash com 8 rounds
+    // Isso melhora a performance nos próximos logins sem comprometer segurança
+    const currentRounds = parseInt(user.passwordHash.split('$')[2]);
+    const updateData = { lastLogin: new Date() };
+    
+    if (currentRounds > 8) {
+      console.log(`Migrando hash de ${currentRounds} para 8 rounds para usuário:`, email);
+      updateData.passwordHash = await bcrypt.hash(password, 8);
+    }
+
+    // Atualiza último login e opcionalmente o hash da senha em uma única query
     await prisma.user.update({
       where: { id: user.id },
-      data: { lastLogin: new Date() }
+      data: updateData
     });
 
     // Cria sessão
@@ -139,8 +149,8 @@ app.put('/api/auth/change-password', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
     }
 
-    // Hash da nova senha
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Hash da nova senha (8 rounds for better performance while maintaining security)
+    const passwordHash = await bcrypt.hash(password, 8);
 
     // Atualiza a senha do usuário logado
     const updatedUser = await prisma.user.update({
@@ -533,9 +543,9 @@ app.post('/api/users', requireRole('ADM'), async (req, res) => {
       return res.status(400).json({ error: 'Este email já está em uso' });
     }
 
-    // Hash da senha
+    // Hash da senha (8 rounds for better performance while maintaining security)
     console.log('Gerando hash para senha:', password);
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 8);
     console.log('Hash gerado com sucesso');
 
     const newUser = await prisma.user.create({
@@ -580,9 +590,9 @@ app.put('/api/users/:id', requireRole('ADM'), async (req, res) => {
     if (isActive !== undefined) updateData.isActive = isActive;
     if (mustChangePassword !== undefined) updateData.mustChangePassword = mustChangePassword;
     
-    // Se uma nova senha foi fornecida, faz o hash
+    // Se uma nova senha foi fornecida, faz o hash (8 rounds for better performance while maintaining security)
     if (password) {
-      updateData.passwordHash = await bcrypt.hash(password, 10);
+      updateData.passwordHash = await bcrypt.hash(password, 8);
     }
 
     const updatedUser = await prisma.user.update({
