@@ -101,19 +101,14 @@ app.post('/api/auth/login', async (req, res) => {
     // Isso melhora a performance nos próximos logins sem comprometer segurança
     const updateData = { lastLogin: new Date() };
     
-    // Bcrypt hash format: $2a$<rounds>$<salt><hash> or $2b$<rounds>$<salt><hash>
-    // Valida e extrai o número de rounds do hash
-    if (user.passwordHash && typeof user.passwordHash === 'string') {
-      const hashParts = user.passwordHash.split('$');
-      if (hashParts.length >= 4 && 
-          (hashParts[1] === '2a' || hashParts[1] === '2b') && 
-          hashParts[2]) {
-        const currentRounds = parseInt(hashParts[2], 10);
-        if (!isNaN(currentRounds) && currentRounds > 8) {
-          console.log(`Migrando hash de ${currentRounds} para 8 rounds para usuário ID: ${user.id}`);
-          updateData.passwordHash = await bcrypt.hash(password, 8);
-        }
+    // Verifica e migra senhas com mais de 8 rounds
+    try {
+      const currentRounds = bcrypt.getRounds(user.passwordHash);
+      if (currentRounds > 8) {
+        updateData.passwordHash = await bcrypt.hash(password, 8);
       }
+    } catch (err) {
+      // Ignora erros de parsing do hash - mantém o hash existente
     }
 
     // Atualiza último login e opcionalmente o hash da senha em uma única query
