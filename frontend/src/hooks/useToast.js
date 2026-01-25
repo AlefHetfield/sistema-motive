@@ -78,26 +78,9 @@ export const useToast = () => {
       toast.dismiss();
     },
 
-    // 🎉 Customizado
-    custom: (message, options = {}) => {
-      return toast.custom((t) => (
-        <div className="flex items-center gap-3 bg-white rounded-lg shadow-lg p-4 border border-gray-200">
-          <div className="flex-1">
-            <p className="font-medium text-gray-900">{message}</p>
-            {options.description && (
-              <p className="text-sm text-gray-600">{options.description}</p>
-            )}
-          </div>
-          <button
-            onClick={() => toast.dismiss(t)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-        </div>
-      ), {
-        duration: options.duration || 3000
-      });
+    // 🎉 Customizado (passa component ou string)
+    custom: (component, options = {}) => {
+      return toast.custom(component, options);
     },
   };
 };
