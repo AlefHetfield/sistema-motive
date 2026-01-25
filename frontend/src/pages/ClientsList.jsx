@@ -1065,8 +1065,17 @@ const ClientsList = () => {
 
     // Configuração dos sensores para drag and drop
     const sensors = useSensors(
-        useSensor(MouseSensor),
-        useSensor(TouchSensor)
+        useSensor(MouseSensor, {
+            activationConstraint: {
+                distance: 0, // Arrasto instantâneo, sem necessidade de movimento mínimo
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 0, // Sem delay para touch
+                tolerance: 0, // Sem tolerância de movimento
+            },
+        })
     );
 
     // Handler quando o arrasto começa
