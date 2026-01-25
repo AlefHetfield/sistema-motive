@@ -235,20 +235,42 @@ app.put('/api/auth/profile', requireAuth, async (req, res) => {
   }
 });
 
-// Verificar sessão atual
+// Verificar sessão atual - otimizado com cache
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        mustChangePassword: true,
-        isActive: true
+    // Se a sessão existe no cookie e foi validada, confia nela
+    // Isso reduz drasticamente o tempo de resposta
+    const cachedUser = req.user;
+    
+    // Busca no banco apenas para validar que ainda está ativo (com timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos max
+
+    let user;
+    try {
+      user = await Promise.race([
+        prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            role: true,
+            mustChangePassword: true,
+            isActive: true
+          }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]);
+    } catch (error) {
+      // Se demorou muito, retorna os dados do cookie (cache)
+      if (error.message === 'timeout' || error.name === 'AbortError') {
+        return res.json(cachedUser);
       }
-    });
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!user || !user.isActive) {
       destroySession(res);
@@ -262,15 +284,36 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   }
 });
 
-// Health check para evitar cold start
+// Health check para evitar cold start - responde MUITO rápido
 app.get('/api/health', async (req, res) => {
   try {
-    // Verifica conexão com o banco de dados
-    await prisma.$queryRaw`SELECT 1`;
+    // Verifica conexão com o banco de dados em paralelo
+    // Timeout de 3 segundos para não bloquear a resposta
+    const dbCheck = prisma.$queryRaw`SELECT 1`.catch(() => false);
+    
+    const result = await Promise.race([
+      dbCheck,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ]).catch(() => false);
+
+    if (result === false) {
+      // DB lento mas retorna resposta rápida ao cliente
+      return res.json({ 
+        status: 'degraded', 
+        message: 'Database responding slowly', 
+        timestamp: new Date().toISOString() 
+      });
+    }
+
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   } catch (error) {
+    // Mesmo em erro, retorna rápido para evitar timeout
     console.error('Health check falhou:', error);
-    res.status(503).json({ status: 'error', message: 'Banco de dados indisponível' });
+    res.status(503).json({ 
+      status: 'error', 
+      message: 'Database check timeout',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

@@ -4,8 +4,10 @@ const AuthContext = createContext(null);
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const SESSION_CACHE_KEY = 'motive_session_cache';
-const SESSION_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const SESSION_CACHE_TTL = 30 * 60 * 1000; // 30 minutos (aumentado de 5)
 const LOGOUT_FLAG_KEY = 'motive_logout_intent'; // Flag para logout intencional
+const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutos - mantém servidor acordado
+const VALIDATION_TIMEOUT = 5000; // 5 segundos - timeout para validação
 
 // Cache local para sessão
 function getCachedSession() {
@@ -74,11 +76,21 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [keepAliveId, setKeepAliveId] = useState(null);
 
     // Verifica a sessão ao carregar a aplicação
     useEffect(() => {
         checkAuth();
     }, []);
+
+    // Inicia keep-alive quando usuário está autenticado
+    useEffect(() => {
+        if (isAuthenticated) {
+            const id = startKeepAlive();
+            setKeepAliveId(id);
+            return () => clearInterval(id);
+        }
+    }, [isAuthenticated]);
 
     const checkAuth = async () => {
         try {
@@ -128,7 +140,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Valida a sessão sem bloquear a UI
+    // Valida a sessão sem bloquear a UI com TIMEOUT
     const validateSessionInBackground = async () => {
         try {
             // Se foi deslogado intencionalmente, não valida
@@ -139,27 +151,48 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
-            const response = await fetch(`${API_URL}/api/auth/me`, {
-                credentials: 'include',
-            });
+            // Usa AbortController para timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), VALIDATION_TIMEOUT);
 
-            if (!response.ok) {
-                // Sessão inválida no servidor
-                setUser(null);
-                setIsAuthenticated(false);
-                clearCachedSession();
-            } else {
-                // Sessão válida - atualiza o cache
-                const userData = await response.json();
-                setCachedSession(userData);
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include',
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    // Sessão inválida no servidor
+                    setUser(null);
+                    setIsAuthenticated(false);
+                    clearCachedSession();
+                } else {
+                    // Sessão válida - atualiza o cache
+                    const userData = await response.json();
+                    setCachedSession(userData);
+                }
+            } finally {
+                clearTimeout(timeoutId);
             }
         } catch (error) {
-            // Em caso de erro de conexão, limpa a sessão por segurança
-            console.debug('Validação de sessão falhou, limpando cache:', error);
-            setUser(null);
-            setIsAuthenticated(false);
-            clearCachedSession();
+            // Em caso de timeout ou erro, MANTÉM a sessão em cache (não limpa)
+            // Isso permite que o app continue funcionando mesmo offline
+            console.debug('Validação de sessão timeout/erro (mantendo cache):', error?.message);
         }
+    };
+
+    // Keep-alive: mantém o servidor acordado
+    const startKeepAlive = () => {
+        const intervalId = setInterval(() => {
+            if (isAuthenticated) {
+                // Faz uma chamada leve a cada 10 minutos para manter a conexão
+                fetch(`${API_URL}/api/health`, { 
+                    credentials: 'include',
+                    signal: AbortSignal.timeout(3000)
+                }).catch(() => {}); // Ignora erros silenciosamente
+            }
+        }, KEEP_ALIVE_INTERVAL);
+        return intervalId;
     };
 
     const login = async (email, password) => {

@@ -84,19 +84,33 @@ export async function fetchUsers() {
 }
 
 /**
- * Healthcheck da API/DB
+ * Healthcheck da API/DB com timeout para não bloquear
  * @returns {Promise<Object>} status da API e do banco se o backend expõe `/api/health`
  */
 export async function getHealth() {
-    const response = await fetch(`${API_BASE_URL}/api/health`, {
-        credentials: 'include'
-    });
-    // Se a rota não existir, ainda assim retornamos algo útil
-    if (!response.ok) {
-        return { ok: false, status: response.status, message: 'Health endpoint indisponível' };
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
+
+        const response = await fetch(`${API_BASE_URL}/api/health`, {
+            credentials: 'include',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        // Se a rota não existir, ainda assim retornamos algo útil
+        if (!response.ok) {
+            return { ok: false, status: response.status, message: 'Health endpoint indisponível' };
+        }
+        const data = await response.json().catch(() => ({}));
+        return { ok: true, ...data };
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return { ok: false, status: 'timeout', message: 'Health check timeout (API lenta)' };
+        }
+        return { ok: false, message: error.message };
     }
-    const data = await response.json().catch(() => ({}));
-    return { ok: true, ...data };
 }
 
 /**
