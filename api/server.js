@@ -8,7 +8,11 @@ import { dispatchReport } from './emailSender.js';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+// Configurar Prisma com pool de conexões para Vercel
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
 const app = express();
 
 // Middleware
@@ -242,6 +246,18 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erro ao verificar sessão:', error);
     res.status(500).json({ error: 'Erro ao verificar sessão' });
+  }
+});
+
+// Health check para evitar cold start
+app.get('/api/health', async (req, res) => {
+  try {
+    // Verifica conexão com o banco de dados
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('Health check falhou:', error);
+    res.status(503).json({ status: 'error', message: 'Banco de dados indisponível' });
   }
 });
 

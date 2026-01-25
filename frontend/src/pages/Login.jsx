@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingAnimation from '../components/LoadingAnimation';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { usePerformanceMonitor, useRequestPerformance } from '../hooks/usePerformance';
 import logoDark from '../assets/logo-dark.png';
 
 const Login = () => {
@@ -15,6 +16,10 @@ const Login = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { login, isAuthenticated, isLoading } = useAuth();
     const navigate = useNavigate();
+    const { measureFetch } = useRequestPerformance();
+
+    // Monitora performance da página
+    usePerformanceMonitor('LoginPage');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
