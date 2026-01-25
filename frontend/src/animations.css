@@ -1,0 +1,250 @@
+/* Animações e Transições Globais */
+
+/* Transições suaves globais */
+* {
+  @apply transition-all duration-300;
+}
+
+/* Botões com hover elegante */
+button {
+  @apply active:scale-95 transition-transform duration-150;
+}
+
+/* Inputs com foco elegante */
+input,
+textarea,
+select {
+  @apply focus:ring-2 focus:ring-offset-2 transition-all duration-200;
+}
+
+/* Links com hover suave */
+a {
+  @apply hover:opacity-80 transition-opacity duration-200;
+}
+
+/* Cards com hover levado */
+.card,
+.card-hover {
+  @apply hover:shadow-lg hover:-translate-y-1 transition-all duration-300;
+}
+
+/* Modals com animação de entrada */
+[role="dialog"] {
+  @apply animate-scale-in;
+}
+
+/* Backdrop com fade */
+.modal-backdrop {
+  @apply animate-fade-in;
+}
+
+/* Notificações com slide */
+.notification {
+  @apply animate-slide-in-right;
+}
+
+.notification-exit {
+  @apply animate-slide-in-left;
+}
+
+/* Loading spinners suave */
+.spinner {
+  @apply animate-spin;
+}
+
+.pulse-ring {
+  @apply animate-pulse-soft;
+}
+
+/* Skeletons com shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #f9f9f9 50%,
+    #f0f0f0 100%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  @apply animate-fade-in;
+}
+
+.page-exit {
+  @apply animate-fade-out;
+}
+
+/* Hover effects para elementos interativos */
+.interactive-hover {
+  @apply hover:shadow-md hover:bg-gray-50 transition-all duration-250;
+}
+
+/* Focus visible para accessibility */
+:focus-visible {
+  @apply ring-2 ring-primary ring-offset-2;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Animação para elementos que aparecem */
+.fade-in-up {
+  @apply animate-slide-in-up;
+}
+
+.fade-in-down {
+  @apply animate-slide-in-down;
+}
+
+.fade-in-left {
+  @apply animate-slide-in-left;
+}
+
+.fade-in-right {
+  @apply animate-slide-in-right;
+}
+
+/* Micro-interação: ripple effect */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.ripple:active::after {
+  width: 300px;
+  height: 300px;
+  animation: ripple-animation 0.6s ease-out;
+}
+
+@keyframes ripple-animation {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
+}
+
+/* Transição suave para mudanças de cor */
+.color-transition {
+  @apply transition-colors duration-300;
+}
+
+/* Glow effect para elementos importantes */
+.glow-effect {
+  @apply animate-glow;
+}
+
+/* Bounce gentle para itens da lista */
+.list-item-bounce {
+  @apply hover:animate-bounce-gentle;
+}
+
+/* Smooth height transitions */
+.height-transition {
+  @apply transition-[max-height] duration-300 ease-in-out;
+}
+
+/* Transform transitions */
+.transform-transition {
+  @apply transition-transform duration-300;
+}
+
+/* Success, warning, error animations */
+.success-animation {
+  @apply animate-scale-in text-green-600;
+}
+
+.error-animation {
+  @apply animate-wiggle text-red-600;
+}
+
+.warning-animation {
+  @apply animate-pulse-soft text-yellow-600;
+}
+
+.info-animation {
+  @apply animate-fade-in text-blue-600;
+}
+
+/* Smooth opacity transitions */
+.opacity-transition {
+  @apply transition-opacity duration-300;
+}
+
+/* Stagger animations para listas */
+.stagger-animation > * {
+  @apply animate-fade-in;
+}
+
+.stagger-animation > *:nth-child(1) {
+  animation-delay: 50ms;
+}
+
+.stagger-animation > *:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.stagger-animation > *:nth-child(3) {
+  animation-delay: 150ms;
+}
+
+.stagger-animation > *:nth-child(4) {
+  animation-delay: 200ms;
+}
+
+.stagger-animation > *:nth-child(5) {
+  animation-delay: 250ms;
+}
+
+/* Flip card effect */
+.flip-card {
+  perspective: 1000px;
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
