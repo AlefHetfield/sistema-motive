@@ -136,7 +136,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     }
 
     // A lista de status para o dropdown do formulário
-    const STATUS_OPTIONS = ["Aprovado", "Engenharia", "Finalização", "Conformidade", "Assinado", "Assinado-Movido", "Arquivado"];
+    const STATUS_OPTIONS = ["Documentação Recebida", "Aprovado", "Solicitando Engenharia", "Engenharia Solicitada", "Baixando FGTS", "Preenchendo Fichas", "Assinando Fichas", "Finalizando", "Aguardando Reserva", "Enviando para Conformidade", "Aguardando Conformidade", "Inconforme", "Conforme - Ag. Contrato", "Assinando Contrato", "Assinado", "Assinado-Movido", "Arquivado"];
 
     return (
         <div id="client-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
