@@ -1180,7 +1180,7 @@ const ClientsList = () => {
                                     </div>
 
                                     <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
-                                        <div className="overflow-y-auto max-h-[60vh] space-y-2.5 sm:space-y-3 pr-1 sm:pr-2 min-h-[100px]">
+                                        <div className="overflow-y-auto max-h-[60vh] space-y-2.5 sm:space-y-3 pr-1 sm:pr-2 min-h-[100px] no-scrollbar scrollbar-hide">
                                             {items.length === 0 ? (
                                                 <DroppableArea id={droppableId} />
                                             ) : items.map(client => (
