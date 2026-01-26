@@ -89,14 +89,20 @@ const statusBorderMap = {
 
 // DroppableArea: área de drop para colunas vazias
 const DroppableArea = ({ id }) => {
-    const { setNodeRef } = useSortable({ id });
+    const { setNodeRef, isOver } = useSortable({ id });
     
     return (
         <div 
             ref={setNodeRef}
-            className="text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center bg-gradient-to-br from-gray-50 to-gray-100/50 hover:border-primary/40 hover:bg-primary/10 hover:scale-105 transition-all duration-300 hover:shadow-lg"
+            className={`text-xs font-medium border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center transition-all duration-300 ${
+                isOver 
+                    ? 'border-primary bg-primary/20 scale-105 shadow-lg shadow-primary/25' 
+                    : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100/50 text-gray-400 hover:border-primary/40 hover:bg-primary/5'
+            }`}
         >
-            <div className="animate-bounce">Arraste clientes aqui</div>
+            <div className={isOver ? 'scale-110' : 'animate-bounce'}>
+                {isOver ? '✓ Solte aqui' : 'Arraste clientes aqui'}
+            </div>
         </div>
     );
 };
@@ -111,11 +117,14 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         transition,
         isDragging,
     } = useSortable({ id: client.id });
+    
+    const [showTooltip, setShowTooltip] = useState(false);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.3 : 1,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: isDragging ? 'grabbing' : 'grab',
     };
 
     const borderClass = statusBorderMap[status] || 'border-gray-200';
@@ -124,7 +133,9 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
         <div
             ref={setNodeRef}
             style={style}
-            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-3.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass}`}
+            onMouseEnter={() => !isDragging && setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            className={`group relative max-w-[300px] bg-white/90 backdrop-blur-sm p-3.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass} ${isDragging ? 'ring-2 ring-primary/50 shadow-2xl' : ''}`}
         >
             <div className="flex items-start justify-between">
                 <div 
@@ -190,6 +201,29 @@ const DraggableClientCard = ({ client, status, onEdit }) => {
             <div className="mt-2.5 sm:mt-3 border-t pt-1.5 sm:pt-2 flex justify-end text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
                 <div>{getDayCounter(client.createdAt).days} dias</div>
             </div>
+            
+            {/* Tooltip de preview ao hover */}
+            {showTooltip && !isDragging && createPortal(
+                <div className="fixed z-[10000] pointer-events-none">
+                    <div className="bg-gray-900/95 text-white text-xs rounded-lg p-3 shadow-2xl backdrop-blur-sm max-w-xs">
+                        <div className="space-y-2">
+                            {client.cpf && (
+                                <div><span className="text-gray-400">CPF:</span> {formatCPF(client.cpf)}</div>
+                            )}
+                            {client.agencia && (
+                                <div><span className="text-gray-400">Agência:</span> {client.agencia}</div>
+                            )}
+                            {client.responsavel && (
+                                <div><span className="text-gray-400">Responsável:</span> {client.responsavel}</div>
+                            )}
+                            <div className="text-gray-400 text-[10px] pt-1 border-t border-gray-700">
+                                Criado em {formatDate(client.createdAt)}
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
@@ -543,6 +577,7 @@ const ClientsList = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
     const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
+    const [monthYearFilter, setMonthYearFilter] = useState('');
     const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
@@ -835,6 +870,36 @@ const ClientsList = () => {
         return [...new Set(modalidades)].sort();
     }, [allClients]);
 
+    // Obter meses/anos únicos das datas de assinatura
+    const uniqueMonthYears = useMemo(() => {
+        const monthYears = allClients
+            .filter(c => c.dataAssinaturaContrato)
+            .map(c => {
+                const date = new Date(c.dataAssinaturaContrato);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                return { year, month, value: `${year}-${String(month + 1).padStart(2, '0')}` };
+            });
+        
+        // Remover duplicatas
+        const unique = [...new Map(monthYears.map(item => [item.value, item])).values()];
+        
+        // Ordenar por data (mais recente primeiro)
+        unique.sort((a, b) => {
+            if (a.year !== b.year) return b.year - a.year;
+            return b.month - a.month;
+        });
+        
+        // Formatar para exibição
+        const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                           'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        
+        return unique.map(item => ({
+            value: item.value,
+            label: `${monthNames[item.month]} ${item.year}`
+        }));
+    }, [allClients]);
+
     const handleClearFilters = () => {
         setFilters({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
     };
@@ -864,9 +929,21 @@ const ClientsList = () => {
             const vendaMatch = filters.venda === '' || (filters.venda === 'sim' ? client.venda : !client.venda);
             const modalidadeMatch = filters.modalidade === '' || client.modalidade === filters.modalidade;
             
+            // Filtro de mês/ano de assinatura (apenas para abas signed e archived)
+            let monthYearMatch = true;
+            if (monthYearFilter && (activeTab === 'signed' || activeTab === 'archived') && client.dataAssinaturaContrato) {
+                const [filterYear, filterMonth] = monthYearFilter.split('-');
+                const signatureDate = new Date(client.dataAssinaturaContrato);
+                const clientYear = signatureDate.getFullYear().toString();
+                const clientMonth = (signatureDate.getMonth() + 1).toString().padStart(2, '0');
+                monthYearMatch = clientYear === filterYear && clientMonth === filterMonth;
+            } else if (monthYearFilter && (activeTab === 'signed' || activeTab === 'archived')) {
+                monthYearMatch = false; // Se filtro ativo mas cliente sem data, não exibir
+            }
+            
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && monthYearMatch;
             }
             
             // Busca em nome
@@ -881,7 +958,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && monthYearMatch && textMatch;
         });
 
         // Aplicar ordenação se sortDescriptor estiver definido
@@ -918,7 +995,7 @@ const ClientsList = () => {
         }
 
         return filtered;
-    }, [allClients, searchTerm, filters, activeTab, sortDescriptor]);
+    }, [allClients, searchTerm, filters, activeTab, sortDescriptor, monthYearFilter]);
 
     // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
     const filterDropdownPortal = isFilterDropdownOpen ? createPortal(
@@ -1153,7 +1230,7 @@ const ClientsList = () => {
         
         // Encontra o cliente ativo para o overlay
         const activeClient = activeId ? clients.find(c => c.id === activeId) : null;
-
+        
         return (
             <DndContext
                 sensors={sensors}
@@ -1162,7 +1239,7 @@ const ClientsList = () => {
                 onDragEnd={handleDragEnd}
                 onDragCancel={handleDragCancel}
             >
-                <div ref={kanbanScrollRef} className="overflow-x-auto pb-4">
+                <div ref={kanbanScrollRef} className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     <div className="flex gap-3 sm:gap-6 px-3 sm:px-2">
                         {statuses.map(status => {
                             const items = clients.filter(c => c.status === status);
@@ -1170,13 +1247,29 @@ const ClientsList = () => {
                             // Adiciona um ID único para a área droppable vazia
                             const droppableId = `droppable-${status}`;
 
+                            // Determina se a coluna está sobrecarregada (mais de 8 cards)
+                            const isOverloaded = items.length > 8;
+                            
                             return (
-                                <div key={status} className="min-w-[280px] sm:min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
+                                <div key={status} className="min-w-[280px] sm:min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
                                     <div className="flex items-center justify-between mb-4 sm:mb-5">
-                                        <h4 className="text-xs sm:text-sm font-bold text-gray-800">
+                                        <h4 className="text-xs sm:text-sm font-bold text-gray-800 truncate flex-1 pr-2">
                                             {status}
                                         </h4>
-                                        <span className="text-xs font-bold text-gray-600 bg-white/80 backdrop-blur-sm px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-sm border border-gray-200">{items.length}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-sm border transition-all ${
+                                                isOverloaded 
+                                                    ? 'bg-gradient-to-r from-orange-50 to-red-50 text-red-700 border-red-200 animate-pulse' 
+                                                    : 'bg-white/80 backdrop-blur-sm text-gray-600 border-gray-200'
+                                            }`}>
+                                                {items.length}
+                                            </span>
+                                            {isOverloaded && (
+                                                <span className="text-orange-500" title="Coluna sobrecarregada">
+                                                    <AlertCircle size={16} />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
@@ -1281,15 +1374,30 @@ const ClientsList = () => {
                 {/* Barra de ações estilo app */}
                 <div className="bg-white sm:bg-white/80 sm:backdrop-blur-xl p-3 sm:p-6 sm:rounded-3xl shadow-sm sm:shadow-lg sm:shadow-gray-200/50 sm:border sm:border-white mb-3 sm:mb-8 sticky top-[72px] sm:top-0 z-30 sm:relative">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
-                        <div className="flex-1 w-full sm:w-auto">
-                            <ModernInput
-                                id="search-client"
-                                Icon={Search}
-                                type="text"
-                                placeholder="Buscar..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                        <div className="flex-1 w-full sm:w-auto flex gap-2">
+                            <div className="flex-1">
+                                <ModernInput
+                                    id="search-client"
+                                    Icon={Search}
+                                    type="text"
+                                    placeholder="Buscar..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            {(activeTab === 'signed' || activeTab === 'archived') && uniqueMonthYears.length > 0 && (
+                                <div className="min-w-[140px] sm:min-w-[180px]">
+                                    <FancySelect
+                                        value={monthYearFilter}
+                                        onChange={(val) => setMonthYearFilter(val)}
+                                        placeholder="Mês/Ano"
+                                        options={[
+                                            { label: 'Todos os períodos', value: '' },
+                                            ...uniqueMonthYears
+                                        ]}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 justify-between sm:justify-end">
@@ -1459,22 +1567,24 @@ const ClientsList = () => {
                                         )}
                                     </button>
                                 </th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
-                                    <button
-                                        onClick={() => setSortDescriptor(prev => ({
-                                            column: 'createdAt',
-                                            direction: prev.column === 'createdAt' && prev.direction === 'ascending' ? 'descending' : 'ascending'
-                                        }))}
-                                        className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
-                                    >
-                                        Tempo
-                                        {sortDescriptor.column === 'createdAt' ? (
-                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
-                                        ) : (
-                                            <ArrowUpDown size={14} className="opacity-40" />
-                                        )}
-                                    </button>
-                                </th>
+                                {activeTab === 'active' && (
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+                                        <button
+                                            onClick={() => setSortDescriptor(prev => ({
+                                                column: 'createdAt',
+                                                direction: prev.column === 'createdAt' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                            }))}
+                                            className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
+                                        >
+                                            Tempo
+                                            {sortDescriptor.column === 'createdAt' ? (
+                                                sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="opacity-40" />
+                                            )}
+                                        </button>
+                                    </th>
+                                )}
                                 {(activeTab === 'signed' || activeTab === 'archived') && (
                                     <>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 tracking-wider text-center">Remuneração Paga</th>
@@ -1552,9 +1662,11 @@ const ClientsList = () => {
                                                     <span className="text-xs text-gray-400">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <DayBadge creationDate={client.createdAt} />
-                                            </td>
+                                            {activeTab === 'active' && (
+                                                <td className="px-6 py-4 text-center">
+                                                    <DayBadge creationDate={client.createdAt} />
+                                                </td>
+                                            )}
                                             {(activeTab === 'signed' || activeTab === 'archived') && (
                                                 <>
                                                     <td className="px-6 py-4 text-center">
