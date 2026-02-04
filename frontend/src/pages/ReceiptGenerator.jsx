@@ -4,8 +4,7 @@ import {
     calcularINSS,
     calcularIR,
     formatarMoeda,
-    SALARIO_MINIMO_2025,
-    TETO_INSS_2025
+    getTaxParamsForYear
 } from '../utils/taxCalculations';
 import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -27,6 +26,12 @@ const getMesReferenciaAtual = () => {
     return `${meses[data.getMonth()]}/${data.getFullYear()}`;
 };
 
+const getAnoFromMesReferencia = (mesReferencia) => {
+    const match = String(mesReferencia || '').match(/(\d{4})/);
+    if (match) return Number(match[1]);
+    return new Date().getFullYear();
+};
+
 
 
 const ReceiptGenerator = () => {
@@ -42,7 +47,8 @@ const ReceiptGenerator = () => {
     const [mesReferencia, setMesReferencia] = useState(getMesReferenciaAtual());
 
     // Estados para o cálculo
-    const [prolaboreBruto, setProlaboreBruto] = useState(SALARIO_MINIMO_2025.toFixed(2));
+    const { salarioMinimo: salarioMinimoAtual } = getTaxParamsForYear(new Date().getFullYear());
+    const [prolaboreBruto, setProlaboreBruto] = useState(salarioMinimoAtual.toFixed(2));
     const [calculatedTaxes, setCalculatedTaxes] = useState(initialTaxes);
     const [inputError, setInputError] = useState('');
     const [isEditingEmitter, setIsEditingEmitter] = useState(false);
@@ -137,9 +143,10 @@ const ReceiptGenerator = () => {
             return;
         }
 
-        const inssResult = calcularINSS(brutoValue);
+        const anoReferencia = getAnoFromMesReferencia(mesReferencia);
+        const inssResult = calcularINSS(brutoValue, anoReferencia);
         const baseCalculoIR = brutoValue - inssResult.valor;
-        const irResult = calcularIR(baseCalculoIR);
+        const irResult = calcularIR(baseCalculoIR, anoReferencia);
         const liquidoResult = brutoValue - inssResult.valor - irResult.valor;
 
         setCalculatedTaxes({
@@ -148,7 +155,7 @@ const ReceiptGenerator = () => {
             liquido: liquidoResult,
         });
 
-    }, [prolaboreBruto, inputError]); // Depend on inputError to recalculate or reset when validation changes
+    }, [prolaboreBruto, inputError, mesReferencia]); // Depend on inputError to recalculate or reset when validation changes
 
     const handleProlaboreChange = (e) => {
         const value = e.target.value;
@@ -174,7 +181,9 @@ const ReceiptGenerator = () => {
             const ir = calculatedTaxes.ir;
             const totalDescontos = inss.valor + ir.valor;
             const liquido = calculatedTaxes.liquido;
-            const salariosMinimos = (brutoProlabore / SALARIO_MINIMO_2025).toFixed(1).replace('.', ',');
+            const anoReferencia = getAnoFromMesReferencia(mesReferencia);
+            const { salarioMinimo: salarioMinimoRef } = getTaxParamsForYear(anoReferencia);
+            const salariosMinimos = (brutoProlabore / salarioMinimoRef).toFixed(1).replace('.', ',');
             
             // --- INÍCIO DA RENDERIZAÇÃO DO LAYOUT DO PDF ---
             const pageW = doc.internal.pageSize.getWidth();
@@ -255,7 +264,7 @@ const ReceiptGenerator = () => {
         
         // Texto do Recibo
         doc.setFont('helvetica', 'normal').setFontSize(10);
-        const textBody = `Recebi de ${empresaNome} a importância de R$ ${formatarMoeda(liquido)}, referente ao meu PRO LABORE de ${mesReferencia}, com os descontos exigidos em Lei. Declaro, outrossim, que meu salário base para fins de desconto das contribuições ao INSS é equivalente a ${salariosMinimos} salário(s) mínimo(s).\nSalário mínimo vigente: R$ ${formatarMoeda(SALARIO_MINIMO_2025)}`;
+        const textBody = `Recebi de ${empresaNome} a importância de R$ ${formatarMoeda(liquido)}, referente ao meu PRO LABORE de ${mesReferencia}, com os descontos exigidos em Lei. Declaro, outrossim, que meu salário base para fins de desconto das contribuições ao INSS é equivalente a ${salariosMinimos} salário(s) mínimo(s).\nSalário mínimo vigente: R$ ${formatarMoeda(salarioMinimoRef)}`;
         const splitText = doc.splitTextToSize(textBody, pageW - (margin * 2));
         doc.text(splitText, margin, y); y += splitText.length * 4 + 20;
     
@@ -283,11 +292,14 @@ const ReceiptGenerator = () => {
     const percentualDescontos = brutoValue > 0 ? (totalDescontos / brutoValue) * 100 : 0;
     const percentualLiquido = brutoValue > 0 ? (liquidoValue / brutoValue) * 100 : 0;
     
+    const anoReferencia = getAnoFromMesReferencia(mesReferencia);
+    const { salarioMinimo: salarioMinimoRef, tetoInss: tetoInssRef } = getTaxParamsForYear(anoReferencia);
+
     const suggestions = [
-        { label: '1 Salário Mínimo', value: SALARIO_MINIMO_2025.toFixed(2) },
+        { label: '1 Salário Mínimo', value: salarioMinimoRef.toFixed(2) },
         { label: 'R$ 2.000', value: '2000.00' },
         { label: 'R$ 5.000', value: '5000.00' },
-        { label: 'Teto INSS', value: TETO_INSS_2025.toFixed(2) },
+        { label: 'Teto INSS', value: tetoInssRef.toFixed(2) },
     ];
 
     // Calcular campos preenchidos
