@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
-import { FilePenLine, Trash2, PlusCircle, LayoutGrid, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, GripVertical, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid } from 'lucide-react';
+import KanbanBoard from '../components/KanbanBoard';
 import LoadingAnimation from '../components/LoadingAnimation';
 import ClientModal from '../components/ClientModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { ModernInput } from '../components/ModernInput';
-import { DndContext, closestCenter, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = [
@@ -85,210 +82,6 @@ const statusBorderMap = {
     'Conforme - Ag. Contrato': 'border-lime-400',
     'Assinando Contrato': 'border-indigo-400',
     Assinado: 'border-green-400',
-};
-
-// DroppableArea: área de drop para colunas vazias
-const DroppableArea = ({ id }) => {
-    const { setNodeRef, isOver } = useSortable({ id });
-    
-    return (
-        <div 
-            ref={setNodeRef}
-            className={`text-xs font-medium border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center transition-all duration-300 ${
-                isOver 
-                    ? 'border-primary bg-primary/20 scale-105 shadow-lg shadow-primary/25' 
-                    : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100/50 text-gray-400 hover:border-primary/40 hover:bg-primary/5'
-            }`}
-        >
-            <div className={isOver ? 'scale-110' : 'animate-bounce'}>
-                {isOver ? '✓ Solte aqui' : 'Arraste clientes aqui'}
-            </div>
-        </div>
-    );
-};
-
-// DraggableClientCard: componente draggable para o Kanban
-const DraggableClientCard = ({ client, status, onEdit }) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: client.id });
-    
-    const [showTooltip, setShowTooltip] = useState(false);
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        cursor: isDragging ? 'grabbing' : 'grab',
-    };
-
-    const borderClass = statusBorderMap[status] || 'border-gray-200';
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            onMouseEnter={() => !isDragging && setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-            className={`group relative max-w-[300px] bg-white/90 backdrop-blur-sm p-3.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 flex flex-col border-l-4 ${borderClass} ${isDragging ? 'ring-2 ring-primary/50 shadow-2xl' : ''}`}
-        >
-            <div className="flex items-start justify-between">
-                <div 
-                    {...attributes}
-                    {...listeners}
-                    className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing"
-                >
-                    <div className="text-gray-400 flex-shrink-0">
-                        <GripVertical size={14} className="sm:w-4 sm:h-4" />
-                    </div>
-                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                            <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-                                {client.nome}
-                            </div>
-                            <NewBadge creationDate={client.createdAt} />
-                        </div>
-                        {/* Badges de Contexto */}
-                        {(client.processo || client.venda || client.modalidade) && (
-                            <div className="flex items-center gap-1 flex-wrap">
-                                {client.processo && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                        Processo
-                                    </span>
-                                )}
-                                {client.venda && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
-                                        Venda
-                                    </span>
-                                )}
-                                {client.modalidade && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                        {client.modalidade}
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <button
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        onEdit && onEdit(client); 
-                    }}
-                    className="p-1 text-gray-400 hover:text-gray-700 flex-shrink-0 cursor-pointer"
-                    title="Editar"
-                >
-                    <MoreHorizontal size={16} />
-                </button>
-            </div>
-
-            <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2 text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Home size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" />
-                    <span className="truncate">{client.imovel}</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                    <User size={12} className="sm:w-3.5 sm:h-3.5 shrink-0" />
-                    <span className="truncate">{client.corretor}</span>
-                </div>
-            </div>
-
-            <div className="mt-2.5 sm:mt-3 border-t pt-1.5 sm:pt-2 flex justify-end text-xs text-gray-500" onClick={() => onEdit && onEdit(client)}>
-                <div>{getDayCounter(client.createdAt).days} dias</div>
-            </div>
-            
-            {/* Tooltip de preview ao hover */}
-            {showTooltip && !isDragging && createPortal(
-                <div className="fixed z-[10000] pointer-events-none">
-                    <div className="bg-gray-900/95 text-white text-xs rounded-lg p-3 shadow-2xl backdrop-blur-sm max-w-xs">
-                        <div className="space-y-2">
-                            {client.cpf && (
-                                <div><span className="text-gray-400">CPF:</span> {formatCPF(client.cpf)}</div>
-                            )}
-                            {client.agencia && (
-                                <div><span className="text-gray-400">Agência:</span> {client.agencia}</div>
-                            )}
-                            {client.responsavel && (
-                                <div><span className="text-gray-400">Responsável:</span> {client.responsavel}</div>
-                            )}
-                            <div className="text-gray-400 text-[10px] pt-1 border-t border-gray-700">
-                                Criado em {formatDate(client.createdAt)}
-                            </div>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </div>
-    );
-};
-
-// ClientCard: componente de apresentação para cada cliente no Kanban (versão não-draggable, se necessário)
-const ClientCard = ({ client, status, onEdit }) => {
-    const borderClass = statusBorderMap[status] || 'border-gray-200';
-
-    return (
-        <div
-            onClick={() => onEdit && onEdit(client)}
-            className={`max-w-[300px] bg-white/90 backdrop-blur-sm p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-xl hover:border-gray-200 hover:scale-[1.02] transition-all duration-300 cursor-pointer flex flex-col border-l-4 ${borderClass}`}
-        >
-            <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="text-sm font-semibold text-gray-900 truncate">{client.nome}</div>
-                        <NewBadge creationDate={client.createdAt} />
-                    </div>
-                    {/* Badges de Contexto */}
-                    {(client.processo || client.venda || client.modalidade) && (
-                        <div className="flex items-center gap-1 flex-wrap mt-1.5">
-                            {client.processo && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                    Processo
-                                </span>
-                            )}
-                            {client.venda && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
-                                    Venda
-                                </span>
-                            )}
-                            {client.modalidade && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                    {client.modalidade}
-                                </span>
-                            )}
-                        </div>
-                    )}
-                </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onEdit && onEdit(client); }}
-                    className="p-1 text-gray-400 hover:text-gray-700 flex-shrink-0"
-                    title="Ações"
-                >
-                    <MoreHorizontal size={16} />
-                </button>
-            </div>
-
-            <div className="mt-3 space-y-2 text-xs text-gray-500">
-                <div className="flex items-center gap-2">
-                    <Home size={14} />
-                    <span className="truncate">{client.imovel}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <User size={14} />
-                    <span className="truncate">{client.corretor}</span>
-                </div>
-            </div>
-
-            <div className="mt-3 border-t pt-2 flex justify-end text-xs text-gray-500">
-                <div>{getDayCounter(client.createdAt).days} dias</div>
-            </div>
-        </div>
-    );
 };
 
 const AVATAR_PALETTES = [
@@ -564,21 +357,19 @@ const ClientsList = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [toasts, setToasts] = useState([]);
     const toastTimersRef = useRef({});
-    const kanbanScrollRef = useRef(null);
     const scrollPositionRef = useRef(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [activeTab, setActiveTab] = useState('active');
-    const [viewMode, setViewMode] = useState('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
     const [updatingStatusMap, setUpdatingStatusMap] = useState({});
-    const [activeId, setActiveId] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
     const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
     const [monthYearFilter, setMonthYearFilter] = useState('');
     const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+    const [viewMode, setViewMode] = useState('table'); // 'table' ou 'kanban'
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
     
@@ -656,18 +447,7 @@ const ClientsList = () => {
         loadClients();
     }, []);
 
-    // Restaurar posição do scroll após re-renderização
-    useEffect(() => {
-        if (kanbanScrollRef.current && viewMode === 'kanban') {
-            kanbanScrollRef.current.scrollLeft = scrollPositionRef.current;
-        }
-    });
-
     const handleOpenModal = (client = null) => {
-        // Salvar posição do scroll antes de abrir o modal
-        if (kanbanScrollRef.current) {
-            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
-        }
         setEditingClient(client);
         setIsModalOpen(true);
     };
@@ -1108,10 +888,6 @@ const ClientsList = () => {
 
     // Atualização rápida de status com UI otimista: atualiza localmente e tenta persistir no backend
     const handleQuickStatusUpdate = async (clientId, newStatus) => {
-        // Salvar posição do scroll antes de atualizar o estado
-        if (kanbanScrollRef.current) {
-            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
-        }
         const prevClients = allClients;
         const prevClient = prevClients.find(c => c.id === clientId);
         const prevStatus = prevClient ? prevClient.status : null;
@@ -1138,174 +914,6 @@ const ClientsList = () => {
                 return copy;
             });
         }
-    };
-
-    // Configuração dos sensores para drag and drop
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: {
-                distance: 0, // Arrasto instantâneo, sem necessidade de movimento mínimo
-            },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 0, // Sem delay para touch
-                tolerance: 0, // Sem tolerância de movimento
-            },
-        })
-    );
-
-    // Handler quando o arrasto começa
-    const handleDragStart = (event) => {
-        // Salvar posição do scroll antes do drag
-        if (kanbanScrollRef.current) {
-            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
-        }
-        setActiveId(event.active.id);
-    };
-
-    // Handler quando o arrasto é cancelado
-    const handleDragCancel = () => {
-        setActiveId(null);
-    };
-
-    // Handler para quando um card é solto em uma nova posição
-    const handleDragEnd = async (event) => {
-        // Salvar posição do scroll antes de atualizar o estado
-        if (kanbanScrollRef.current) {
-            scrollPositionRef.current = kanbanScrollRef.current.scrollLeft;
-        }
-        setActiveId(null);
-        const { active, over } = event;
-
-        if (!over) return;
-
-        const activeClient = allClients.find(c => c.id === active.id);
-        if (!activeClient) return;
-
-        // Determina o novo status baseado no container (coluna) ou no card sobre o qual foi solto
-        let newStatus;
-        
-        // Se over.id começa com 'droppable-', é uma coluna vazia
-        if (typeof over.id === 'string' && over.id.startsWith('droppable-')) {
-            newStatus = over.id.replace('droppable-', '');
-        } else {
-            // Se foi solto sobre outro card, usa o status daquele card
-            const overClient = allClients.find(c => c.id === over.id);
-            if (!overClient) return;
-            newStatus = overClient.status;
-        }
-        
-        // Se o status não mudou, não faz nada
-        if (activeClient.status === newStatus) return;
-
-        // Atualiza otimisticamente
-        const prevStatus = activeClient.status;
-        setAllClients(list => list.map(c => c.id === active.id ? { ...c, status: newStatus } : c));
-
-        // Marca como atualizando
-        setUpdatingStatusMap(m => ({ ...m, [active.id]: true }));
-
-        try {
-            await saveClient({ id: active.id, status: newStatus });
-            logActivity && logActivity(`Status do cliente ${active.id} alterado para ${newStatus} via drag and drop`);
-            addToast(`Cliente movido para ${newStatus}`, 'success');
-        } catch (error) {
-            console.error('Erro ao atualizar status via drag:', error);
-            setAllClients(list => list.map(c => c.id === active.id ? { ...c, status: prevStatus } : c));
-            addToast('Erro ao mover cliente', 'error');
-        } finally {
-            setUpdatingStatusMap(m => {
-                const copy = { ...m };
-                delete copy[active.id];
-                return copy;
-            });
-        }
-    };
-
-    // KanbanBoard component: agrupa clientes por status e renderiza colunas com scroll horizontal
-    const KanbanBoard = ({ clients }) => {
-        // Exclui status finais por segurança
-        const statuses = STATUS_OPTIONS.filter(s => !FINAL_STATUSES.includes(s));
-        
-        // Encontra o cliente ativo para o overlay
-        const activeClient = activeId ? clients.find(c => c.id === activeId) : null;
-        
-        return (
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragCancel={handleDragCancel}
-            >
-                <div ref={kanbanScrollRef} className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    <div className="flex gap-3 sm:gap-6 px-3 sm:px-2">
-                        {statuses.map(status => {
-                            const items = clients.filter(c => c.status === status);
-                            const itemIds = items.map(c => c.id);
-                            // Adiciona um ID único para a área droppable vazia
-                            const droppableId = `droppable-${status}`;
-
-                            // Determina se a coluna está sobrecarregada (mais de 8 cards)
-                            const isOverloaded = items.length > 8;
-                            
-                            return (
-                                <div key={status} className="min-w-[280px] sm:min-w-[320px] flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
-                                    <div className="flex items-center justify-between mb-4 sm:mb-5">
-                                        <h4 className="text-xs sm:text-sm font-bold text-gray-800 truncate flex-1 pr-2">
-                                            {status}
-                                        </h4>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-sm border transition-all ${
-                                                isOverloaded 
-                                                    ? 'bg-gradient-to-r from-orange-50 to-red-50 text-red-700 border-red-200 animate-pulse' 
-                                                    : 'bg-white/80 backdrop-blur-sm text-gray-600 border-gray-200'
-                                            }`}>
-                                                {items.length}
-                                            </span>
-                                            {isOverloaded && (
-                                                <span className="text-orange-500" title="Coluna sobrecarregada">
-                                                    <AlertCircle size={16} />
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <SortableContext items={items.length > 0 ? itemIds : [droppableId]} strategy={verticalListSortingStrategy}>
-                                        <div className="overflow-y-auto max-h-[60vh] space-y-2.5 sm:space-y-3 pr-1 sm:pr-2 min-h-[100px] no-scrollbar scrollbar-hide">
-                                            {items.length === 0 ? (
-                                                <DroppableArea id={droppableId} />
-                                            ) : items.map(client => (
-                                                <DraggableClientCard 
-                                                    key={client.id} 
-                                                    client={client} 
-                                                    status={status} 
-                                                    onEdit={(c) => handleOpenModal(c)} 
-                                                />
-                                            ))}
-                                        </div>
-                                    </SortableContext>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                
-                {/* Overlay que segue o cursor durante o arrasto */}
-                <DragOverlay>
-                    {activeClient ? (
-                        <div className="rotate-3 scale-105">
-                            <ClientCard 
-                                client={activeClient} 
-                                status={activeClient.status} 
-                                onEdit={() => {}}
-                            />
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
-        );
     };
 
     if (isLoading) {
@@ -1401,34 +1009,32 @@ const ClientsList = () => {
                         </div>
 
                         <div className="flex items-center gap-2 justify-between sm:justify-end">
-                            {/* Botões de alternância de visualização - apenas na aba de processos ativos */}
-                            {activeTab === 'active' && (
-                                <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100/80 rounded-xl p-1 border border-gray-200 shadow-sm">
-                                    <button
-                                        onClick={() => setViewMode('list')}
-                                        className={`p-2 sm:p-3 rounded-lg transition-all duration-300 ${
-                                            viewMode === 'list'
-                                                ? 'bg-white text-primary shadow-md scale-105'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
-                                        }`}
-                                        title="Visualizar em Lista"
-                                    >
-                                        <List size={16} className="sm:w-[18px] sm:h-[18px]" />
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('kanban')}
-                                        className={`p-2 sm:p-3 rounded-lg transition-all duration-300 ${
-                                            viewMode === 'kanban'
-                                                ? 'bg-white text-primary shadow-md scale-105'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
-                                        }`}
-                                        title="Visualizar em Kanban"
-                                    >
-                                        <LayoutGrid size={16} className="sm:w-[18px] sm:h-[18px]" />
-                                    </button>
-                                </div>
-                            )}
-                            
+                            {/* Toggle de View */}
+                            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                                        viewMode === 'table'
+                                            ? 'bg-white text-primary shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <List size={16} />
+                                    <span className="hidden sm:inline">Lista</span>
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('kanban')}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                                        viewMode === 'kanban'
+                                            ? 'bg-white text-primary shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <LayoutGrid size={16} />
+                                    <span className="hidden sm:inline">Kanban</span>
+                                </button>
+                            </div>
+
                             {/* Dropdown de Filtros */}
                             <div className="relative" ref={filterDropdownRef}>
                                 <button 
@@ -1461,9 +1067,32 @@ const ClientsList = () => {
                     </div>
                 </div>
 
-            {(activeTab !== 'active' || viewMode === 'list') ? (
-                <>
-                {/* Visualização Desktop - Tabela */}
+            {/* Visualização Kanban - Apenas para aba "active" */}
+            {viewMode === 'kanban' && activeTab === 'active' && (
+                <div className="animate-fade-in">
+                    <KanbanBoard 
+                        clients={filteredClients}
+                        onUpdate={loadClients}
+                    />
+                </div>
+            )}
+
+            {/* Mensagem quando modo Kanban em abas não "active" */}
+            {viewMode === 'kanban' && activeTab !== 'active' && (
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white p-12 text-center">
+                    <LayoutGrid size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-600 font-medium">Modo Kanban está disponível apenas para clientes Ativos</p>
+                    <button
+                        onClick={() => setActiveTab('active')}
+                        className="mt-4 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
+                    >
+                        Ver Clientes Ativos
+                    </button>
+                </div>
+            )}
+
+            {/* Visualização Desktop - Tabela */}
+                {viewMode === 'table' && (
                 <div className="hidden lg:block bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white overflow-hidden animate-fade-in">
                     <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
@@ -1777,8 +1406,10 @@ const ClientsList = () => {
                     </table>
                     </div>
                 </div>
+                )}
 
                 {/* Visualização Mobile - Cards estilo app */}
+                {viewMode === 'table' && (
                 <div className="lg:hidden px-3 pb-3 space-y-2.5 animate-fade-in">
                     {filteredClients.length > 0 ? (
                         filteredClients.map(client => {
@@ -2044,12 +1675,8 @@ const ClientsList = () => {
                         </div>
                     )}
                 </div>
-                </>
-            ) : (
-                <div className="space-y-4 -mx-3 sm:mx-0">
-                    <KanbanBoard clients={filteredClients} />
-                </div>
-            )}
+                )}
+
             <ClientModal 
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
