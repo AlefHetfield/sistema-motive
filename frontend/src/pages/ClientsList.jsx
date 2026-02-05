@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
