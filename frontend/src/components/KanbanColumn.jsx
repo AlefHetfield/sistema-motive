@@ -6,19 +6,39 @@ import {
 import { motion } from 'framer-motion';
 import KanbanCard from './KanbanCard';
 
-export default function KanbanColumn({ status, config, clients, onEditClient, onDeleteClient }) {
-  const { setNodeRef } = useDroppable({
+export default function KanbanColumn({ 
+  status, 
+  config, 
+  clients, 
+  onEditClient, 
+  onDeleteClient,
+  isDropTarget = false,
+  isDragging = false 
+}) {
+  const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
     data: { status },
   });
 
   const Icon = config.icon;
+  
+  // Destaque visual quando o card está sobre a coluna
+  const isHighlighted = isDragging && (isOver || isDropTarget);
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 flex-shrink-0 w-full h-fit"
+      animate={{ 
+        opacity: 1, 
+        x: 0,
+        scale: isHighlighted ? 1.02 : 1,
+      }}
+      transition={{ duration: 0.2 }}
+      className={`
+        flex flex-col bg-white rounded-xl shadow-sm border-2 flex-shrink-0 w-full h-fit
+        transition-all duration-200
+        ${isHighlighted ? 'border-blue-400 shadow-lg ring-2 ring-blue-200' : 'border-gray-100'}
+      `}
     >
       {/* Header da coluna */}
       <div className={`bg-gradient-to-r ${config.color} p-4 rounded-t-xl sticky top-0 z-10`}>

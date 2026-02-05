@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -128,7 +128,15 @@ export default function KanbanBoard({ clients, onUpdate }) {
   const [editingClient, setEditingClient] = useState(null);
   const [deletingClient, setDeletingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [targetStatus, setTargetStatus] = useState(null); // Rastrear status alvo do drag
+  const [targetStatus, setTargetStatus] = useState(null);
+  
+  // Estado local otimista para atualizações instantâneas
+  const [optimisticClients, setOptimisticClients] = useState(clients);
+  
+  // Sincronizar estado local com props quando clients mudar (apenas em reloads reais)
+  useEffect(() => {
+    setOptimisticClients(clients);
+  }, [clients]);
 
   // Configurar sensores de drag - Otimizado para melhor responsividade
   const sensors = useSensors(
@@ -141,14 +149,14 @@ export default function KanbanBoard({ clients, onUpdate }) {
     })
   );
 
-  // Agrupar clientes por status
+  // Agrupar clientes por status usando estado otimista
   const clientsByStatus = useMemo(() => {
     const grouped = {};
     STATUS_OPTIONS.forEach(status => {
-      grouped[status] = clients.filter(c => c.status === status);
+      grouped[status] = optimisticClients.filter(c => c.status === status);
     });
     return grouped;
-  }, [clients]);
+  }, [optimisticClients]);
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -180,10 +188,21 @@ export default function KanbanBoard({ clients, onUpdate }) {
   };
 
   const updateClientStatus = async (client, newStatus) => {
+    const statusAntes = client.status;
+    
+    // 1. ATUALIZAÇÃO OTIMISTA: Atualiza UI imediatamente
+    setOptimisticClients(prevClients =>
+      prevClients.map(c =>
+        c.id === client.id ? { ...c, status: newStatus } : c
+      )
+    );
+    
+    // Feedback instantâneo ao usuário
+    notify.success(`Cliente movido para "${newStatus}"`);
+    
     try {
-      const statusAntes = client.status;
+      // 2. SINCRONIZAÇÃO: Salva no backend em background
       const updatedClient = { ...client, status: newStatus };
-      
       await saveClient(updatedClient);
       
       // Log de atividade
@@ -194,13 +213,22 @@ export default function KanbanBoard({ clients, onUpdate }) {
         statusAntes,
         statusDepois: newStatus,
       });
-
+      
+      // Sincroniza com o servidor (sem reload forçado)
       onUpdate();
-      notify.success(`Cliente movido para "${newStatus}"`);
     } catch (error) {
       console.error('Erro ao mover cliente:', error);
-      notify.error('Erro ao mover cliente');
-      onUpdate(); // Recarrega para reverter
+      
+      // 3. REVERSÃO: Reverte apenas em caso de erro
+      setOptimisticClients(prevClients =>
+        prevClients.map(c =>
+          c.id === client.id ? { ...c, status: statusAntes } : c
+        )
+      );
+      
+      notify.error('Erro ao mover cliente. Revertendo...');
+      // Força reload para garantir consistência
+      onUpdate();
     }
   };
 
@@ -243,9 +271,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
     }
   };
 
-  // Calcular totais
+  // Calcular totais usando dados otimistas
   const stats = {
-    total: clients.length,
+    total: optimisticClients.length,
     aprovados: clientsByStatus['Aprovado']?.length || 0,
     engenhariaSolicitada: clientsByStatus['Engenharia Solicitada']?.length || 0,
     aguardandoReserva: clientsByStatus['Aguardando Reserva']?.length || 0,
@@ -323,24 +351,28 @@ export default function KanbanBoard({ clients, onUpdate }) {
                 clients={clientsByStatus[status]}
                 onEditClient={handleEditClient}
                 onDeleteClient={handleDeleteClient}
+                isDropTarget={targetStatus === status}
+                isDragging={activeId !== null}
               />
             </div>
           ))}
         </div>
 
         <DragOverlay
-          dropAnimation={null}
-          modifiers={[]}
+          dropAnimation={{
+            duration: 250,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}
         >
           {activeId ? (
             <div style={{
-              transform: 'translate(-50%, -50%)',
+              transform: 'rotate(3deg) scale(1.05)',
               pointerEvents: 'none',
             }}>
               <KanbanCard
-                client={clients.find(c => c.id === activeId)}
+                client={optimisticClients.find(c => c.id === activeId)}
                 isDragging={true}
-                status={clients.find(c => c.id === activeId)?.status}
+                status={optimisticClients.find(c => c.id === activeId)?.status}
               />
             </div>
           ) : null}
