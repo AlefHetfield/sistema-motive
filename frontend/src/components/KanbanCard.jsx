@@ -115,13 +115,8 @@ export default function KanbanCard({
       )}
 
       {/* Flags */}
-      {(client.isProcesso || client.isVenda || client.isRemuneracao) && (
+      {(client.isVenda || client.isRemuneracao) && (
         <div className="mb-3 flex flex-wrap gap-1">
-          {client.isProcesso && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded font-semibold">
-              📋 Processo
-            </span>
-          )}
           {client.isVenda && (
             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-semibold">
               🏠 Venda

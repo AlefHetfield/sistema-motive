@@ -19,7 +19,7 @@ model Client {
   agencia                String?
   modalidade             String?
   status                 String?
-  processo               Boolean   @default(false)
+  valorFinanciado        Decimal?  @db.Decimal(15, 2)
   venda                  Boolean   @default(false)
   remuneracaoPaga        Boolean   @default(false)
   comissaoPaga           Boolean   @default(false)

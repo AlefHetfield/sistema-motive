@@ -121,31 +121,6 @@ const formatCPF = (cpf) => {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
-const getDayCounter = (creationDate) => {
-    const today = new Date();
-    const created = new Date(creationDate);
-    const diffTime = Math.abs(today - created);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    let colorClass = 'bg-red-100 text-red-800';
-    if (diffDays < 10) colorClass = 'bg-green-100 text-green-800';
-    else if (diffDays < 20) colorClass = 'bg-yellow-100 text-yellow-800';
-    else if (diffDays < 30) colorClass = 'bg-orange-100 text-orange-800';
-
-    return {
-        days: diffDays,
-        color: colorClass
-    };
-};
-
-// retorna diferença de dias como número inteiro
-const getDaysDiff = (creationDate) => {
-    const today = new Date();
-    const created = new Date(creationDate);
-    const diffTime = Math.abs(today - created);
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-};
-
 const formatDate = (isoDate) => {
     if (!isoDate) return '';
     const d = new Date(isoDate);
@@ -174,30 +149,6 @@ const NewBadge = ({ creationDate }) => {
             <Sparkles size={10} className="animate-spin" />
             NOVO
         </span>
-    );
-};
-
-// Badge visual para exibir os dias com ícone quando necessário
-const DayBadge = ({ creationDate }) => {
-    const days = getDaysDiff(creationDate);
-    if (isNaN(days)) return null;
-
-    if (days > 30) {
-        return (
-            <div className="rounded-full px-3.5 py-2 inline-flex items-center gap-2 bg-gradient-to-r from-red-50 to-red-100/50 text-red-600 text-xs font-semibold border border-red-200 shadow-sm animate-fade-in">
-                <AlertCircle size={14} className="text-red-600 animate-pulse" />
-                <span>{days} dias</span>
-            </div>
-        );
-    }
-
-    // neutro/positivo
-    const neutralClass = days < 10 ? 'text-green-700 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-sm' : 'text-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200';
-    return (
-        <div className={`rounded-full px-3.5 py-2 inline-flex items-center gap-2 text-xs font-semibold border ${neutralClass} animate-fade-in`}>
-            <Clock size={14} className="text-gray-400" />
-            <span>{days} dias</span>
-        </div>
     );
 };
 
@@ -367,7 +318,7 @@ const ClientsList = () => {
     const [updatingStatusMap, setUpdatingStatusMap] = useState({});
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmColor: 'blue' });
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
+    const [filters, setFilters] = useState({ agencia: '', responsavel: '', status: '', venda: '', modalidade: '' });
     const [monthYearFilter, setMonthYearFilter] = useState('');
     const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
     const [viewMode, setViewMode] = useState('table'); // 'table' ou 'kanban'
@@ -682,7 +633,7 @@ const ClientsList = () => {
     }, [allClients]);
 
     const handleClearFilters = () => {
-        setFilters({ agencia: '', responsavel: '', status: '', processo: '', venda: '', modalidade: '' });
+        setFilters({ agencia: '', responsavel: '', status: '', venda: '', modalidade: '' });
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
@@ -706,7 +657,6 @@ const ClientsList = () => {
             const agenciaMatch = filters.agencia === '' || client.agencia === filters.agencia;
             const responsavelMatch = filters.responsavel === '' || (client.responsavel === filters.responsavel || client.corretor === filters.responsavel);
             const statusMatch = filters.status === '' || client.status === filters.status;
-            const processoMatch = filters.processo === '' || (filters.processo === 'sim' ? client.processo : !client.processo);
             const vendaMatch = filters.venda === '' || (filters.venda === 'sim' ? client.venda : !client.venda);
             const modalidadeMatch = filters.modalidade === '' || client.modalidade === filters.modalidade;
             
@@ -724,7 +674,7 @@ const ClientsList = () => {
             
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && monthYearMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && monthYearMatch;
             }
             
             // Busca em nome
@@ -763,6 +713,10 @@ const ClientsList = () => {
                     // Ordenação de datas
                     first = first ? new Date(first).getTime() : 0;
                     second = second ? new Date(second).getTime() : 0;
+                } else if (sortDescriptor.column === 'valorFinanciado') {
+                    // Ordenação de valores numéricos
+                    first = first ? parseFloat(first) : 0;
+                    second = second ? parseFloat(second) : 0;
                 }
 
                 let cmp = first < second ? -1 : first > second ? 1 : 0;
@@ -850,16 +804,6 @@ const ClientsList = () => {
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Tipo</label>
                     <div className="space-y-2">
-                        <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-xl cursor-pointer transition-all group border border-transparent hover:border-gray-200">
-                            <input
-                                type="checkbox"
-                                checked={filters.processo === 'sim'}
-                                onChange={(e) => setFilters({ ...filters, processo: e.target.checked ? 'sim' : '' })}
-                                className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
-                            />
-                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 select-none">Processo</span>
-                        </label>
-                        
                         <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-xl cursor-pointer transition-all group border border-transparent hover:border-gray-200">
                             <input
                                 type="checkbox"
@@ -1201,13 +1145,13 @@ const ClientsList = () => {
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
                                         <button
                                             onClick={() => setSortDescriptor(prev => ({
-                                                column: 'createdAt',
-                                                direction: prev.column === 'createdAt' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                                column: 'valorFinanciado',
+                                                direction: prev.column === 'valorFinanciado' && prev.direction === 'ascending' ? 'descending' : 'ascending'
                                             }))}
                                             className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
                                         >
-                                            Tempo
-                                            {sortDescriptor.column === 'createdAt' ? (
+                                            Valor Financiado
+                                            {sortDescriptor.column === 'valorFinanciado' ? (
                                                 sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
                                             ) : (
                                                 <ArrowUpDown size={14} className="opacity-40" />
@@ -1227,7 +1171,6 @@ const ClientsList = () => {
                         <tbody>
                             {filteredClients.length > 0 ? (
                                 filteredClients.map(client => {
-                                    const dayCounter = getDayCounter(client.createdAt);
                                     const initials = getInitials(client.nome);
                                     const palette = pickAvatarPalette(client.nome);
                                     const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
@@ -1294,7 +1237,13 @@ const ClientsList = () => {
                                             </td>
                                             {activeTab === 'active' && (
                                                 <td className="px-6 py-4 text-center">
-                                                    <DayBadge creationDate={client.createdAt} />
+                                                    {client.valorFinanciado ? (
+                                                        <span className="text-sm font-semibold text-gray-900">
+                                                            R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">—</span>
+                                                    )}
                                                 </td>
                                             )}
                                             {(activeTab === 'signed' || activeTab === 'archived') && (
@@ -1435,13 +1384,8 @@ const ClientsList = () => {
                                                     <p className="text-xs text-gray-500 truncate mt-0.5">{formatCPF(client.cpf)}</p>
                                                     
                                                     {/* Badges de Contexto */}
-                                                    {(client.processo || client.venda || client.modalidade) && (
+                                                    {(client.venda || client.modalidade) && (
                                                         <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                                                            {client.processo && (
-                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                                                    Processo
-                                                                </span>
-                                                            )}
                                                             {client.venda && (
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
                                                                     Venda
@@ -1457,9 +1401,19 @@ const ClientsList = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="mt-2">
-                                            <DayBadge creationDate={client.createdAt} />
-                                        </div>
+                                        {activeTab === 'active' && (
+                                            <div className="mt-2">
+                                                {client.valorFinanciado ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 text-xs font-semibold">
+                                                        💰 R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 text-xs">
+                                                        Sem valor financiado
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Corpo do Card */}

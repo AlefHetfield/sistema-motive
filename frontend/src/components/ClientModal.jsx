@@ -25,7 +25,7 @@ const initialFormData = {
     agencia: '',
     modalidade: '',
     observacoes: '',
-    processo: false,
+    valorFinanciado: '',
     venda: false,
 };
 
@@ -50,7 +50,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     agencia: clientToEdit.agencia || '',
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
-                    processo: clientToEdit.processo || false,
+                    valorFinanciado: clientToEdit.valorFinanciado || '',
                     venda: clientToEdit.venda || false,
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
@@ -179,20 +179,21 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                             <ModernInput id="modalidade" label="Modalidade" value={formData.modalidade} onChange={handleInputChange} placeholder="Ex: Financiamento, À Vista..." />
                         </div>
                         
-                        {/* Checkboxes lado a lado */}
-                        <div className="md:col-span-3 flex gap-4">
-                            <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 flex-1">
-                                <input
-                                    type="checkbox"
-                                    id="processo"
-                                    checked={formData.processo}
-                                    onChange={handleInputChange}
-                                    className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
-                                />
-                                <span className="text-sm font-medium text-gray-700">Processo</span>
-                            </label>
-                            
-                            <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 flex-1">
+                        {/* Valor Financiado e Checkbox Venda */}
+                        <div className="md:col-span-2">
+                            <ModernInput 
+                                id="valorFinanciado" 
+                                label="Valor Financiado (R$)" 
+                                value={formData.valorFinanciado} 
+                                onChange={handleInputChange} 
+                                placeholder="0,00"
+                                type="number"
+                                step="0.01"
+                            />
+                        </div>
+                        
+                        <div className="md:col-span-1 flex items-end">
+                            <label className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-all duration-200 w-full">
                                 <input
                                     type="checkbox"
                                     id="venda"
