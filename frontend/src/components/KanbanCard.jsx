@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { Edit, Trash2, User, Home } from 'lucide-react';
+import { Edit, Trash2, User, Home, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_PALETTES = [
@@ -33,6 +33,7 @@ export default function KanbanCard({
   onDeleteClient,
 }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [cpfCopied, setCpfCopied] = useState(false);
   
   const {
     attributes,
@@ -47,6 +48,19 @@ export default function KanbanCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleCopyCpf = async (e) => {
+    e.stopPropagation();
+    try {
+      // Remove formatação do CPF antes de copiar
+      const cpfNumeros = client.cpf.replace(/\D/g, '');
+      await navigator.clipboard.writeText(cpfNumeros);
+      setCpfCopied(true);
+      setTimeout(() => setCpfCopied(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar CPF:', err);
+    }
   };
 
   return (
@@ -70,8 +84,20 @@ export default function KanbanCard({
     >
       {/* Nome do cliente */}
       <div className="flex items-start gap-2 mb-2">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarStyle(client.nome)}`}>
-          {getInitials(client.nome)}
+        <div className={`wgroup flex items-center gap-1.5 truncate relative">
+            <span>CPF:</span>
+            <span className="font-mono">{client.cpf}</span>
+            <button
+              onClick={handleCopyCpf}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 hover:bg-gray-100 rounded"
+              title="Copiar CPF"
+            >
+              {cpfCopied ? (
+                <Check className="w-3 h-3 text-green-600" />
+              ) : (
+                <Copy className="w-3 h-3 text-gray-500" />
+              )}
+            </butto
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 text-sm truncate">
