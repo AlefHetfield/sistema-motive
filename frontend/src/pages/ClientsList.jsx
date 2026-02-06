@@ -689,7 +689,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && processoMatch && vendaMatch && modalidadeMatch && monthYearMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && monthYearMatch && textMatch;
         });
 
         // Aplicar ordenação se sortDescriptor estiver definido
