@@ -1,0 +1,2 @@
+Deploy trigger - 2026-02-06 19:05
+Fix: Force redeploy to update Prisma Client after schema changes
