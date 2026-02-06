@@ -84,7 +84,20 @@ export default function KanbanCard({
     >
       {/* Nome do cliente */}
       <div className="flex items-start gap-2 mb-2">
-        <div className={`wgroup flex items-center gap-1.5 truncate relative">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarStyle(client.nome)}`}>
+          {getInitials(client.nome)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-900 text-sm truncate">
+            {client.nome}
+          </h4>
+        </div>
+      </div>
+
+      {/* Informações secundárias */}
+      <div className="space-y-1 mb-3 text-xs text-gray-600">
+        {client.cpf && (
+          <div className="group flex items-center gap-1.5 relative">
             <span>CPF:</span>
             <span className="font-mono">{client.cpf}</span>
             <button
@@ -97,20 +110,7 @@ export default function KanbanCard({
               ) : (
                 <Copy className="w-3 h-3 text-gray-500" />
               )}
-            </butto
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900 text-sm truncate">
-            {client.nome}
-          </h4>
-        </div>
-      </div>
-
-      {/* Informações secundárias */}
-      <div className="space-y-1 mb-3 text-xs text-gray-600">
-        {client.cpf && (
-          <div className="truncate">
-            CPF: <span className="font-mono">{client.cpf}</span>
+            </button>
           </div>
         )}
         {client.telefone && (
