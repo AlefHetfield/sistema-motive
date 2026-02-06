@@ -214,8 +214,8 @@ export default function KanbanBoard({ clients, onUpdate }) {
         statusDepois: newStatus,
       });
       
-      // Sincroniza com o servidor (sem reload forçado)
-      onUpdate();
+      // ✅ NÃO chama onUpdate() aqui - a atualização otimista já fez o trabalho!
+      // A UI já está correta e sincronizada com o backend
     } catch (error) {
       console.error('Erro ao mover cliente:', error);
       
@@ -227,7 +227,7 @@ export default function KanbanBoard({ clients, onUpdate }) {
       );
       
       notify.error('Erro ao mover cliente. Revertendo...');
-      // Força reload para garantir consistência
+      // Força reload APENAS em caso de erro para garantir consistência
       onUpdate();
     }
   };
