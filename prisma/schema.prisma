@@ -20,6 +20,8 @@ model Client {
   modalidade             String?
   status                 String?
   valorFinanciado        Decimal?  @db.Decimal(15, 2)
+  matricula              String?
+  cidade                 String?
   venda                  Boolean   @default(false)
   remuneracaoPaga        Boolean   @default(false)
   comissaoPaga           Boolean   @default(false)

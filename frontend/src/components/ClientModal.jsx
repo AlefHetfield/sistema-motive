@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 import { useToast } from '../hooks/useToast'; // Importar toast
-import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2 } from 'lucide-react';
+import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
@@ -18,10 +18,9 @@ const formatCPF = (cpf) => {
 
 const formatCurrencyBR = (value) => {
     if (value === null || value === undefined || value === '') return '';
-    const digits = value.toString().replace(/\D/g, '');
-    if (!digits) return '';
-    const amount = Number(digits) / 100;
-    return amount.toLocaleString('pt-BR', {
+    const numValue = Number(value);
+    if (isNaN(numValue)) return '';
+    return numValue.toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
@@ -44,6 +43,8 @@ const initialFormData = {
     modalidade: '',
     observacoes: '',
     valorFinanciado: '',
+    matricula: '',
+    cidade: '',
     venda: false,
 };
 
@@ -69,6 +70,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
                     valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyBR(clientToEdit.valorFinanciado) : '',
+                    matricula: clientToEdit.matricula || '',
+                    cidade: clientToEdit.cidade || '',
                     venda: clientToEdit.venda || false,
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
@@ -171,8 +174,10 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     </button>
                 </div>
                 <form id="client-form" className="p-6 space-y-4 overflow-y-auto" onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-3">
                         <ModernInput id="nome" label="Nome do Cliente" Icon={User} value={formData.nome} onChange={handleInputChange} required />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <ModernInput id="cpf" label="CPF" Icon={FileText} value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
 
                         {/* Campo de Status (visível apenas na edição) */}
@@ -196,8 +201,25 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         <ModernInput id="corretor" label="Corretor" Icon={Briefcase} value={formData.corretor} onChange={handleInputChange} required />
                         <ModernInput id="responsavel" label="Responsável" Icon={User} value={formData.responsavel} onChange={handleInputChange} />
                         <ModernInput id="agencia" label="Agência (Nº)" Icon={Hash} value={formData.agencia} onChange={handleInputChange} placeholder="Apenas números" />
-                        <div className="md:col-span-3">
-                            <ModernInput id="modalidade" label="Modalidade" value={formData.modalidade} onChange={handleInputChange} placeholder="Ex: Financiamento, À Vista..." />
+                        
+                        {/* Matrícula e Cidade - lado a lado */}
+                        <ModernInput id="matricula" label="Matrícula" Icon={FileText} value={formData.matricula} onChange={handleInputChange} placeholder="Nº da Matrícula" />
+                        <ModernInput id="cidade" label="Cidade" Icon={MapPin} value={formData.cidade} onChange={handleInputChange} placeholder="Cidade" />
+                        
+                        {/* Modalidade - dropdown com opções específicas */}
+                        <div>
+                            <div className="text-xs text-gray-600 mb-1">Modalidade</div>
+                            <select
+                                id="modalidade"
+                                value={formData.modalidade}
+                                onChange={handleInputChange}
+                                className="block w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 outline-none"
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="FGTS">FGTS</option>
+                                <option value="SBPE">SBPE</option>
+                                <option value="Pró-Cotista">Pró-Cotista</option>
+                            </select>
                         </div>
                         
                         {/* Valor Financiado e Checkbox Venda */}
