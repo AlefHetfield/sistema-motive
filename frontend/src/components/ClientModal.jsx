@@ -16,6 +16,24 @@ const formatCPF = (cpf) => {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 };
 
+const formatCurrencyBR = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    const digits = value.toString().replace(/\D/g, '');
+    if (!digits) return '';
+    const amount = Number(digits) / 100;
+    return amount.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
+
+const parseCurrencyBR = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const digits = value.toString().replace(/\D/g, '');
+    if (!digits) return null;
+    return Number(digits) / 100;
+};
+
 const initialFormData = {
     nome: '',
     cpf: '',
@@ -50,7 +68,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     agencia: clientToEdit.agencia || '',
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
-                    valorFinanciado: clientToEdit.valorFinanciado || '',
+                    valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyBR(clientToEdit.valorFinanciado) : '',
                     venda: clientToEdit.venda || false,
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
@@ -77,6 +95,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
         const { id, value, type, checked } = e.target;
         if (id === 'cpf') {
             setFormData({ ...formData, [id]: formatCPF(value) });
+        } else if (id === 'valorFinanciado') {
+            setFormData({ ...formData, [id]: formatCurrencyBR(value) });
         } else if (type === 'checkbox') {
             setFormData({ ...formData, [id]: checked });
         } else {
@@ -94,6 +114,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             ...formData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
             agencia: formData.agencia.replace(/\D/g, '') || null,
+            valorFinanciado: parseCurrencyBR(formData.valorFinanciado),
         };
 
         // Adiciona status 'Documentação Recebida' para novos clientes
@@ -187,8 +208,8 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                                 value={formData.valorFinanciado} 
                                 onChange={handleInputChange} 
                                 placeholder="0,00"
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                             />
                         </div>
                         
