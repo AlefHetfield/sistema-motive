@@ -409,9 +409,34 @@ const ClientsList = () => {
         setEditingClient(null);
     };
 
-    const handleSaveSuccess = () => {
-        handleCloseModal();
-        loadClients(); // Recarrega os dados para exibir as atualizações
+    const handleSaveClient = async (clientData) => {
+        try {
+            if (!clientData) {
+                throw new Error('Dados do cliente não fornecidos');
+            }
+
+            const isNewClient = !clientData.id;
+            const savedClient = await saveClient(clientData);
+
+            if (!savedClient || !savedClient.id) {
+                throw new Error('Resposta inválida do servidor');
+            }
+
+            if (isNewClient) {
+                logActivity && logActivity(`Cliente '${savedClient.nome}' adicionado.`);
+                addToast(`Cliente ${savedClient.nome} adicionado com sucesso`, 'success');
+            } else {
+                logActivity && logActivity(`Cliente '${savedClient.nome}' atualizado.`);
+                addToast(`Cliente ${savedClient.nome} atualizado com sucesso`, 'success');
+            }
+
+            handleCloseModal();
+            loadClients(); // Recarrega os dados para exibir as atualizações
+        } catch (error) {
+            console.error('Erro ao salvar cliente:', error);
+            addToast(`Erro ao salvar cliente: ${error.message || 'Tente novamente'}`, 'error');
+            throw error;
+        }
     };
 
     const handleDelete = async (client) => {
@@ -1764,7 +1789,7 @@ const ClientsList = () => {
             <ClientModal 
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
-                onSave={handleSaveSuccess}
+                onSave={handleSaveClient}
                 clientToEdit={editingClient}
                 onDelete={handleDelete}
             />
