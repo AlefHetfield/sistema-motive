@@ -120,8 +120,6 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
         e.preventDefault();
         setIsSaving(true);
 
-        const isNewClient = !formData.id;
-
         const clientPayload = {
             ...formData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
@@ -130,34 +128,18 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
         };
 
         // Adiciona status 'Documentação Recebida' para novos clientes
+        const isNewClient = !formData.id;
         if (isNewClient) {
             clientPayload.status = 'Documentação Recebida';
         }
 
         try {
-            const savedClient = await saveClient(clientPayload);
-            
-            // Log de atividade
-            if (isNewClient) {
-                logActivity(`Cliente '${savedClient.nome}' adicionado.`);
-                notify.success(`Cliente ${savedClient.nome} adicionado com sucesso! 🎉`);
-            } else {
-                logActivity(`Cliente '${savedClient.nome}' atualizado.`);
-                // Se o status foi alterado, loga também
-                if (clientToEdit && clientToEdit.status !== savedClient.status) {
-                    logActivity(`Status de '${savedClient.nome}' alterado para '${savedClient.status}'.`);
-                    notify.success(`Status atualizado para ${savedClient.status}! ✅`);
-                } else {
-                    notify.success(`Cliente ${savedClient.nome} atualizado com sucesso! ✅`);
-                }
-            }
-
-            onSave(); // Recarrega a lista no componente pai
-            onClose(); // Fecha o modal
+            // Passa dados para o componente pai tratar o salvamento
+            await onSave(clientPayload);
+            onClose(); // Fecha o modal após sucesso
         } catch (error) {
             console.error("Erro ao salvar cliente:", error);
             notify.error(`Erro ao salvar cliente: ${error.message || 'Tente novamente'}`);
-
         } finally {
             setIsSaving(false);
         }

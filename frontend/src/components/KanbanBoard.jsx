@@ -260,14 +260,41 @@ export default function KanbanBoard({ clients, onUpdate }) {
 
   const handleSaveClient = async (clientData) => {
     try {
-      await saveClient(clientData);
-      notify.success('Cliente salvo com sucesso');
+      if (!clientData) {
+        throw new Error('Dados do cliente não fornecidos');
+      }
+
+      const isNewClient = !clientData.id;
+      const savedClient = await saveClient(clientData);
+      
+      if (!savedClient || !savedClient.id) {
+        throw new Error('Resposta inválida do servidor');
+      }
+      
+      // Registra atividade
+      if (isNewClient) {
+        await logActivity({
+          clientId: savedClient.id,
+          clientNome: savedClient.nome,
+          action: 'created',
+        });
+        notify.success(`Cliente ${savedClient.nome} adicionado com sucesso! 🎉`);
+      } else {
+        await logActivity({
+          clientId: savedClient.id,
+          clientNome: savedClient.nome,
+          action: 'updated',
+        });
+        notify.success(`Cliente ${savedClient.nome} atualizado com sucesso! ✅`);
+      }
+      
       setEditingClient(null);
       setIsModalOpen(false);
-      onUpdate();
+      // Aguarda um tick para garantir que o modal fechou antes de recarregar os dados
+      setTimeout(() => onUpdate(), 100);
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      notify.error('Erro ao salvar cliente');
+      notify.error(`Erro ao salvar cliente: ${error.message}`);
     }
   };
 

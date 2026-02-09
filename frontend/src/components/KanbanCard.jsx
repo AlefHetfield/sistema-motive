@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { Edit, Trash2, User, Home, Copy, Check } from 'lucide-react';
+import { Edit, Trash2, Home, Copy, Check, FileText } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_PALETTES = [
@@ -34,6 +34,7 @@ export default function KanbanCard({
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [cpfCopied, setCpfCopied] = useState(false);
+  const [matriculaCopied, setMatriculaCopied] = useState(false);
   
   const {
     attributes,
@@ -60,6 +61,19 @@ export default function KanbanCard({
       setTimeout(() => setCpfCopied(false), 2000);
     } catch (err) {
       console.error('Erro ao copiar CPF:', err);
+    }
+  };
+
+  const handleCopyMatricula = async (e) => {
+    e.stopPropagation();
+    try {
+      // Remove formatação da matrícula antes de copiar
+      const matriculaNumeros = client.matricula.replace(/\D/g, '');
+      await navigator.clipboard.writeText(matriculaNumeros);
+      setMatriculaCopied(true);
+      setTimeout(() => setMatriculaCopied(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar matrícula:', err);
     }
   };
 
@@ -132,13 +146,28 @@ export default function KanbanCard({
         </div>
       )}
 
-      {/* Responsável */}
-      {client.responsavel && (
-        <div className="mb-3 flex items-center gap-1.5 text-xs text-gray-600">
-          <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          <span className="truncate">{client.responsavel}</span>
-        </div>
-      )}
+      {/* Matrícula e Cidade */}
+      <div className="mb-3 flex items-center gap-1.5 text-xs text-gray-600">
+        <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+        {client.matricula ? (
+          <div className="group flex items-center gap-1.5 relative">
+            <span className="font-mono">{client.matricula}</span>
+            {client.cidade && <span>-</span>}
+            {client.cidade && <span className="truncate">{client.cidade}</span>}
+            <button
+              onClick={handleCopyMatricula}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 hover:bg-gray-100 rounded"
+              title="Copiar Matrícula"
+            >
+              {matriculaCopied ? (
+                <Check className="w-3 h-3 text-green-600" />
+              ) : (
+                <Copy className="w-3 h-3 text-gray-500" />
+              )}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {/* Flags */}
       {(client.isVenda || client.isRemuneracao) && (

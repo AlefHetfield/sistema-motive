@@ -414,11 +414,25 @@ app.post('/api/clients', requireAuth, async (req, res) => {
 // [UPDATE] Atualizar um cliente por ID
 app.put('/api/clients/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
+  
+  // Validação básica
+  if (!parseInt(id)) {
+    return res.status(400).json({ 
+      error: 'ID do cliente inválido.' 
+    });
+  }
+  
   try {
     // Busca o cliente antes da atualização para comparar o status
     const clienteAntes = await prisma.client.findUnique({
       where: { id: parseInt(id) }
     });
+    
+    if (!clienteAntes) {
+      return res.status(404).json({ 
+        error: 'Cliente não encontrado.' 
+      });
+    }
     
     const updatedClient = await prisma.client.update({
       where: { id: parseInt(id) },
@@ -441,9 +455,14 @@ app.put('/api/clients/:id', requireAuth, async (req, res) => {
       }
     });
     
+    console.log('Cliente atualizado com sucesso:', updatedClient);
     res.json(updatedClient);
   } catch (error) {
-    res.status(500).json({ error: 'Não foi possível atualizar o cliente.' });
+    console.error("Erro ao atualizar cliente:", error);
+    res.status(400).json({ 
+      error: 'Não foi possível atualizar o cliente.',
+      details: error.message 
+    });
   }
 });
 

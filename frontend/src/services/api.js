@@ -45,18 +45,42 @@ export async function fetchClient(clientId) {
  * @returns {Promise<Object>} Uma promessa que resolve para os dados do cliente salvo.
  */
 export async function saveClient(clientData) {
+    // Proteção contra clientData undefined
+    if (!clientData) {
+        console.error('[API] saveClient chamado com clientData undefined', clientData);
+        throw new Error('Dados do cliente não fornecidos');
+    }
+    
     const { id, ...data } = clientData;
     const url = id ? `${API_BASE_URL}/api/clients/${id}` : `${API_BASE_URL}/api/clients`;
     const method = id ? 'PUT' : 'POST';
 
-    const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Falha ao salvar cliente.');
-    return response.json();
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Falha ao salvar cliente (${response.status})`);
+        }
+        
+        const result = await response.json();
+        
+        // Proteção - garantir que temos um objeto válido
+        if (!result || typeof result !== 'object') {
+            console.warn('[API] Resposta inválida do servidor ao salvar cliente:', result);
+            throw new Error('Resposta inválida do servidor');
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('[API] Erro detalhado em saveClient:', error, { url, method, data });
+        throw error;
+    }
 }
 
 /**
