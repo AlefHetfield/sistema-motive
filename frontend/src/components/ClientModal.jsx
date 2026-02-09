@@ -4,6 +4,7 @@ import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 import { useToast } from '../hooks/useToast'; // Importar toast
 import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
+import FancySelect from './FancySelect';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
 const formatCPF = (cpf) => {
@@ -107,6 +108,14 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
         }
     };
 
+    const handleStatusChange = (value) => {
+        setFormData({ ...formData, status: value });
+    };
+
+    const handleModalidadeChange = (value) => {
+        setFormData({ ...formData, modalidade: value });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
@@ -184,16 +193,12 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         {clientToEdit && (
                             <div>
                                 <div className="text-xs text-gray-600 mb-1">Status</div>
-                                <select
-                                    id="status"
-                                    value={formData.status}
-                                    onChange={handleInputChange}
-                                    className="block w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 outline-none"
-                                >
-                                    {STATUS_OPTIONS.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
+                                <FancySelect
+                                    value={formData.status || ''}
+                                    onChange={handleStatusChange}
+                                    options={STATUS_OPTIONS.map(status => ({ value: status, label: status }))}
+                                    placeholder="Selecione o status..."
+                                />
                             </div>
                         )}
 
@@ -209,17 +214,16 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         {/* Modalidade - dropdown com opções específicas */}
                         <div>
                             <div className="text-xs text-gray-600 mb-1">Modalidade</div>
-                            <select
-                                id="modalidade"
-                                value={formData.modalidade}
-                                onChange={handleInputChange}
-                                className="block w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 outline-none"
-                            >
-                                <option value="">Selecione...</option>
-                                <option value="FGTS">FGTS</option>
-                                <option value="SBPE">SBPE</option>
-                                <option value="Pró-Cotista">Pró-Cotista</option>
-                            </select>
+                            <FancySelect
+                                value={formData.modalidade || ''}
+                                onChange={handleModalidadeChange}
+                                options={[
+                                    { value: 'FGTS', label: 'FGTS' },
+                                    { value: 'SBPE', label: 'SBPE' },
+                                    { value: 'Pró-Cotista', label: 'Pró-Cotista' }
+                                ]}
+                                placeholder="Selecione a modalidade..."
+                            />
                         </div>
                         
                         {/* Valor Financiado e Checkbox Venda */}

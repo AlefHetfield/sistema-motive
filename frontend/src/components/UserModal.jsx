@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Mail, User, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 import ModernInput from './ModernInput';
+import FancySelect from './FancySelect';
 import { useToast } from '../hooks/useToast';
 
 const UserModal = ({ user, onClose, onSave }) => {
@@ -30,6 +31,10 @@ const UserModal = ({ user, onClose, onSave }) => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleRoleChange = (value) => {
+        setFormData(prev => ({ ...prev, role: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -138,22 +143,15 @@ const UserModal = ({ user, onClose, onSave }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Função
                         </label>
-                        <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                <Shield size={18} />
-                            </div>
-                            <select
-                                name="role"
-                                value={formData.role}
-                                onChange={handleInputChange}
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl
-                                         focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                         transition-all duration-200 outline-none appearance-none cursor-pointer"
-                            >
-                                <option value="CORRETOR">Corretor</option>
-                                <option value="ADM">Administrador</option>
-                            </select>
-                        </div>
+                        <FancySelect
+                            value={formData.role}
+                            onChange={handleRoleChange}
+                            options={[
+                                { value: 'CORRETOR', label: 'Corretor' },
+                                { value: 'ADM', label: 'Administrador' }
+                            ]}
+                            placeholder="Selecione a função..."
+                        />
                     </div>
 
                     {/* Status (apenas na edição) */}

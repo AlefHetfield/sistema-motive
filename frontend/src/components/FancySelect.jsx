@@ -63,18 +63,6 @@ export default function FancySelect({
               })
             )}
           </div>
-          <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-right">
-            <button
-              type="button"
-              onClick={() => {
-                onChange && onChange('');
-                setOpen(false);
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg text-gray-700 hover:bg-gray-200 transition"
-            >
-              Limpar seleção
-            </button>
-          </div>
         </div>
       )}
     </div>
