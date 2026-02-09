@@ -299,18 +299,50 @@ export default function KanbanBoard({ clients, onUpdate }) {
   };
 
   // Calcular totais usando dados otimistas
-  const stats = {
-    total: optimisticClients.length,
-    aprovados: clientsByStatus['Aprovado']?.length || 0,
-    engenhariaSolicitada: clientsByStatus['Engenharia Solicitada']?.length || 0,
-    aguardandoReserva: clientsByStatus['Aguardando Reserva']?.length || 0,
-    aguardandoConformidade: clientsByStatus['Aguardando Conformidade']?.length || 0,
-  };
+  const stats = useMemo(() => {
+    const financiamentoTotal = optimisticClients.reduce((sum, client) => {
+      const valor = Number(client.valorFinanciado) || 0;
+      
+      // Debug: log valores anormais
+      if (valor > 10000000) { // Maior que 10 milhões
+        console.warn('Valor financiado anormal detectado:', {
+          cliente: client.nome,
+          valor: valor,
+          valorOriginal: client.valorFinanciado
+        });
+      }
+      
+      return sum + valor;
+    }, 0);
+
+    const remuneracao = optimisticClients.reduce((sum, client) => {
+      const valor = Number(client.valorFinanciado) || 0;
+      let valorConsiderado = valor;
+      
+      // Se for FGTS, trava em 200.000
+      if (client.modalidade?.toUpperCase() === 'FGTS' && valor > 200000) {
+        valorConsiderado = 200000;
+      }
+      
+      // 0,8% do valor considerado
+      return sum + (valorConsiderado * 0.008);
+    }, 0);
+
+    return {
+      total: optimisticClients.length,
+      aprovados: clientsByStatus['Aprovado']?.length || 0,
+      engenhariaSolicitada: clientsByStatus['Engenharia Solicitada']?.length || 0,
+      aguardandoReserva: clientsByStatus['Aguardando Reserva']?.length || 0,
+      aguardandoConformidade: clientsByStatus['Aguardando Conformidade']?.length || 0,
+      financiamentoTotal,
+      remuneracao,
+    };
+  }, [optimisticClients, clientsByStatus]);
 
   return (
     <div className="w-full h-full">
       {/* Header com estatísticas */}
-      <div className="mb-6 grid grid-cols-5 gap-4">
+      <div className="mb-6 grid grid-cols-7 gap-4">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -358,6 +390,30 @@ export default function KanbanBoard({ clients, onUpdate }) {
         >
           <p className="text-rose-600 text-sm font-medium">Aguardando Conformidade</p>
           <p className="text-3xl font-bold text-rose-900">{stats.aguardandoConformidade}</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200"
+        >
+          <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+          <p className="text-2xl font-bold text-indigo-900">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.financiamentoTotal)}
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg"
+        >
+          <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+          <p className="text-2xl font-bold text-purple-900">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.remuneracao)}
+          </p>
         </motion.div>
       </div>
 

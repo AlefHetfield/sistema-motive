@@ -19,6 +19,24 @@ const formatCPF = (cpf) => {
 
 const formatCurrencyBR = (value) => {
     if (value === null || value === undefined || value === '') return '';
+    
+    // Remove tudo que não é dígito
+    const digits = value.toString().replace(/\D/g, '');
+    if (!digits) return '';
+    
+    // Converte para número (considerando os últimos 2 dígitos como centavos)
+    const numValue = Number(digits) / 100;
+    
+    // Formata como moeda brasileira
+    return numValue.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
+
+// Formata valor numérico do DB para exibição
+const formatCurrencyFromDB = (value) => {
+    if (value === null || value === undefined || value === '') return '';
     const numValue = Number(value);
     if (isNaN(numValue)) return '';
     return numValue.toLocaleString('pt-BR', {
@@ -29,9 +47,24 @@ const formatCurrencyBR = (value) => {
 
 const parseCurrencyBR = (value) => {
     if (value === null || value === undefined || value === '') return null;
+    
+    // Se já é um número, retorna direto
+    if (typeof value === 'number') return value;
+    
+    // Remove tudo que não é dígito
     const digits = value.toString().replace(/\D/g, '');
     if (!digits) return null;
-    return Number(digits) / 100;
+    
+    // Converte considerando os últimos 2 dígitos como centavos
+    const result = Number(digits) / 100;
+    
+    // Validação: valores muito grandes provavelmente são erro
+    if (result > 100000000) { // Maior que 100 milhões
+        console.error('Valor financiado suspeito:', { original: value, resultado: result });
+        return null;
+    }
+    
+    return result;
 };
 
 const initialFormData = {
@@ -70,7 +103,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     agencia: clientToEdit.agencia || '',
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
-                    valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyBR(clientToEdit.valorFinanciado) : '',
+                    valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyFromDB(clientToEdit.valorFinanciado) : '',
                     matricula: clientToEdit.matricula || '',
                     cidade: clientToEdit.cidade || '',
                     venda: clientToEdit.venda || false,
@@ -120,11 +153,22 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
         e.preventDefault();
         setIsSaving(true);
 
+        const valorFinanciadoParsed = parseCurrencyBR(formData.valorFinanciado);
+        
+        // Log para debug
+        if (valorFinanciadoParsed && valorFinanciadoParsed > 10000000) {
+            console.warn('Tentando salvar valor financiado muito alto:', {
+                nome: formData.nome,
+                valorOriginal: formData.valorFinanciado,
+                valorParsed: valorFinanciadoParsed
+            });
+        }
+
         const clientPayload = {
             ...formData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
             agencia: formData.agencia.replace(/\D/g, '') || null,
-            valorFinanciado: parseCurrencyBR(formData.valorFinanciado),
+            valorFinanciado: valorFinanciadoParsed,
         };
 
         // Adiciona status 'Documentação Recebida' para novos clientes

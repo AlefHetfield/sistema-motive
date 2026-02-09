@@ -732,6 +732,44 @@ const ClientsList = () => {
         return filtered;
     }, [allClients, searchTerm, filters, activeTab, sortDescriptor, monthYearFilter]);
 
+    // Calcular estatísticas financeiras
+    const financialStats = useMemo(() => {
+        const financiamentoTotal = filteredClients.reduce((sum, client) => {
+            const valor = Number(client.valorFinanciado) || 0;
+            return sum + valor;
+        }, 0);
+
+        const remuneracao = filteredClients.reduce((sum, client) => {
+            const valor = Number(client.valorFinanciado) || 0;
+            let valorConsiderado = valor;
+            
+            // Se for FGTS, trava em 200.000
+            if (client.modalidade?.toUpperCase() === 'FGTS' && valor > 200000) {
+                valorConsiderado = 200000;
+            }
+            
+            // 0,8% do valor considerado
+            return sum + (valorConsiderado * 0.008);
+        }, 0);
+
+        // Contadores por status
+        const total = filteredClients.length;
+        const aprovados = filteredClients.filter(c => c.status === 'Aprovado').length;
+        const engenhariaSolicitada = filteredClients.filter(c => c.status === 'Engenharia Solicitada').length;
+        const aguardandoReserva = filteredClients.filter(c => c.status === 'Aguardando Reserva').length;
+        const aguardandoConformidade = filteredClients.filter(c => c.status === 'Aguardando Conformidade').length;
+
+        return {
+            total,
+            aprovados,
+            engenhariaSolicitada,
+            aguardandoReserva,
+            aguardandoConformidade,
+            financiamentoTotal,
+            remuneracao,
+        };
+    }, [filteredClients]);
+
     // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
     const filterDropdownPortal = isFilterDropdownOpen ? createPortal(
         <div
@@ -1033,6 +1071,50 @@ const ClientsList = () => {
                     >
                         Ver Clientes Ativos
                     </button>
+                </div>
+            )}
+
+            {/* Cards de Estatísticas - Apenas no modo tabela e aba active */}
+            {viewMode === 'table' && activeTab === 'active' && (
+                <div className="hidden lg:grid grid-cols-7 gap-4 mb-6 animate-fade-in">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                        <p className="text-blue-600 text-sm font-medium">Total</p>
+                        <p className="text-3xl font-bold text-blue-900">{financialStats.total}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
+                        <p className="text-emerald-600 text-sm font-medium">Aprovados</p>
+                        <p className="text-3xl font-bold text-emerald-900">{financialStats.aprovados}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
+                        <p className="text-amber-600 text-sm font-medium">Engenharia Solicitada</p>
+                        <p className="text-3xl font-bold text-amber-900">{financialStats.engenhariaSolicitada}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-sky-50 to-sky-100 p-4 rounded-lg border border-sky-200">
+                        <p className="text-sky-600 text-sm font-medium">Aguardando Reserva</p>
+                        <p className="text-3xl font-bold text-sky-900">{financialStats.aguardandoReserva}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-lg border border-rose-200">
+                        <p className="text-rose-600 text-sm font-medium">Aguardando Conformidade</p>
+                        <p className="text-3xl font-bold text-rose-900">{financialStats.aguardandoConformidade}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+                        <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+                        <p className="text-2xl font-bold text-indigo-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
+                        <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+                        <p className="text-2xl font-bold text-purple-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                        </p>
+                    </div>
                 </div>
             )}
 
@@ -1356,6 +1438,53 @@ const ClientsList = () => {
                     </table>
                     </div>
                 </div>
+                )}
+
+                {/* Cards de Estatísticas Mobile - Apenas na aba active */}
+                {viewMode === 'table' && activeTab === 'active' && (
+                    <div className="lg:hidden px-3 mb-4 space-y-2 animate-fade-in">
+                        {/* Primeira linha - Total, Aprovados, Engenharia */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200 shadow-sm">
+                                <p className="text-blue-600 text-[10px] font-medium">Total</p>
+                                <p className="text-2xl font-bold text-blue-900">{financialStats.total}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 rounded-lg border border-emerald-200 shadow-sm">
+                                <p className="text-emerald-600 text-[10px] font-medium">Aprovados</p>
+                                <p className="text-2xl font-bold text-emerald-900">{financialStats.aprovados}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-3 rounded-lg border border-amber-200 shadow-sm">
+                                <p className="text-amber-600 text-[10px] font-medium">Eng. Sol.</p>
+                                <p className="text-2xl font-bold text-amber-900">{financialStats.engenhariaSolicitada}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Segunda linha - Aguardando Reserva, Aguardando Conformidade */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-gradient-to-br from-sky-50 to-sky-100 p-3 rounded-lg border border-sky-200 shadow-sm">
+                                <p className="text-sky-600 text-[10px] font-medium">Ag. Reserva</p>
+                                <p className="text-2xl font-bold text-sky-900">{financialStats.aguardandoReserva}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-3 rounded-lg border border-rose-200 shadow-sm">
+                                <p className="text-rose-600 text-[10px] font-medium">Ag. Conformidade</p>
+                                <p className="text-2xl font-bold text-rose-900">{financialStats.aguardandoConformidade}</p>
+                            </div>
+                        </div>
+
+                        {/* Terceira linha - Financiamento e Remuneração */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-xl border-2 border-indigo-200 shadow-md">
+                            <p className="text-indigo-600 text-xs font-bold mb-1">Financiamento Total</p>
+                            <p className="text-2xl font-bold text-indigo-900">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                            </p>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border-2 border-purple-300 shadow-md">
+                            <p className="text-purple-600 text-xs font-bold mb-1">💰 Remuneração</p>
+                            <p className="text-2xl font-bold text-purple-900">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                            </p>
+                        </div>
+                    </div>
                 )}
 
                 {/* Visualização Mobile - Cards estilo app */}
