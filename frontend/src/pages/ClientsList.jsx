@@ -1099,7 +1099,7 @@ const ClientsList = () => {
                 </div>
             )}
 
-            {/* Cards de Estatísticas - Apenas no modo tabela e aba active */}
+            {/* Cards de Estatísticas - Modo tabela para todas as abas */}
             {viewMode === 'table' && activeTab === 'active' && (
                 <div className="hidden lg:grid grid-cols-7 gap-4 mb-6 animate-fade-in">
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
@@ -1125,6 +1125,30 @@ const ClientsList = () => {
                     <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-lg border border-rose-200">
                         <p className="text-rose-600 text-sm font-medium">Aguardando Conformidade</p>
                         <p className="text-3xl font-bold text-rose-900">{financialStats.aguardandoConformidade}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+                        <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+                        <p className="text-2xl font-bold text-indigo-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                        </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
+                        <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+                        <p className="text-2xl font-bold text-purple-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Cards de Estatísticas - Abas Assinados e Arquivados */}
+            {viewMode === 'table' && (activeTab === 'signed' || activeTab === 'archived') && (
+                <div className="hidden lg:grid grid-cols-3 gap-4 mb-6 animate-fade-in">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                        <p className="text-blue-600 text-sm font-medium">Total</p>
+                        <p className="text-3xl font-bold text-blue-900">{financialStats.total}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
@@ -1248,24 +1272,22 @@ const ClientsList = () => {
                                         )}
                                     </button>
                                 </th>
-                                {activeTab === 'active' && (
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
-                                        <button
-                                            onClick={() => setSortDescriptor(prev => ({
-                                                column: 'valorFinanciado',
-                                                direction: prev.column === 'valorFinanciado' && prev.direction === 'ascending' ? 'descending' : 'ascending'
-                                            }))}
-                                            className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
-                                        >
-                                            Valor Financiado
-                                            {sortDescriptor.column === 'valorFinanciado' ? (
-                                                sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
-                                            ) : (
-                                                <ArrowUpDown size={14} className="opacity-40" />
-                                            )}
-                                        </button>
-                                    </th>
-                                )}
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+                                    <button
+                                        onClick={() => setSortDescriptor(prev => ({
+                                            column: 'valorFinanciado',
+                                            direction: prev.column === 'valorFinanciado' && prev.direction === 'ascending' ? 'descending' : 'ascending'
+                                        }))}
+                                        className="flex items-center gap-2 hover:text-primary transition-colors mx-auto"
+                                    >
+                                        Valor Financiado
+                                        {sortDescriptor.column === 'valorFinanciado' ? (
+                                            sortDescriptor.direction === 'ascending' ? <ArrowUp size={14} className="text-primary" /> : <ArrowDown size={14} className="text-primary" />
+                                        ) : (
+                                            <ArrowUpDown size={14} className="opacity-40" />
+                                        )}
+                                    </button>
+                                </th>
                                 {(activeTab === 'signed' || activeTab === 'archived') && (
                                     <>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 tracking-wider text-center">Remuneração Paga</th>
@@ -1342,17 +1364,15 @@ const ClientsList = () => {
                                                     <span className="text-xs text-gray-400">—</span>
                                                 )}
                                             </td>
-                                            {activeTab === 'active' && (
-                                                <td className="px-6 py-4 text-center">
-                                                    {client.valorFinanciado ? (
-                                                        <span className="text-sm font-semibold text-gray-900">
-                                                            R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">—</span>
-                                                    )}
-                                                </td>
-                                            )}
+                                            <td className="px-6 py-4 text-center">
+                                                {client.valorFinanciado ? (
+                                                    <span className="text-sm font-semibold text-gray-900">
+                                                        R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">—</span>
+                                                )}
+                                            </td>
                                             {(activeTab === 'signed' || activeTab === 'archived') && (
                                                 <>
                                                     <td className="px-6 py-4 text-center">
@@ -1512,6 +1532,30 @@ const ClientsList = () => {
                     </div>
                 )}
 
+                {/* Cards de Estatísticas Mobile - Abas Assinados e Arquivados */}
+                {viewMode === 'table' && (activeTab === 'signed' || activeTab === 'archived') && (
+                    <div className="lg:hidden px-3 mb-4 space-y-2 animate-fade-in">
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200 shadow-sm">
+                            <p className="text-blue-600 text-[10px] font-medium">Total</p>
+                            <p className="text-2xl font-bold text-blue-900">{financialStats.total}</p>
+                        </div>
+
+                        {/* Financiamento e Remuneração */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-xl border-2 border-indigo-200 shadow-md">
+                            <p className="text-indigo-600 text-xs font-bold mb-1">Financiamento Total</p>
+                            <p className="text-2xl font-bold text-indigo-900">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                            </p>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border-2 border-purple-300 shadow-md">
+                            <p className="text-purple-600 text-xs font-bold mb-1">💰 Remuneração</p>
+                            <p className="text-2xl font-bold text-purple-900">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Visualização Mobile - Cards estilo app */}
                 {viewMode === 'table' && (
                 <div className="lg:hidden px-3 pb-3 space-y-2.5 animate-fade-in">
@@ -1555,19 +1599,17 @@ const ClientsList = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        {activeTab === 'active' && (
-                                            <div className="mt-2">
-                                                {client.valorFinanciado ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 text-xs font-semibold">
-                                                        💰 R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 text-xs">
-                                                        Sem valor financiado
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
+                                        <div className="mt-2">
+                                            {client.valorFinanciado ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 text-xs font-semibold">
+                                                    💰 R$ {parseFloat(client.valorFinanciado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 text-xs">
+                                                    Sem valor financiado
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Corpo do Card */}
