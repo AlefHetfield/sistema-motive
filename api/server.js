@@ -68,7 +68,10 @@ function readSession(req) {
 // Middleware de autenticação
 function requireAuth(req, res, next) {
   const session = readSession(req);
-  if (!session) return res.status(401).json({ error: 'Não autenticado' });
+  if (!session) {
+    console.log('[AUTH] Sessão não encontrada - cookies recebidos:', Object.keys(req.cookies || {}));
+    return res.status(401).json({ error: 'Não autenticado' });
+  }
   req.user = session;
   next();
 }
@@ -76,8 +79,12 @@ function requireAuth(req, res, next) {
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
     const session = readSession(req);
-    if (!session) return res.status(401).json({ error: 'Não autenticado' });
+    if (!session) {
+      console.log('[AUTH] Sessão não encontrada - cookies recebidos:', Object.keys(req.cookies || {}));
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
     if (!allowedRoles.includes(session.role)) {
+      console.log('[AUTH] Acesso negado - role:', session.role, 'permitidos:', allowedRoles);
       return res.status(403).json({ error: 'Acesso negado' });
     }
     req.user = session;
@@ -556,6 +563,9 @@ cron.schedule('5 9 * * 1', async () => {
 // [READ] Listar todos os usuários
 app.get('/api/users', requireRole('ADM'), async (req, res) => {
   try {
+    console.log('[USERS] Iniciando listagem de usuários...');
+    console.log('[USERS] User logado:', req.user);
+    
     const users = await prisma.user.findMany({
       orderBy: { nome: 'asc' },
       select: {
@@ -569,10 +579,17 @@ app.get('/api/users', requireRole('ADM'), async (req, res) => {
         mustChangePassword: true
       }
     });
+    
+    console.log('[USERS] Encontrados', users.length, 'usuários');
     res.json(users);
   } catch (error) {
-    console.error('Erro ao listar usuários:', error);
-    res.status(500).json({ error: 'Não foi possível buscar os usuários' });
+    console.error('[USERS] Erro ao listar usuários:', error);
+    console.error('[USERS] Stack:', error.stack);
+    console.error('[USERS] DATABASE_URL configurada?', !!process.env.DATABASE_URL);
+    res.status(500).json({ 
+      error: 'Não foi possível buscar os usuários',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -722,6 +739,51 @@ app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Diagnóstico completo do sistema (sem autenticação para debugging)
+app.get('/api/debug/status', async (req, res) => {
+  try {
+    // Teste de conexão com banco
+    let dbStatus = 'disconnected';
+    let dbError = null;
+    let userCount = 0;
+    
+    try {
+      await prisma.$connect();
+      const count = await prisma.user.count();
+      userCount = count;
+      dbStatus = 'connected';
+    } catch (err) {
+      dbError = err.message;
+    }
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      database: {
+        status: dbStatus,
+        userCount: userCount,
+        error: dbError,
+        url_configured: !!process.env.DATABASE_URL,
+        url_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'NOT SET'
+      },
+      cors: {
+        origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
+      },
+      cookies: {
+        parser_active: true,
+        received: Object.keys(req.cookies || {})
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
 
 // Exporta o app para a Vercel
