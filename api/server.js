@@ -786,6 +786,46 @@ app.get('/api/debug/status', async (req, res) => {
   }
 });
 
+// Teste de listagem de usuários SEM autenticação (temporário para debug)
+app.get('/api/debug/list-users', async (req, res) => {
+  try {
+    console.log('[DEBUG] Tentando listar usuários sem autenticação...');
+    
+    const users = await prisma.user.findMany({
+      orderBy: { nome: 'asc' },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        mustChangePassword: true
+      }
+    });
+    
+    console.log('[DEBUG] Sucesso! Encontrados', users.length, 'usuários');
+    
+    res.json({
+      success: true,
+      count: users.length,
+      users: users,
+      message: 'Se você está vendo isso, o Prisma está funcionando. O problema está na autenticação.',
+      cookies_received: Object.keys(req.cookies || {}),
+      session_exists: !!readSession(req)
+    });
+  } catch (error) {
+    console.error('[DEBUG] Erro ao listar usuários:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      stack: error.stack,
+      message: 'Erro ao acessar o banco de dados via Prisma'
+    });
+  }
+});
+
 // Exporta o app para a Vercel
 export default app;
 
