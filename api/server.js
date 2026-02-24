@@ -92,6 +92,55 @@ function requireRole(...allowedRoles) {
   };
 }
 
+async function getUsersTableColumns() {
+  const rows = await prisma.$queryRaw`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users'
+  `;
+
+  return new Set(rows.map((row) => row.column_name));
+}
+
+function buildUserSelectQuery(columns, { userId = null } = {}) {
+  const hasColumn = (columnName) => columns.has(columnName);
+
+  const selectParts = [
+    '"id"',
+    hasColumn('nome')
+      ? `COALESCE(NULLIF(TRIM("nome"), ''), COALESCE("email", 'Usuário sem nome')) AS "nome"`
+      : `COALESCE("email", 'Usuário sem nome') AS "nome"`,
+    hasColumn('email') ? '"email"' : `NULL::TEXT AS "email"`,
+    hasColumn('role')
+      ? `CASE WHEN "role" IN ('ADM', 'CORRETOR') THEN "role" ELSE 'CORRETOR' END AS "role"`
+      : `'CORRETOR'::TEXT AS "role"`,
+    hasColumn('isActive') ? 'COALESCE("isActive", true) AS "isActive"' : 'true AS "isActive"',
+    hasColumn('lastLogin') ? '"lastLogin"' : 'NULL::TIMESTAMP AS "lastLogin"',
+    hasColumn('createdAt') ? '"createdAt"' : 'CURRENT_TIMESTAMP AS "createdAt"',
+    hasColumn('mustChangePassword')
+      ? 'COALESCE("mustChangePassword", false) AS "mustChangePassword"'
+      : 'false AS "mustChangePassword"',
+  ];
+
+  const whereClause = Number.isInteger(userId) ? ` WHERE "id" = ${userId}` : '';
+  const orderClause = Number.isInteger(userId) ? '' : ' ORDER BY "nome" ASC';
+
+  return `SELECT ${selectParts.join(', ')} FROM "users"${whereClause}${orderClause}`;
+}
+
+async function listUsersWithSchemaCompatibility() {
+  const columns = await getUsersTableColumns();
+  const query = buildUserSelectQuery(columns);
+  return prisma.$queryRawUnsafe(query);
+}
+
+async function getUserByIdWithSchemaCompatibility(userId) {
+  const columns = await getUsersTableColumns();
+  const query = buildUserSelectQuery(columns, { userId });
+  const rows = await prisma.$queryRawUnsafe(query);
+  return rows[0] || null;
+}
+
 // ========== ROTAS DE AUTENTICAÇÃO ==========
 
 // Login
@@ -565,20 +614,8 @@ app.get('/api/users', requireRole('ADM'), async (req, res) => {
   try {
     console.log('[USERS] Iniciando listagem de usuários...');
     console.log('[USERS] User logado:', req.user);
-    
-    const users = await prisma.user.findMany({
-      orderBy: { nome: 'asc' },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        mustChangePassword: true
-      }
-    });
+
+    const users = await listUsersWithSchemaCompatibility();
     
     console.log('[USERS] Encontrados', users.length, 'usuários');
     res.json(users);
@@ -597,19 +634,13 @@ app.get('/api/users', requireRole('ADM'), async (req, res) => {
 app.get('/api/users/:id', requireRole('ADM'), async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        mustChangePassword: true
-      }
-    });
+    const userId = parseInt(id);
+
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const user = await getUserByIdWithSchemaCompatibility(userId);
     
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
