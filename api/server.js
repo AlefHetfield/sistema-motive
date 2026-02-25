@@ -161,6 +161,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
+    console.log('👤 Usuário encontrado:', { id: user.id, email, role: user.role, nome: user.nome });
+
     console.log('Comparando senha para:', email);
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     console.log('Resultado da comparação:', passwordMatch);
@@ -177,20 +179,24 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
     // Cria sessão
-    createSession(res, {
+    const sessionPayload = {
       id: user.id,
       email: user.email,
       role: user.role,
       nome: user.nome
-    });
+    };
+    console.log('📝 Salvando sessão com role:', sessionPayload.role);
+    createSession(res, sessionPayload);
 
-    res.json({
+    const responseData = {
       id: user.id,
       nome: user.nome,
       email: user.email,
       role: user.role,
       mustChangePassword: user.mustChangePassword
-    });
+    };
+    console.log('✅ Retornando resposta de login com role:', responseData.role);
+    res.json(responseData);
   } catch (error) {
     console.error('Erro no login:', error);
     res.status(500).json({ error: 'Erro ao processar login' });
@@ -298,6 +304,8 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
     // Isso reduz drasticamente o tempo de resposta
     const cachedUser = req.user;
     
+    console.log('📌 GET /api/auth/me - Usuário na sessão:', { id: cachedUser?.id, role: cachedUser?.role });
+    
     // Busca no banco apenas para validar que ainda está ativo (com timeout)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos max
@@ -318,9 +326,11 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
       ]);
+      console.log('✅ Usuário recuperado do banco com role:', user?.role);
     } catch (error) {
       // Se demorou muito, retorna os dados do cookie (cache)
       if (error.message === 'timeout' || error.name === 'AbortError') {
+        console.log('⏱️ Timeout - retornando cache com role:', cachedUser?.role);
         return res.json(cachedUser);
       }
       throw error;
@@ -333,6 +343,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Sessão inválida' });
     }
 
+    console.log('📤 Retornando GET /api/auth/me com role:', user.role);
     res.json(user);
   } catch (error) {
     console.error('Erro ao verificar sessão:', error);
