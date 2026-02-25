@@ -50,7 +50,7 @@ function App() {
             <Route 
               path="clients" 
               element={
-                <PrivateRoute requiredRole="ADM">
+                <PrivateRoute>
                   <ClientsList />
                 </PrivateRoute>
               } 
