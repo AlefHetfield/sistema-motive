@@ -191,11 +191,13 @@ const Settings = () => {
                             <Shield className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
                             <div>
                                 <p className="text-sm font-medium text-blue-900">
-                                    Você está logado como {user?.role === 'ADM' ? 'Administrador' : 'Corretor'}
+                                    Você está logado como {user?.role === 'ADM' ? 'Administrador' : user?.role === 'ASSISTENTE' ? 'Assistente' : 'Corretor'}
                                 </p>
                                 <p className="text-xs text-blue-700 mt-1">
                                     {user?.role === 'ADM' 
                                         ? 'Você tem acesso total ao sistema'
+                                        : user?.role === 'ASSISTENTE'
+                                        ? 'Você tem acesso às funcionalidades de assistente'
                                         : 'Você tem acesso às funcionalidades de corretor'}
                                 </p>
                             </div>

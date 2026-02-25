@@ -292,7 +292,7 @@ const UserManagement = () => {
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                             >
-                                {role === 'ALL' ? 'Todos' : role === 'ADM' ? 'Admins' : 'Corretores'}
+                                {role === 'ALL' ? 'Todos' : role === 'ADM' ? 'Admins' : role === 'ASSISTENTE' ? 'Assistentes' : 'Corretores'}
                             </button>
                         ))}
                     </div>

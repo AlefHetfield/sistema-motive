@@ -194,7 +194,7 @@ const AppLayout = () => {
                                 {user?.email || ''} 
                                 {user?.role && (
                                     <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-medium">
-                                        {user.role === 'ADM' ? 'Admin' : 'Corretor'}
+                                        {user.role === 'ADM' ? 'Admin' : user.role === 'ASSISTENTE' ? 'Assistente' : 'Corretor'}
                                     </span>
                                 )}
                             </p>
