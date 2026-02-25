@@ -12,9 +12,17 @@ const corretorNavItems = [
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
 
+const assistenteNavItems = [
+    { to: '/clients', label: 'Clientes', icon: Users },
+    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
+    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
+    { to: '/settings', label: 'Configurações', icon: SettingsIcon },
+];
+
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
-    { to: '/clients', label: 'Clientes', icon: Users, adminOnly: true },
+    { to: '/clients', label: 'Clientes', icon: Users },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
@@ -96,7 +104,14 @@ const AppLayout = () => {
     };
     
     // Define itens de navegação com base no role do usuário
-    const navItems = isAdmin() ? adminNavItems : corretorNavItems;
+    let navItems;
+    if (user?.role === 'ADM') {
+        navItems = adminNavItems;
+    } else if (user?.role === 'ASSISTENTE') {
+        navItems = assistenteNavItems;
+    } else {
+        navItems = corretorNavItems;
+    }
     
     const currentPage = navItems.find(item => item.to === location.pathname);
 
