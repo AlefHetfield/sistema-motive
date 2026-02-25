@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client'; // v1.0.1 - Assistente role support
 import cron from 'node-cron';
 import { buildMonthlyReport, buildFileName, buildWeeklyReport, buildWeeklyFileName } from './reportGenerator.js';
 import { dispatchReport } from './emailSender.js';
