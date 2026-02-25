@@ -189,17 +189,28 @@ const UserManagement = () => {
     });
 
     const getRoleBadge = (role) => {
-        return role === 'ADM' ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-lg">
-                <Shield size={12} />
-                Administrador
-            </span>
-        ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">
-                <Users size={12} />
-                Corretor
-            </span>
-        );
+        if (role === 'ADM') {
+            return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-lg">
+                    <Shield size={12} />
+                    Administrador
+                </span>
+            );
+        } else if (role === 'ASSISTENTE') {
+            return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-lg">
+                    <Users size={12} />
+                    Assistente
+                </span>
+            );
+        } else {
+            return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">
+                    <Users size={12} />
+                    Corretor
+                </span>
+            );
+        }
     };
 
     const getStatusBadge = (isActive) => {
@@ -271,7 +282,7 @@ const UserManagement = () => {
                         />
                     </div>
                     <div className="flex gap-2">
-                        {['ALL', 'ADM', 'CORRETOR'].map((role) => (
+                        {['ALL', 'ADM', 'CORRETOR', 'ASSISTENTE'].map((role) => (
                             <button
                                 key={role}
                                 onClick={() => setFilterRole(role)}

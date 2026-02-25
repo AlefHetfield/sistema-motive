@@ -112,7 +112,7 @@ function buildUserSelectQuery(columns, { userId = null } = {}) {
       : `COALESCE("email", 'Usuário sem nome') AS "nome"`,
     hasColumn('email') ? '"email"' : `NULL::TEXT AS "email"`,
     hasColumn('role')
-      ? `CASE WHEN "role" IN ('ADM', 'CORRETOR') THEN "role" ELSE 'CORRETOR' END AS "role"`
+      ? `CASE WHEN "role" IN ('ADM', 'CORRETOR', 'ASSISTENTE') THEN "role" ELSE 'CORRETOR' END AS "role"`
       : `'CORRETOR'::TEXT AS "role"`,
     hasColumn('isActive') ? 'COALESCE("isActive", true) AS "isActive"' : 'true AS "isActive"',
     hasColumn('lastLogin') ? '"lastLogin"' : 'NULL::TIMESTAMP AS "lastLogin"',

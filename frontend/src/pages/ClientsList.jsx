@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
+import { useAuth } from '../context/AuthContext';
 import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
 import LoadingAnimation from '../components/LoadingAnimation';
@@ -305,6 +306,7 @@ const StatusBadge = ({ status, loading = false }) => {
 };
 
 const ClientsList = () => {
+    const { user } = useAuth();
     const [allClients, setAllClients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [toasts, setToasts] = useState([]);
@@ -324,6 +326,9 @@ const ClientsList = () => {
     const [viewMode, setViewMode] = useState('table'); // 'table' ou 'kanban'
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
+    
+    // Verifica se o usuário é assistente (não vê dados de financiamento)
+    const isAssistant = user?.role === 'ASSISTENTE';
     
     const loadClients = async () => {
         setIsLoading(true);
@@ -1127,19 +1132,23 @@ const ClientsList = () => {
                         <p className="text-3xl font-bold text-rose-900">{financialStats.aguardandoConformidade}</p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
-                        <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
-                        <p className="text-2xl font-bold text-indigo-900">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
-                        </p>
-                    </div>
+                    {!isAssistant && (
+                        <>
+                            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+                                <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+                                <p className="text-2xl font-bold text-indigo-900">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                                </p>
+                            </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
-                        <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
-                        <p className="text-2xl font-bold text-purple-900">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
-                        </p>
-                    </div>
+                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
+                                <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+                                <p className="text-2xl font-bold text-purple-900">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -1151,19 +1160,23 @@ const ClientsList = () => {
                         <p className="text-3xl font-bold text-blue-900">{financialStats.total}</p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
-                        <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
-                        <p className="text-2xl font-bold text-indigo-900">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
-                        </p>
-                    </div>
+                    {!isAssistant && (
+                        <>
+                            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+                                <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+                                <p className="text-2xl font-bold text-indigo-900">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                                </p>
+                            </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
-                        <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
-                        <p className="text-2xl font-bold text-purple-900">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
-                        </p>
-                    </div>
+                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg">
+                                <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+                                <p className="text-2xl font-bold text-purple-900">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

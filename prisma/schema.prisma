@@ -36,6 +36,7 @@ model Client {
 enum Role {
   ADM
   CORRETOR
+  ASSISTENTE
 }
 
 model User {

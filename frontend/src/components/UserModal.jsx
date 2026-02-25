@@ -148,6 +148,7 @@ const UserModal = ({ user, onClose, onSave }) => {
                             onChange={handleRoleChange}
                             options={[
                                 { value: 'CORRETOR', label: 'Corretor' },
+                                { value: 'ASSISTENTE', label: 'Assistente' },
                                 { value: 'ADM', label: 'Administrador' }
                             ]}
                             placeholder="Selecione a função..."

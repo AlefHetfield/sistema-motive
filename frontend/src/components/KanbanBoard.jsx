@@ -21,6 +21,7 @@ import ClientModal from './ClientModal';
 import ConfirmModal from './ConfirmModal';
 import { saveClient, deleteClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
+import { useAuth } from '../context/AuthContext';
 import KanbanCard from './KanbanCard';
 import KanbanColumn from './KanbanColumn';
 import { useToast } from '../hooks/useToast';
@@ -124,11 +125,15 @@ const statusConfig = {
 export default function KanbanBoard({ clients, onUpdate }) {
   const notify = useToast();
   const { logActivity } = useActivityLog();
+  const { user } = useAuth();
   const [activeId, setActiveId] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [deletingClient, setDeletingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState(null);
+  
+  // Verifica se o usuário é assistente (não vê dados de financiamento)
+  const isAssistant = user?.role === 'ASSISTENTE';
   
   // Estado local otimista para atualizações instantâneas
   const [optimisticClients, setOptimisticClients] = useState(clients);
@@ -392,29 +397,33 @@ export default function KanbanBoard({ clients, onUpdate }) {
           <p className="text-3xl font-bold text-rose-900">{stats.aguardandoConformidade}</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200"
-        >
-          <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
-          <p className="text-2xl font-bold text-indigo-900">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.financiamentoTotal)}
-          </p>
-        </motion.div>
+        {!isAssistant && (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200"
+            >
+              <p className="text-indigo-600 text-sm font-medium">Financiamento Total</p>
+              <p className="text-2xl font-bold text-indigo-900">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.financiamentoTotal)}
+              </p>
+            </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg"
-        >
-          <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
-          <p className="text-2xl font-bold text-purple-900">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.remuneracao)}
-          </p>
-        </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300 shadow-lg"
+            >
+              <p className="text-purple-600 text-sm font-bold">💰 Remuneração</p>
+              <p className="text-2xl font-bold text-purple-900">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.remuneracao)}
+              </p>
+            </motion.div>
+          </>
+        )}
       </div>
 
       {/* Kanban Board */}
