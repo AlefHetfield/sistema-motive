@@ -29,6 +29,12 @@ model Client {
   ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
   dataAssinaturaContrato DateTime? @db.Date
   ultimoUsuarioAlteracao String?
+  emEspera               Boolean   @default(false)
+  motivoEspera           String?
+  observacaoEspera       String?
+  dataRetomada           DateTime? @db.Date
+  pausadoEm              DateTime?
+  pausadoPor             String?
 
   @@map("clients")
 }

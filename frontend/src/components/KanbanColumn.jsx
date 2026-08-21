@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import KanbanCard from './KanbanCard';
 
 export default function KanbanColumn({ 
@@ -12,6 +12,9 @@ export default function KanbanColumn({
   clients, 
   onEditClient, 
   onDeleteClient,
+  onRequestCompletion,
+  onPauseClient,
+  onResumeClient,
   isDropTarget = false,
   isDragging = false 
 }) {
@@ -26,7 +29,7 @@ export default function KanbanColumn({
   const isHighlighted = isDragging && (isOver || isDropTarget);
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ 
         opacity: 1, 
@@ -68,7 +71,7 @@ export default function KanbanColumn({
         >
           {clients.length > 0 ? (
             clients.map((client, index) => (
-              <motion.div
+              <Motion.div
                 key={client.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -79,8 +82,11 @@ export default function KanbanColumn({
                   status={status}
                   onEditClient={onEditClient}
                   onDeleteClient={onDeleteClient}
+                  onRequestCompletion={onRequestCompletion}
+                  onPauseClient={onPauseClient}
+                  onResumeClient={onResumeClient}
                 />
-              </motion.div>
+              </Motion.div>
             ))
           ) : (
             <div className="h-20 flex items-center justify-center text-gray-400 text-sm">
@@ -89,6 +95,6 @@ export default function KanbanColumn({
           )}
         </SortableContext>
       </div>
-    </motion.div>
+    </Motion.div>
   );
 }

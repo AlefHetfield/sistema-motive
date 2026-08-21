@@ -39,6 +39,14 @@ export async function fetchClient(clientId) {
     return response.json();
 }
 
+export async function fetchClientActivities(clientId) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/activities`, {
+        credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Falha ao buscar o histórico do cliente.');
+    return response.json();
+}
+
 /**
  * Salva um cliente (cria um novo ou atualiza um existente).
  * @param {Object} clientData Os dados do cliente.

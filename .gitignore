@@ -5,3 +5,6 @@ node_modules
 /generated/prisma
 
 .vercel
+
+# Ferramentas e banco local de desenvolvimento
+.local/

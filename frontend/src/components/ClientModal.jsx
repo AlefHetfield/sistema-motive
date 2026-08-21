@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { saveClient } from '../services/api';
-import useActivityLog from '../hooks/useActivityLog'; // Importar o hook
 import { useToast } from '../hooks/useToast'; // Importar toast
 import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
@@ -85,7 +83,6 @@ const initialFormData = {
 const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const [formData, setFormData] = useState(initialFormData);
     const [isSaving, setIsSaving] = useState(false);
-    const { logActivity } = useActivityLog(); // Usar o hook de log
     const notify = useToast(); // Usar toast notifications
 
     useEffect(() => {
@@ -195,7 +192,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     }
 
     // A lista de status para o dropdown do formulário
-    const STATUS_OPTIONS = ["Documentação Recebida", "Aprovado", "Solicitando Engenharia", "Engenharia Solicitada", "Baixando FGTS", "Preenchendo Fichas", "Assinando Fichas", "Finalizando", "Aguardando Reserva", "Enviando para Conformidade", "Aguardando Conformidade", "Inconforme", "Conforme - Ag. Contrato", "Assinando Contrato", "Assinado", "Assinado-Movido", "Arquivado"];
+    const STATUS_OPTIONS = ["Documentação Recebida", "Aprovado", "Solicitando Engenharia", "Engenharia Solicitada", "Baixando FGTS", "Preenchendo Fichas", "Assinando Fichas", "Finalizando", "Aguardando Reserva", "Enviando para Conformidade", "Aguardando Conformidade", "Inconforme", "Conforme - Ag. Contrato", "Assinando Contrato"];
 
     return (
         <div id="client-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -216,7 +213,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         <ModernInput id="cpf" label="CPF" Icon={FileText} value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
 
                         {/* Campo de Status (visível apenas na edição) */}
-                        {clientToEdit && (
+                        {clientToEdit && STATUS_OPTIONS.includes(formData.status) && (
                             <div>
                                 <div className="text-xs text-gray-600 mb-1">Status</div>
                                 <FancySelect

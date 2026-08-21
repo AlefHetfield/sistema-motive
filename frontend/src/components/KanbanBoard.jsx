@@ -8,11 +8,9 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
-  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import {
   CheckCircle2, Clock, AlertCircle, AlertTriangle, Archive,
   FileCheck, Calendar, X, Edit, Trash2, Plus
@@ -41,7 +39,6 @@ const STATUS_OPTIONS = [
   "Inconforme",
   "Conforme - Ag. Contrato",
   "Assinando Contrato",
-  "Assinado",
 ];
 
 const statusConfig = {
@@ -115,14 +112,9 @@ const statusConfig = {
     bgLight: 'bg-indigo-50',
     icon: FileCheck 
   },
-  'Assinado': { 
-    color: 'from-green-400 to-green-500',
-    bgLight: 'bg-green-50',
-    icon: CheckCircle2 
-  },
 };
 
-export default function KanbanBoard({ clients, onUpdate }) {
+export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, onPauseClient, onResumeClient }) {
   const notify = useToast();
   const { logActivity } = useActivityLog();
   const { user } = useAuth();
@@ -194,7 +186,7 @@ export default function KanbanBoard({ clients, onUpdate }) {
 
   const updateClientStatus = async (client, newStatus) => {
     const statusAntes = client.status;
-    
+
     // 1. ATUALIZAÇÃO OTIMISTA: Atualiza UI imediatamente
     setOptimisticClients(prevClients =>
       prevClients.map(c =>
@@ -348,16 +340,16 @@ export default function KanbanBoard({ clients, onUpdate }) {
     <div className="w-full h-full">
       {/* Header com estatísticas */}
       <div className="mb-6 grid grid-cols-7 gap-4">
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200"
         >
           <p className="text-blue-600 text-sm font-medium">Total</p>
           <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
-        </motion.div>
+        </Motion.div>
         
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -365,9 +357,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
         >
           <p className="text-emerald-600 text-sm font-medium">Aprovados</p>
           <p className="text-3xl font-bold text-emerald-900">{stats.aprovados}</p>
-        </motion.div>
+        </Motion.div>
         
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -375,9 +367,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
         >
           <p className="text-amber-600 text-sm font-medium">Engenharia Solicitada</p>
           <p className="text-3xl font-bold text-amber-900">{stats.engenhariaSolicitada}</p>
-        </motion.div>
+        </Motion.div>
 
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -385,9 +377,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
         >
           <p className="text-sky-600 text-sm font-medium">Aguardando Reserva</p>
           <p className="text-3xl font-bold text-sky-900">{stats.aguardandoReserva}</p>
-        </motion.div>
+        </Motion.div>
 
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -395,11 +387,11 @@ export default function KanbanBoard({ clients, onUpdate }) {
         >
           <p className="text-rose-600 text-sm font-medium">Aguardando Conformidade</p>
           <p className="text-3xl font-bold text-rose-900">{stats.aguardandoConformidade}</p>
-        </motion.div>
+        </Motion.div>
 
         {!isAssistant && (
           <>
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
@@ -409,9 +401,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
               <p className="text-2xl font-bold text-indigo-900">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.financiamentoTotal)}
               </p>
-            </motion.div>
+            </Motion.div>
 
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
@@ -421,7 +413,7 @@ export default function KanbanBoard({ clients, onUpdate }) {
               <p className="text-2xl font-bold text-purple-900">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.remuneracao)}
               </p>
-            </motion.div>
+            </Motion.div>
           </>
         )}
       </div>
@@ -443,6 +435,9 @@ export default function KanbanBoard({ clients, onUpdate }) {
                 clients={clientsByStatus[status]}
                 onEditClient={handleEditClient}
                 onDeleteClient={handleDeleteClient}
+                onRequestCompletion={onRequestCompletion}
+                onPauseClient={onPauseClient}
+                onResumeClient={onResumeClient}
                 isDropTarget={targetStatus === status}
                 isDragging={activeId !== null}
               />

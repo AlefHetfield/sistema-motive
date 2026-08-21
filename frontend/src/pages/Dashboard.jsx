@@ -43,9 +43,8 @@ const STATUS_OPTIONS = [
     "Conformidade",
     "Inconforme",
     "Emissão e Assinatura",
-    "Assinado",
 ];
-const FINAL_STATUSES = ["Assinado-Movido", "Arquivado"];
+const FINAL_STATUSES = ["Assinado-Movido", "Assinado", "Arquivado"];
 
 const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +62,6 @@ const Dashboard = () => {
         'Aguardando Reserva': 0,
         Conformidade: 0,
         'Inconforme': 0,
-        Assinado: 0,
     });
     // 2. Novos estados para métricas e gráfico
     const [trendMetrics, setTrendMetrics] = useState({ monthlyGrowth: { percentage: 0, isPositive: true } });
@@ -80,11 +78,12 @@ const Dashboard = () => {
             const fetchedClients = await fetchClients();
             setAllClients(fetchedClients);
             const activeClients = fetchedClients.filter(c => !FINAL_STATUSES.includes(c.status));
+            const operationalClients = activeClients.filter(c => !c.emEspera);
 
             // Calcular contagens por status
             const counts = { totalActive: activeClients.length };
             STATUS_OPTIONS.forEach(status => {
-                counts[status] = activeClients.filter(c => c.status === status).length;
+                counts[status] = operationalClients.filter(c => c.status === status).length;
             });
             setStatusCounts(counts);
 
@@ -160,12 +159,12 @@ const Dashboard = () => {
             });
 
             // Clientes mais recentes (últimos 5)
-            const sortedByDate = [...activeClients].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const sortedByDate = [...operationalClients].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setRecentClients(sortedByDate.slice(0, 5));
 
             // Top performers (corretores com mais clientes)
             const performerMap = {};
-            activeClients.forEach(c => {
+            operationalClients.forEach(c => {
                 const name = c.responsavel || c.corretor || 'Não atribuído';
                 performerMap[name] = (performerMap[name] || 0) + 1;
             });
@@ -177,7 +176,7 @@ const Dashboard = () => {
 
             // Tempo médio por status (em dias)
             const avgDays = STATUS_OPTIONS.map(status => {
-                const clientsInStatus = activeClients.filter(c => c.status === status);
+                const clientsInStatus = operationalClients.filter(c => c.status === status);
                 if (clientsInStatus.length === 0) return { status, avgDays: 0 };
                 
                 const totalDays = clientsInStatus.reduce((sum, c) => {
@@ -245,7 +244,6 @@ const Dashboard = () => {
         'Aguardando Reserva': Calendar,
         'Conformidade': AlertCircle,
         'Inconforme': AlertTriangle,
-        'Assinado': CheckCircle2,
     };
 
     const statusColorClasses = {
@@ -258,7 +256,6 @@ const Dashboard = () => {
         'Aguardando Reserva': 'bg-cyan-50 text-cyan-700 border-cyan-200',
         'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
         'Inconforme': 'bg-red-50 text-red-700 border-red-200',
-        'Assinado': 'bg-indigo-50 text-indigo-700 border-indigo-200',
     };
 
 

@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { motion } from 'framer-motion';
-import { Edit, Trash2, Home, Copy, Check, FileText } from 'lucide-react';
+import { motion as Motion } from 'framer-motion';
+import { Edit, Trash2, Home, Copy, Check, CheckCircle2, FileText, PauseCircle, PlayCircle } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_PALETTES = [
@@ -31,6 +31,9 @@ export default function KanbanCard({
   status,
   onEditClient,
   onDeleteClient,
+  onRequestCompletion,
+  onPauseClient,
+  onResumeClient,
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const [cpfCopied, setCpfCopied] = useState(false);
@@ -43,7 +46,7 @@ export default function KanbanCard({
     transform,
     transition,
     isDragging: isSortableDragging,
-  } = useSortable({ id: client.id, data: { status } });
+  } = useSortable({ id: client.id, data: { status }, disabled: client.emEspera });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -78,7 +81,7 @@ export default function KanbanCard({
   };
 
   return (
-    <motion.div
+    <Motion.div
       ref={setNodeRef}
       style={style}
       {...attributes}
@@ -90,7 +93,7 @@ export default function KanbanCard({
       onMouseLeave={() => setIsHovered(false)}
       className={`
         p-3 rounded-lg border-2 border-gray-200 bg-white
-        cursor-grab active:cursor-grabbing
+        ${client.emEspera ? 'cursor-default bg-slate-50 opacity-65' : 'cursor-grab active:cursor-grabbing'}
         transition-all duration-150
         ${isSortableDragging ? 'shadow-xl scale-105 border-blue-400 bg-blue-50 z-50' : 'hover:shadow-md hover:border-gray-300'}
         ${isDragging ? 'opacity-50' : ''}
@@ -105,6 +108,7 @@ export default function KanbanCard({
           <h4 className="font-semibold text-gray-900 text-sm truncate">
             {client.nome}
           </h4>
+          {client.emEspera && <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"><PauseCircle className="h-3 w-3" />Em espera</span>}
         </div>
       </div>
 
@@ -187,12 +191,35 @@ export default function KanbanCard({
 
       {/* Ações - Aparecem ao hover */}
       {isHovered && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: -2 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -2 }}
-          className="flex gap-2 pt-2 border-t border-gray-200"
+          className="flex flex-wrap gap-2 pt-2 border-t border-gray-200"
         >
+          {status === 'Assinando Contrato' && !client.emEspera && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestCompletion?.(client);
+              }}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-medium transition-colors"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Concluir
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (client.emEspera) onResumeClient?.(client);
+              else onPauseClient?.(client);
+            }}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${client.emEspera ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+          >
+            {client.emEspera ? <PlayCircle className="w-3.5 h-3.5" /> : <PauseCircle className="w-3.5 h-3.5" />}
+            {client.emEspera ? 'Retomar' : 'Espera'}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -213,8 +240,8 @@ export default function KanbanCard({
             <Trash2 className="w-3.5 h-3.5" />
             Deletar
           </button>
-        </motion.div>
+        </Motion.div>
       )}
-    </motion.div>
+    </Motion.div>
   );
 }

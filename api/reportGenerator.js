@@ -2,7 +2,8 @@ import XLSX from 'xlsx';
 import { format } from 'date-fns';
 
 // Status finais usados no sistema
-const FINAL_STATUSES = ['Assinado-Movido', 'Arquivado'];
+const SIGNED_STATUSES = ['Assinado-Movido', 'Assinado'];
+const FINAL_STATUSES = [...SIGNED_STATUSES, 'Arquivado'];
 
 export function buildMonthlyReport(clients, month, year) {
   // month: 1-12
@@ -15,7 +16,7 @@ export function buildMonthlyReport(clients, month, year) {
   const signedThisMonth = clients.filter(c => c.dataAssinaturaContrato && new Date(c.dataAssinaturaContrato).getMonth() === monthIndex && new Date(c.dataAssinaturaContrato).getFullYear() === year).length;
 
   const activeClients = clients.filter(c => !FINAL_STATUSES.includes(c.status || ''));
-  const signedClients = clients.filter(c => (c.status === 'Assinado-Movido'));
+  const signedClients = clients.filter(c => SIGNED_STATUSES.includes(c.status));
   const archivedClients = clients.filter(c => (c.status === 'Arquivado'));
 
   const conversionRate = activeClients.length > 0 ? (signedClients.length / activeClients.length) : 0;
@@ -57,6 +58,9 @@ export function buildMonthlyReport(clients, month, year) {
     Agencia: c.agencia || '',
     Modalidade: c.modalidade || '',
     Status: c.status || '',
+    EmEspera: c.emEspera ? 'Sim' : 'Não',
+    MotivoEspera: c.motivoEspera || '',
+    PrevisaoRetomada: c.dataRetomada ? format(new Date(c.dataRetomada), 'dd/MM/yyyy') : '',
     CriadoEm: c.createdAt ? format(new Date(c.createdAt), 'dd/MM/yyyy HH:mm') : '',
     Assinatura: c.dataAssinaturaContrato ? format(new Date(c.dataAssinaturaContrato), 'dd/MM/yyyy') : '',
     Observacoes: c.observacoes || ''
@@ -88,7 +92,7 @@ export function buildWeeklyReport(clients, startDate, endDate) {
   const newClients = clients.filter(c => isInRange(c.createdAt));
   const signedClientsInRange = clients.filter(c => isInRange(c.dataAssinaturaContrato));
   const activeClients = clients.filter(c => !FINAL_STATUSES.includes(c.status || ''));
-  const signedClients = clients.filter(c => c.status === 'Assinado-Movido');
+  const signedClients = clients.filter(c => SIGNED_STATUSES.includes(c.status));
 
   const conversionRate = activeClients.length ? (signedClients.length / activeClients.length) : 0;
 
@@ -124,6 +128,9 @@ export function buildWeeklyReport(clients, startDate, endDate) {
     Agencia: c.agencia || '',
     Modalidade: c.modalidade || '',
     Status: c.status || '',
+    EmEspera: c.emEspera ? 'Sim' : 'Não',
+    MotivoEspera: c.motivoEspera || '',
+    PrevisaoRetomada: c.dataRetomada ? format(new Date(c.dataRetomada), 'dd/MM/yyyy') : '',
     CriadoEm: c.createdAt ? format(new Date(c.createdAt), 'dd/MM/yyyy HH:mm') : '',
     Assinatura: c.dataAssinaturaContrato ? format(new Date(c.dataAssinaturaContrato), 'dd/MM/yyyy') : '',
     Observacoes: c.observacoes || ''

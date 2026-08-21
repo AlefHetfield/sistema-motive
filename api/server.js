@@ -403,6 +403,26 @@ app.get('/api/activities/recent', requireAuth, async (req, res) => {
 
 // --- ROTAS PARA CLIENTES (Clients) ---
 
+// [READ] Histórico de atividades de um cliente
+app.get('/api/clients/:id/activities', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  if (!clientId) {
+    return res.status(400).json({ error: 'ID do cliente inválido.' });
+  }
+
+  try {
+    const activities = await prisma.activityLog.findMany({
+      where: { clientId },
+      take: 20,
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(activities);
+  } catch (error) {
+    console.error('Erro ao buscar histórico do cliente:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico do cliente.' });
+  }
+});
+
 // [READ] Listar todos os clientes
 app.get('/api/clients', async (req, res) => {
   try {
@@ -501,21 +521,48 @@ app.put('/api/clients/:id', requireAuth, async (req, res) => {
       });
     }
     
+    const updateData = {
+      ...req.body,
+      ultimoUsuarioAlteracao: req.user.nome
+    };
+
+    if (req.body.emEspera === true && !clienteAntes.emEspera) {
+      updateData.pausadoEm = new Date();
+      updateData.pausadoPor = req.user.nome;
+    }
+
+    if (req.body.emEspera === false && clienteAntes.emEspera) {
+      updateData.motivoEspera = null;
+      updateData.observacaoEspera = null;
+      updateData.dataRetomada = null;
+      updateData.pausadoEm = null;
+      updateData.pausadoPor = null;
+    }
+
+    if (['Assinado-Movido', 'Assinado', 'Arquivado'].includes(req.body.status)) {
+      updateData.emEspera = false;
+      updateData.motivoEspera = null;
+      updateData.observacaoEspera = null;
+      updateData.dataRetomada = null;
+      updateData.pausadoEm = null;
+      updateData.pausadoPor = null;
+    }
+
     const updatedClient = await prisma.client.update({
       where: { id: parseInt(id) },
-      data: {
-        ...req.body,
-        ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário logado
-      },
+      data: updateData,
     });
     
     // Registra a atividade
     const statusMudou = clienteAntes.status !== updatedClient.status;
+    const foiPausado = !clienteAntes.emEspera && updatedClient.emEspera;
+    const foiRetomado = clienteAntes.emEspera && !updatedClient.emEspera;
+    const activityAction = foiPausado ? 'paused' : foiRetomado ? 'resumed' : statusMudou ? 'status_changed' : 'updated';
     await prisma.activityLog.create({
       data: {
         clientId: updatedClient.id,
         clientNome: updatedClient.nome || 'Cliente sem nome',
-        action: statusMudou ? 'status_changed' : 'updated',
+        action: activityAction,
         statusAntes: clienteAntes.status,
         statusDepois: updatedClient.status,
         userName: req.user.nome
