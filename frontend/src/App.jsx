@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import HousingSimulator from './pages/HousingSimulator';
 import ContractGenerator from './pages/ContractGenerator';
+import PropertiesMap from './pages/PropertiesMap';
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
             <Route path="pdf-editor" element={<PdfEditor />} />
             <Route path="receipt-generator" element={<ReceiptGenerator />} />
             <Route path="contract-generator" element={<ContractGenerator />} />
+            <Route path="properties-map" element={<PropertiesMap />} />
             <Route path="simulador" element={<HousingSimulator />} />
             <Route path="cep-search" element={<CepSearch />} />
             <Route path="settings" element={<Settings />} />

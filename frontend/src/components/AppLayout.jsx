@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 
 const corretorNavItems = [
+    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature },
@@ -16,6 +17,7 @@ const corretorNavItems = [
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users },
+    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature },
@@ -27,6 +29,7 @@ const assistenteNavItems = [
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
     { to: '/clients', label: 'Clientes', icon: Users },
+    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature },

@@ -125,15 +125,37 @@ model Contract {
 }
 
 model Property {
-  id          Int     @id @default(autoincrement())
-  title       String
-  description String?
-  address     String
-  price       Float?
-  area        Float?
-  photoUrl    String?
-  latitude    Float?
-  longitude   Float?
+  id                    Int      @id @default(autoincrement())
+  code                  String?
+  title                 String
+  description           String?
+  address               String
+  city                  String?
+  neighborhood          String?
+  propertyType          String?
+  condition             String?
+  status                String   @default("Disponível")
+  price                 Float?
+  area                  Float?
+  landArea              Float?
+  bedrooms              Int?
+  suites                Int?
+  bathrooms             Int?
+  parkingSpaces         Int?
+  photoUrl              String?
+  sourceUrl             String?
+  captador              String?
+  isFavorite            Boolean  @default(false)
+  latitude              Float?
+  longitude             Float?
+  lastAvailabilityCheck DateTime?
+  createdById           Int?
+  createdByName         String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
+  @@index([status])
+  @@index([city])
+  @@index([latitude, longitude])
   @@map("properties")
 }

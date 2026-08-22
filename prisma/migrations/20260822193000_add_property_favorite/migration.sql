@@ -1,0 +1,2 @@
+ALTER TABLE "properties"
+ADD COLUMN "isFavorite" BOOLEAN NOT NULL DEFAULT false;

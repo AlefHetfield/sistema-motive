@@ -5,6 +5,11 @@
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
 
+const apiError = async (response, fallback) => {
+    const data = await response.json().catch(() => ({}));
+    return new Error(data.error || fallback);
+};
+
 // Loga a URL base uma vez para facilitar diagnóstico em prod/dev
 if (typeof window !== 'undefined') {
     // Evita log repetitivo
@@ -161,6 +166,116 @@ export async function deleteClientContract(contractId) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Falha ao excluir o contrato.');
     }
+}
+
+export async function fetchProperties(filters = {}) {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value !== null && value !== undefined));
+    const response = await fetch(`${API_BASE_URL}/api/properties?${query}`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar os imóveis.');
+    return response.json();
+}
+
+export async function fetchNextPropertyReference(propertyType) {
+    const query = new URLSearchParams({ propertyType: propertyType || 'Outro' });
+    const response = await fetch(`${API_BASE_URL}/api/properties/next-reference?${query}`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao gerar a referência do imóvel.');
+    return response.json();
+}
+
+export async function fetchPropertySitePreview(sourceUrl) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/site-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sourceUrl }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar a foto do anúncio.');
+    return response.json();
+}
+
+export async function createProperty(property) {
+    const response = await fetch(`${API_BASE_URL}/api/properties`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(property),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao cadastrar o imóvel.');
+    return response.json();
+}
+
+export async function updateProperty(propertyId, property) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(property),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao atualizar o imóvel.');
+    return response.json();
+}
+
+export async function setPropertyFavorite(propertyId, isFavorite) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/${propertyId}/favorite`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isFavorite }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao atualizar o favorito.');
+    return response.json();
+}
+
+export async function deleteProperty(propertyId) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/${propertyId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao excluir o imóvel.');
+}
+
+export async function geocodePropertyAddress(address) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ address }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao localizar o endereço.');
+    return response.json();
+}
+
+export async function geocodePropertyPlace(placeId) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ placeId }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao localizar o endereço selecionado.');
+    return response.json();
+}
+
+export async function reverseGeocodePropertyCoordinates(latitude, longitude) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/reverse-geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ latitude, longitude }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao identificar o endereço deste ponto.');
+    return response.json();
+}
+
+export async function importProperties(content, format) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content, format }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao importar os imóveis.');
+    return response.json();
 }
 
 /**

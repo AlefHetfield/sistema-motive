@@ -9,6 +9,7 @@ import { dispatchReport } from './emailSender.js';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import { contractDownloadName, generateContractDocx, normalizeAndValidateContractData } from './contractGenerator.js';
+import { createPropertyRouter } from './propertyRoutes.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -30,7 +31,7 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['Content-Disposition'],
 }));
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 app.use(cookieParser());
 
 // ========== AUTENTICAÇÃO E AUTORIZAÇÃO ==========
@@ -93,6 +94,8 @@ function requireRole(...allowedRoles) {
     next();
   };
 }
+
+app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`

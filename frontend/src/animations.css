@@ -1,13 +1,26 @@
 /* Animações e Transições Globais */
 
-/* Transições suaves globais */
-* {
-  @apply transition-all duration-300;
-}
+/*
+ * Transições devem ser aplicadas apenas aos componentes que realmente
+ * precisam delas. Uma transição global também anima os transforms internos
+ * de bibliotecas como o Google Maps e deixa o arrasto perceptivelmente atrás
+ * do cursor.
+ */
 
 /* Botões com hover elegante */
 button {
   @apply active:scale-95 transition-transform duration-150;
+}
+
+/* Os controles e as camadas do Google Maps precisam responder imediatamente. */
+.gm-style,
+.gm-style * {
+  transition-property: none !important;
+  transition-duration: 0s !important;
+}
+
+.gm-style button {
+  transform: none !important;
 }
 
 /* Inputs com foco elegante */
