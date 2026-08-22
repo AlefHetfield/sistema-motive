@@ -35,6 +35,7 @@ model Client {
   dataRetomada           DateTime? @db.Date
   pausadoEm              DateTime?
   pausadoPor             String?
+  simulacoes             HousingSimulation[]
 
   @@map("clients")
 }
@@ -55,6 +56,7 @@ model User {
   mustChangePassword Boolean   @default(false)
   lastLogin          DateTime?
   createdAt          DateTime  @default(now()) @map("createdAt")
+  simulacoesCriadas  HousingSimulation[]
 
   @@map("users")
 }
@@ -71,6 +73,33 @@ model ActivityLog {
 
   @@map("activity_logs")
   @@index([createdAt(sort: Desc)])
+}
+
+model HousingSimulation {
+  id                Int      @id @default(autoincrement())
+  clientId          Int
+  createdById       Int?
+  createdByName     String
+  bank              String
+  program           String
+  system            String
+  propertyValue     Decimal  @db.Decimal(15, 2)
+  financed          Decimal  @db.Decimal(15, 2)
+  requiredEntry     Decimal  @db.Decimal(15, 2)
+  firstInstallment  Decimal  @db.Decimal(15, 2)
+  term              Int
+  effectiveRate     Decimal  @db.Decimal(8, 4)
+  quota             Decimal  @db.Decimal(8, 4)
+  inputSnapshot     Json
+  resultSnapshot    Json
+  createdAt         DateTime @default(now())
+
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([createdById])
+  @@map("housing_simulations")
 }
 
 model Property {

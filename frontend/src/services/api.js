@@ -47,6 +47,39 @@ export async function fetchClientActivities(clientId) {
     return response.json();
 }
 
+export async function fetchClientSimulations(clientId) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/simulations`, {
+        credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Falha ao buscar as simulações do cliente.');
+    return response.json();
+}
+
+export async function saveClientSimulation(clientId, simulationData) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/simulations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(simulationData),
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao salvar a simulação no cliente.');
+    }
+    return response.json();
+}
+
+export async function deleteClientSimulation(clientId, simulationId) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/simulations/${simulationId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao excluir a simulação.');
+    }
+}
+
 /**
  * Salva um cliente (cria um novo ou atualiza um existente).
  * @param {Object} clientData Os dados do cliente.

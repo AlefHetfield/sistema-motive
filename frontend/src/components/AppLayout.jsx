@@ -6,18 +6,18 @@ import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 
 const corretorNavItems = [
-    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
-    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
+    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users },
-    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
-    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
+    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
@@ -25,9 +25,9 @@ const assistenteNavItems = [
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
     { to: '/clients', label: 'Clientes', icon: Users },
-    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
-    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
+    { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
     { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, adminOnly: true },

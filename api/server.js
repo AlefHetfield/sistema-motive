@@ -423,6 +423,149 @@ app.get('/api/clients/:id/activities', requireAuth, async (req, res) => {
   }
 });
 
+// [READ] Listar simulações habitacionais vinculadas a um cliente
+app.get('/api/clients/:id/simulations', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  if (!clientId) {
+    return res.status(400).json({ error: 'ID do cliente inválido.' });
+  }
+
+  try {
+    const simulations = await prisma.housingSimulation.findMany({
+      where: { clientId },
+      take: 30,
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(simulations);
+  } catch (error) {
+    console.error('Erro ao buscar simulações do cliente:', error);
+    res.status(500).json({ error: 'Erro ao buscar simulações do cliente.' });
+  }
+});
+
+// [CREATE] Salvar o retrato de uma simulação no cadastro do cliente
+app.post('/api/clients/:id/simulations', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  const inputSnapshot = req.body?.inputSnapshot;
+  const resultSnapshot = req.body?.resultSnapshot;
+  if (!clientId) {
+    return res.status(400).json({ error: 'ID do cliente inválido.' });
+  }
+  if (!inputSnapshot || typeof inputSnapshot !== 'object' || !resultSnapshot || typeof resultSnapshot !== 'object') {
+    return res.status(400).json({ error: 'Dados da simulação incompletos.' });
+  }
+  if (JSON.stringify(inputSnapshot).length > 50000 || JSON.stringify(resultSnapshot).length > 50000) {
+    return res.status(413).json({ error: 'Dados da simulação excedem o limite permitido.' });
+  }
+
+  const numberValue = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const summary = {
+    propertyValue: numberValue(resultSnapshot.propertyValue),
+    financed: numberValue(resultSnapshot.financed),
+    requiredEntry: numberValue(resultSnapshot.requiredEntry),
+    firstInstallment: numberValue(resultSnapshot.installment?.total),
+    term: numberValue(resultSnapshot.term),
+    effectiveRate: numberValue(resultSnapshot.rate?.effective),
+    quota: numberValue(resultSnapshot.quota),
+  };
+  const invalidSummary = Object.values(summary).some((value) => value === null || value < 0)
+    || !Number.isInteger(summary.term)
+    || summary.term < 1
+    || summary.term > 420
+    || summary.effectiveRate > 100
+    || summary.quota > 100;
+  const bank = String(resultSnapshot.bank || '');
+  const program = String(resultSnapshot.program || '');
+  const system = String(resultSnapshot.system || '');
+  if (invalidSummary || !['CAIXA', 'BRADESCO'].includes(bank) || !program || !['SAC', 'PRICE'].includes(system)) {
+    return res.status(400).json({ error: 'Resultado da simulação inválido.' });
+  }
+
+  try {
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, nome: true } });
+    if (!client) {
+      return res.status(404).json({ error: 'Cliente não encontrado.' });
+    }
+
+    const simulation = await prisma.$transaction(async (tx) => {
+      const created = await tx.housingSimulation.create({
+        data: {
+          clientId,
+          createdById: req.user.id,
+          createdByName: req.user.nome,
+          bank,
+          program,
+          system,
+          ...summary,
+          inputSnapshot,
+          resultSnapshot,
+        },
+      });
+      await tx.client.update({
+        where: { id: clientId },
+        data: {
+          valorFinanciado: summary.financed,
+          ultimoUsuarioAlteracao: req.user.nome,
+        },
+      });
+      await tx.activityLog.create({
+        data: {
+          clientId,
+          clientNome: client.nome || 'Cliente sem nome',
+          action: 'simulation_created',
+          userName: req.user.nome,
+        },
+      });
+      return created;
+    });
+    res.status(201).json(simulation);
+  } catch (error) {
+    console.error('Erro ao salvar simulação do cliente:', error);
+    res.status(500).json({ error: 'Não foi possível salvar a simulação.' });
+  }
+});
+
+// [DELETE] Excluir uma simulação criada pelo próprio usuário ou por um administrador
+app.delete('/api/clients/:id/simulations/:simulationId', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  const simulationId = parseInt(req.params.simulationId);
+  if (!clientId || !simulationId) {
+    return res.status(400).json({ error: 'Identificador inválido.' });
+  }
+
+  try {
+    const simulation = await prisma.housingSimulation.findFirst({
+      where: { id: simulationId, clientId },
+      include: { client: { select: { nome: true } } },
+    });
+    if (!simulation) {
+      return res.status(404).json({ error: 'Simulação não encontrada.' });
+    }
+    if (req.user.role !== 'ADM' && simulation.createdById !== req.user.id) {
+      return res.status(403).json({ error: 'Você não pode excluir esta simulação.' });
+    }
+
+    await prisma.$transaction([
+      prisma.housingSimulation.delete({ where: { id: simulationId } }),
+      prisma.activityLog.create({
+        data: {
+          clientId,
+          clientNome: simulation.client.nome || 'Cliente sem nome',
+          action: 'simulation_deleted',
+          userName: req.user.nome,
+        },
+      }),
+    ]);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Erro ao excluir simulação do cliente:', error);
+    res.status(500).json({ error: 'Não foi possível excluir a simulação.' });
+  }
+});
+
 // [READ] Listar todos os clientes
 app.get('/api/clients', async (req, res) => {
   try {

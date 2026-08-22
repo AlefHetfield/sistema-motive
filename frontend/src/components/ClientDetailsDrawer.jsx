@@ -4,6 +4,7 @@ import {
     Banknote,
     Building2,
     Calendar,
+    Calculator,
     CheckCircle2,
     Clock3,
     FilePenLine,
@@ -19,7 +20,11 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
-import { fetchClientActivities } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
+import { deleteClientSimulation, fetchClientActivities, fetchClientSimulations } from '../services/api';
+import DeleteSimulationModal from './DeleteSimulationModal';
 
 const SIGNED_STATUSES = ['Assinado', 'Assinado-Movido'];
 
@@ -60,6 +65,8 @@ const actionDescription = (activity) => {
     if (activity.action === 'deleted') return 'Cliente excluído';
     if (activity.action === 'paused') return 'Atendimento colocado em espera';
     if (activity.action === 'resumed') return 'Atendimento retomado';
+    if (activity.action === 'simulation_created') return 'Simulação habitacional salva';
+    if (activity.action === 'simulation_deleted') return 'Simulação habitacional excluída';
     if (activity.action === 'status_changed') {
         return `${statusLabel(activity.statusAntes)} → ${statusLabel(activity.statusDepois)}`;
     }
@@ -79,11 +86,19 @@ export default function ClientDetailsDrawer({
     onPause,
     onResume,
 }) {
+    const navigate = useNavigate();
+    const { user } = useAuth();
     const [activities, setActivities] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [simulations, setSimulations] = useState([]);
+    const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);
+    const [deletingSimulationId, setDeletingSimulationId] = useState(null);
+    const [simulationPendingDelete, setSimulationPendingDelete] = useState(null);
 
     useEffect(() => {
-        const handleKeyDown = (event) => event.key === 'Escape' && onClose();
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape' && !simulationPendingDelete) onClose();
+        };
         document.addEventListener('keydown', handleKeyDown);
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
@@ -91,7 +106,7 @@ export default function ClientDetailsDrawer({
             document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = previousOverflow;
         };
-    }, [onClose]);
+    }, [onClose, simulationPendingDelete]);
 
     useEffect(() => {
         let active = true;
@@ -101,6 +116,36 @@ export default function ClientDetailsDrawer({
             .finally(() => active && setIsLoadingHistory(false));
         return () => { active = false; };
     }, [client.id]);
+
+    useEffect(() => {
+        let active = true;
+        fetchClientSimulations(client.id)
+            .then(data => active && setSimulations(Array.isArray(data) ? data : []))
+            .catch(() => active && setSimulations([]))
+            .finally(() => active && setIsLoadingSimulations(false));
+        return () => { active = false; };
+    }, [client.id]);
+
+    const openSimulation = (simulation) => {
+        onClose();
+        navigate('/simulador', { state: { housingSimulation: simulation } });
+    };
+
+    const removeSimulation = async () => {
+        const simulation = simulationPendingDelete;
+        if (!simulation) return;
+        setDeletingSimulationId(simulation.id);
+        try {
+            await deleteClientSimulation(client.id, simulation.id);
+            setSimulations(current => current.filter(item => item.id !== simulation.id));
+            setSimulationPendingDelete(null);
+            toast.success('Simulação excluída do histórico.');
+        } catch (error) {
+            toast.error(error.message || 'Não foi possível excluir a simulação.');
+        } finally {
+            setDeletingSimulationId(null);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[9000]">
@@ -175,6 +220,42 @@ export default function ClientDetailsDrawer({
                     )}
 
                     <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900"><Calculator size={17} className="text-primary" />Simulações habitacionais</h3>
+                            {simulations.length > 0 && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">{simulations.length}</span>}
+                        </div>
+                        {isLoadingSimulations ? (
+                            <div className="space-y-3">{[1, 2].map(item => <div key={item} className="h-24 animate-pulse rounded-xl bg-gray-100" />)}</div>
+                        ) : simulations.length ? (
+                            <div className="space-y-3">
+                                {simulations.map(simulation => {
+                                    const program = simulation.bank === 'CAIXA' && simulation.program !== 'SBPE' ? `MCMV - ${simulation.program}` : simulation.program;
+                                    const canDelete = user?.role === 'ADM' || simulation.createdById === user?.id;
+                                    return (
+                                        <article key={simulation.id} className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${simulation.bank === 'CAIXA' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>{simulation.bank}</span><span className="text-xs font-semibold text-gray-600">{program} · {simulation.system}</span></div>
+                                                    <p className="mt-2 text-base font-bold text-gray-900">{formatCurrency(simulation.financed)}</p>
+                                                    <p className="mt-0.5 text-xs font-semibold text-primary">Parcela estimada {formatCurrency(simulation.firstInstallment)}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">Imóvel {formatCurrency(simulation.propertyValue)} · {simulation.term} meses</p>
+                                                </div>
+                                                {canDelete && <button type="button" disabled={deletingSimulationId === simulation.id} onClick={() => setSimulationPendingDelete(simulation)} className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40" title="Excluir simulação"><Trash2 size={16} /></button>}
+                                            </div>
+                                            <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200/70 pt-3">
+                                                <p className="min-w-0 truncate text-[11px] text-gray-400">{formatDate(simulation.createdAt, true)} · {simulation.createdByName}</p>
+                                                <button type="button" onClick={() => openSimulation(simulation)} className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-primary shadow-sm ring-1 ring-gray-200 transition hover:bg-primary hover:text-white">Reabrir</button>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">Nenhuma simulação vinculada a este cliente.</p>
+                        )}
+                    </section>
+
+                    <section>
                         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900"><FileText size={17} className="text-primary" />Observações</h3>
                         <div className="min-h-20 whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
                             {client.observacoes || 'Nenhuma observação registrada.'}
@@ -219,6 +300,13 @@ export default function ClientDetailsDrawer({
                     </div>
                 </footer>
             </aside>
+            <DeleteSimulationModal
+                simulation={simulationPendingDelete}
+                clientName={client.nome}
+                isDeleting={Boolean(deletingSimulationId)}
+                onCancel={() => !deletingSimulationId && setSimulationPendingDelete(null)}
+                onConfirm={removeSimulation}
+            />
         </div>
     );
 }

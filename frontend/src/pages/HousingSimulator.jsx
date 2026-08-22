@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   AlertCircle,
   BadgeCheck,
@@ -19,6 +20,7 @@ import {
   MapPin,
   Percent,
   RotateCcw,
+  Save,
   ShieldCheck,
   TriangleAlert,
   WalletCards,
@@ -28,6 +30,7 @@ import { toast } from 'sonner';
 import { MUNICIPAL_LIMITS, MUNICIPAL_TABLE_EFFECTIVE_DATE } from '../data/municipalLimits';
 import { calculateHousingSimulation } from '../utils/housingSimulator';
 import { downloadHousingSimulationPdf } from '../utils/housingSimulationPdf';
+import SaveSimulationModal from '../components/SaveSimulationModal';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -326,10 +329,16 @@ function ScenarioAdjustments({ form, result, entryAvailability, onAdjust, onEntr
 }
 
 function HousingSimulator() {
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [result, setResult] = useState(null);
+  const location = useLocation();
+  const restoredSimulation = location.state?.housingSimulation;
+  const restoredForm = restoredSimulation?.inputSnapshot
+    ? { ...INITIAL_FORM, ...restoredSimulation.inputSnapshot }
+    : INITIAL_FORM;
+  const [form, setForm] = useState(restoredForm);
+  const [result, setResult] = useState(restoredSimulation?.resultSnapshot || null);
   const [comparison, setComparison] = useState(null);
-  const [originalScenario, setOriginalScenario] = useState(null);
+  const [originalScenario, setOriginalScenario] = useState(restoredSimulation?.inputSnapshot ? restoredForm : null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [validation, setValidation] = useState('');
 
   const municipalities = useMemo(() => MUNICIPAL_LIMITS[form.uf] || [], [form.uf]);
@@ -610,6 +619,9 @@ function HousingSimulator() {
                   <button type="button" onClick={compareBanks} className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-bold text-primary transition hover:border-primary/30 hover:bg-primary/10">
                     <GitCompareArrows className="h-4 w-4" /> Comparar com {result.bank === 'CAIXA' ? 'Bradesco' : 'CAIXA'}
                   </button>
+                  <button type="button" onClick={() => setShowSaveModal(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100">
+                    <Save className="h-4 w-4" /> Salvar no cadastro do cliente
+                  </button>
                   <div className="grid grid-cols-2 gap-2.5">
                     <button type="button" onClick={copySummary} className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><Copy className="h-4 w-4" /> Copiar resumo</button>
                     <button type="button" onClick={generatePdf} className="flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#4a637a]"><FileDown className="h-4 w-4" /> Gerar PDF</button>
@@ -622,6 +634,16 @@ function HousingSimulator() {
           </aside>
         </div>
       </div>
+      {showSaveModal && result && (
+        <SaveSimulationModal
+          simulationData={{ inputSnapshot: form, resultSnapshot: result }}
+          onClose={() => setShowSaveModal(false)}
+          onSaved={(_, client) => {
+            setShowSaveModal(false);
+            toast.success(`Simulação salva no cadastro de ${client.nome || 'cliente'}.`);
+          }}
+        />
+      )}
     </div>
   );
 }
