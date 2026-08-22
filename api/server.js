@@ -8,6 +8,7 @@ import { buildMonthlyReport, buildFileName, buildWeeklyReport, buildWeeklyFileNa
 import { dispatchReport } from './emailSender.js';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
+import { contractDownloadName, generateContractDocx, normalizeAndValidateContractData } from './contractGenerator.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -27,6 +28,7 @@ app.use(compression({
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true,
+  exposedHeaders: ['Content-Disposition'],
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -563,6 +565,252 @@ app.delete('/api/clients/:id/simulations/:simulationId', requireAuth, async (req
   } catch (error) {
     console.error('Erro ao excluir simulação do cliente:', error);
     res.status(500).json({ error: 'Não foi possível excluir a simulação.' });
+  }
+});
+
+// [READ] Listar contratos gerados para um cliente
+app.get('/api/clients/:id/contracts', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  if (!clientId) return res.status(400).json({ error: 'ID do cliente inválido.' });
+
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: { clientId },
+      take: 30,
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(contracts);
+  } catch (error) {
+    console.error('Erro ao buscar contratos do cliente:', error);
+    res.status(500).json({ error: 'Erro ao buscar contratos do cliente.' });
+  }
+});
+
+// [READ] Listar contratos avulsos recentes do usuário
+app.get('/api/contracts/standalone', requireAuth, async (req, res) => {
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: {
+        clientId: null,
+        ...(req.user.role === 'ADM' ? {} : { createdById: req.user.id }),
+      },
+      take: 30,
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(contracts);
+  } catch (error) {
+    console.error('Erro ao buscar contratos avulsos:', error);
+    res.status(500).json({ error: 'Erro ao buscar contratos avulsos.' });
+  }
+});
+
+// [CREATE] Validar e registrar um contrato sem cliente vinculado
+app.post('/api/contracts/standalone', requireAuth, async (req, res) => {
+  if (JSON.stringify(req.body || {}).length > 100000) {
+    return res.status(413).json({ error: 'Os dados do contrato excedem o limite permitido.' });
+  }
+
+  let contractData;
+  try {
+    contractData = normalizeAndValidateContractData(req.body);
+    generateContractDocx(contractData);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Dados do contrato inválidos.', details: error.details || [] });
+  }
+
+  try {
+    const contract = await prisma.contract.create({
+      data: {
+        createdById: req.user.id,
+        createdByName: req.user.nome,
+        templateVersion: 'v1',
+        buyerName: contractData.compradores[0].nome,
+        propertyValue: contractData.valores.valorImovel,
+        financed: contractData.valores.financiamento,
+        contractData,
+      },
+    });
+    res.status(201).json(contract);
+  } catch (error) {
+    console.error('Erro ao registrar contrato avulso:', error);
+    res.status(500).json({ error: 'Não foi possível registrar o contrato avulso.' });
+  }
+});
+
+// [CREATE] Cadastrar o primeiro comprador como cliente e vincular o contrato
+app.post('/api/contracts/from-new-client', requireAuth, async (req, res) => {
+  if (JSON.stringify(req.body || {}).length > 100000) {
+    return res.status(413).json({ error: 'Os dados do contrato excedem o limite permitido.' });
+  }
+
+  let contractData;
+  try {
+    contractData = normalizeAndValidateContractData(req.body);
+    generateContractDocx(contractData);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Dados do contrato inválidos.', details: error.details || [] });
+  }
+
+  try {
+    const buyer = contractData.compradores[0];
+    const cpfDigits = buyer.cpf.replace(/\D/g, '');
+    const cpfFormatted = cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    const existingClient = await prisma.client.findFirst({
+      where: { cpf: { in: [buyer.cpf, cpfDigits, cpfFormatted] } },
+      select: { id: true, nome: true },
+    });
+    if (existingClient) {
+      return res.status(409).json({
+        error: `O CPF informado já pertence ao cliente ${existingClient.nome || `#${existingClient.id}`}. Selecione o cadastro existente no início do gerador.`,
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const client = await tx.client.create({
+        data: {
+          nome: buyer.nome,
+          cpf: cpfFormatted,
+          imovel: contractData.imovel.endereco || contractData.imovel.descricao,
+          matricula: contractData.imovel.matricula || null,
+          cidade: contractData.contrato.cidade,
+          valorFinanciado: contractData.valores.financiamento,
+          status: 'Documentação Recebida',
+          ultimoUsuarioAlteracao: req.user.nome,
+        },
+      });
+      const contract = await tx.contract.create({
+        data: {
+          clientId: client.id,
+          createdById: req.user.id,
+          createdByName: req.user.nome,
+          templateVersion: 'v1',
+          buyerName: buyer.nome,
+          propertyValue: contractData.valores.valorImovel,
+          financed: contractData.valores.financiamento,
+          contractData,
+        },
+      });
+      await tx.activityLog.createMany({
+        data: [
+          { clientId: client.id, clientNome: buyer.nome, action: 'created', userName: req.user.nome },
+          { clientId: client.id, clientNome: buyer.nome, action: 'contract_created', userName: req.user.nome },
+        ],
+      });
+      return { client, contract };
+    });
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Erro ao cadastrar comprador a partir do contrato:', error);
+    res.status(500).json({ error: 'Não foi possível cadastrar o comprador e gerar o contrato.' });
+  }
+});
+
+// [CREATE] Validar e registrar uma nova versão de contrato
+app.post('/api/clients/:id/contracts', requireAuth, async (req, res) => {
+  const clientId = parseInt(req.params.id);
+  if (!clientId) return res.status(400).json({ error: 'ID do cliente inválido.' });
+  if (JSON.stringify(req.body || {}).length > 100000) {
+    return res.status(413).json({ error: 'Os dados do contrato excedem o limite permitido.' });
+  }
+
+  let contractData;
+  try {
+    contractData = normalizeAndValidateContractData(req.body);
+    generateContractDocx(contractData);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Dados do contrato inválidos.', details: error.details || [] });
+  }
+
+  try {
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, nome: true } });
+    if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+
+    const contract = await prisma.$transaction(async (tx) => {
+      const created = await tx.contract.create({
+        data: {
+          clientId,
+          createdById: req.user.id,
+          createdByName: req.user.nome,
+          templateVersion: 'v1',
+          buyerName: contractData.compradores[0].nome,
+          propertyValue: contractData.valores.valorImovel,
+          financed: contractData.valores.financiamento,
+          contractData,
+        },
+      });
+      await tx.activityLog.create({
+        data: {
+          clientId,
+          clientNome: client.nome || 'Cliente sem nome',
+          action: 'contract_created',
+          userName: req.user.nome,
+        },
+      });
+      return created;
+    });
+    res.status(201).json(contract);
+  } catch (error) {
+    console.error('Erro ao registrar contrato:', error);
+    res.status(500).json({ error: 'Não foi possível registrar o contrato.' });
+  }
+});
+
+// [DOWNLOAD] Gerar novamente o DOCX a partir do retrato salvo
+app.get('/api/contracts/:id/download', requireAuth, async (req, res) => {
+  const contractId = parseInt(req.params.id);
+  if (!contractId) return res.status(400).json({ error: 'ID do contrato inválido.' });
+
+  try {
+    const contract = await prisma.contract.findUnique({ where: { id: contractId } });
+    if (!contract) return res.status(404).json({ error: 'Contrato não encontrado.' });
+    if (contract.clientId === null && req.user.role !== 'ADM' && contract.createdById !== req.user.id) {
+      return res.status(403).json({ error: 'Você não pode acessar este contrato avulso.' });
+    }
+    const document = generateContractDocx(contract.contractData);
+    const fileName = contractDownloadName(contract.contractData);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(document);
+  } catch (error) {
+    console.error('Erro ao gerar download do contrato:', error);
+    res.status(500).json({ error: 'Não foi possível gerar o contrato para download.' });
+  }
+});
+
+// [DELETE] Excluir um contrato criado pelo próprio usuário ou por um administrador
+app.delete('/api/contracts/:id', requireAuth, async (req, res) => {
+  const contractId = parseInt(req.params.id);
+  if (!contractId) return res.status(400).json({ error: 'ID do contrato inválido.' });
+
+  try {
+    const contract = await prisma.contract.findUnique({
+      where: { id: contractId },
+      include: { client: { select: { nome: true } } },
+    });
+    if (!contract) return res.status(404).json({ error: 'Contrato não encontrado.' });
+    if (req.user.role !== 'ADM' && contract.createdById !== req.user.id) {
+      return res.status(403).json({ error: 'Você não pode excluir este contrato.' });
+    }
+    if (contract.clientId === null) {
+      await prisma.contract.delete({ where: { id: contractId } });
+    } else {
+      await prisma.$transaction([
+        prisma.contract.delete({ where: { id: contractId } }),
+        prisma.activityLog.create({
+          data: {
+            clientId: contract.clientId,
+            clientNome: contract.client?.nome || 'Cliente sem nome',
+            action: 'contract_deleted',
+            userName: req.user.nome,
+          },
+        }),
+      ]);
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error('Erro ao excluir contrato:', error);
+    res.status(500).json({ error: 'Não foi possível excluir o contrato.' });
   }
 });
 

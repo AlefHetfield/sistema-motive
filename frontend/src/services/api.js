@@ -80,6 +80,89 @@ export async function deleteClientSimulation(clientId, simulationId) {
     }
 }
 
+export async function fetchClientContracts(clientId) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/contracts`, {
+        credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Falha ao buscar os contratos do cliente.');
+    return response.json();
+}
+
+export async function createClientContract(clientId, contractData) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/contracts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(contractData),
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao gerar o contrato.');
+    }
+    return response.json();
+}
+
+export async function fetchStandaloneContracts() {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/standalone`, {
+        credentials: 'include',
+    });
+    if (!response.ok) throw new Error('Falha ao buscar os contratos avulsos.');
+    return response.json();
+}
+
+export async function createStandaloneContract(contractData) {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/standalone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(contractData),
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao gerar o contrato avulso.');
+    }
+    return response.json();
+}
+
+export async function createContractWithNewClient(contractData) {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/from-new-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(contractData),
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao cadastrar o comprador e gerar o contrato.');
+    }
+    return response.json();
+}
+
+export async function downloadContractDocx(contractId) {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/${contractId}/download`, {
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao baixar o contrato.');
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/i);
+    return { blob, fileName: match?.[1] || 'Contrato.docx' };
+}
+
+export async function deleteClientContract(contractId) {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/${contractId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao excluir o contrato.');
+    }
+}
+
 /**
  * Salva um cliente (cria um novo ou atualiza um existente).
  * @param {Object} clientData Os dados do cliente.

@@ -9,7 +9,7 @@ datasource db {
 }
 
 model Client {
-  id                     Int       @id @default(autoincrement())
+  id                     Int                 @id @default(autoincrement())
   nome                   String?
   cpf                    String?
   imovel                 String?
@@ -19,23 +19,24 @@ model Client {
   agencia                String?
   modalidade             String?
   status                 String?
-  valorFinanciado        Decimal?  @db.Decimal(15, 2)
+  valorFinanciado        Decimal?            @db.Decimal(15, 2)
   matricula              String?
   cidade                 String?
-  venda                  Boolean   @default(false)
-  remuneracaoPaga        Boolean   @default(false)
-  comissaoPaga           Boolean   @default(false)
-  createdAt              DateTime  @default(now()) @map("createdAt")
-  ultimaAtualizacao      DateTime? @updatedAt @map("ultimaAtualizacao")
-  dataAssinaturaContrato DateTime? @db.Date
+  venda                  Boolean             @default(false)
+  remuneracaoPaga        Boolean             @default(false)
+  comissaoPaga           Boolean             @default(false)
+  createdAt              DateTime            @default(now()) @map("createdAt")
+  ultimaAtualizacao      DateTime?           @updatedAt @map("ultimaAtualizacao")
+  dataAssinaturaContrato DateTime?           @db.Date
   ultimoUsuarioAlteracao String?
-  emEspera               Boolean   @default(false)
+  emEspera               Boolean             @default(false)
   motivoEspera           String?
   observacaoEspera       String?
-  dataRetomada           DateTime? @db.Date
+  dataRetomada           DateTime?           @db.Date
   pausadoEm              DateTime?
   pausadoPor             String?
   simulacoes             HousingSimulation[]
+  contratos              Contract[]
 
   @@map("clients")
 }
@@ -47,52 +48,53 @@ enum Role {
 }
 
 model User {
-  id                 Int       @id @default(autoincrement())
+  id                 Int                 @id @default(autoincrement())
   nome               String
-  email              String    @unique
+  email              String              @unique
   passwordHash       String
-  role               Role      @default(CORRETOR)
-  isActive           Boolean   @default(true)
-  mustChangePassword Boolean   @default(false)
+  role               Role                @default(CORRETOR)
+  isActive           Boolean             @default(true)
+  mustChangePassword Boolean             @default(false)
   lastLogin          DateTime?
-  createdAt          DateTime  @default(now()) @map("createdAt")
+  createdAt          DateTime            @default(now()) @map("createdAt")
   simulacoesCriadas  HousingSimulation[]
+  contratosCriados   Contract[]
 
   @@map("users")
 }
 
 model ActivityLog {
-  id            Int      @id @default(autoincrement())
-  clientId      Int
-  clientNome    String
-  action        String   // "created", "updated", "status_changed", "deleted"
-  statusAntes   String?
-  statusDepois  String?
-  userName      String
-  createdAt     DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  clientId     Int
+  clientNome   String
+  action       String // "created", "updated", "status_changed", "deleted"
+  statusAntes  String?
+  statusDepois String?
+  userName     String
+  createdAt    DateTime @default(now())
 
-  @@map("activity_logs")
   @@index([createdAt(sort: Desc)])
+  @@map("activity_logs")
 }
 
 model HousingSimulation {
-  id                Int      @id @default(autoincrement())
-  clientId          Int
-  createdById       Int?
-  createdByName     String
-  bank              String
-  program           String
-  system            String
-  propertyValue     Decimal  @db.Decimal(15, 2)
-  financed          Decimal  @db.Decimal(15, 2)
-  requiredEntry     Decimal  @db.Decimal(15, 2)
-  firstInstallment  Decimal  @db.Decimal(15, 2)
-  term              Int
-  effectiveRate     Decimal  @db.Decimal(8, 4)
-  quota             Decimal  @db.Decimal(8, 4)
-  inputSnapshot     Json
-  resultSnapshot    Json
-  createdAt         DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  clientId         Int
+  createdById      Int?
+  createdByName    String
+  bank             String
+  program          String
+  system           String
+  propertyValue    Decimal  @db.Decimal(15, 2)
+  financed         Decimal  @db.Decimal(15, 2)
+  requiredEntry    Decimal  @db.Decimal(15, 2)
+  firstInstallment Decimal  @db.Decimal(15, 2)
+  term             Int
+  effectiveRate    Decimal  @db.Decimal(8, 4)
+  quota            Decimal  @db.Decimal(8, 4)
+  inputSnapshot    Json
+  resultSnapshot   Json
+  createdAt        DateTime @default(now())
 
   client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
@@ -100,6 +102,26 @@ model HousingSimulation {
   @@index([clientId, createdAt(sort: Desc)])
   @@index([createdById])
   @@map("housing_simulations")
+}
+
+model Contract {
+  id              Int      @id @default(autoincrement())
+  clientId        Int?
+  createdById     Int?
+  createdByName   String
+  templateVersion String   @default("v1")
+  buyerName       String
+  propertyValue   Decimal  @db.Decimal(15, 2)
+  financed        Decimal  @db.Decimal(15, 2)
+  contractData    Json
+  createdAt       DateTime @default(now())
+
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([createdById])
+  @@map("contracts")
 }
 
 model Property {

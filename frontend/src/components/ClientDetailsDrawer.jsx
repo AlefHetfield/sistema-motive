@@ -7,7 +7,9 @@ import {
     Calculator,
     CheckCircle2,
     Clock3,
+    Download,
     FilePenLine,
+    FileSignature,
     FileText,
     History,
     Home,
@@ -23,7 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import { deleteClientSimulation, fetchClientActivities, fetchClientSimulations } from '../services/api';
+import { deleteClientSimulation, downloadContractDocx, fetchClientActivities, fetchClientContracts, fetchClientSimulations } from '../services/api';
 import DeleteSimulationModal from './DeleteSimulationModal';
 
 const SIGNED_STATUSES = ['Assinado', 'Assinado-Movido'];
@@ -67,6 +69,8 @@ const actionDescription = (activity) => {
     if (activity.action === 'resumed') return 'Atendimento retomado';
     if (activity.action === 'simulation_created') return 'Simulação habitacional salva';
     if (activity.action === 'simulation_deleted') return 'Simulação habitacional excluída';
+    if (activity.action === 'contract_created') return 'Contrato de compra e venda gerado';
+    if (activity.action === 'contract_deleted') return 'Contrato excluído';
     if (activity.action === 'status_changed') {
         return `${statusLabel(activity.statusAntes)} → ${statusLabel(activity.statusDepois)}`;
     }
@@ -92,6 +96,9 @@ export default function ClientDetailsDrawer({
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [simulations, setSimulations] = useState([]);
     const [isLoadingSimulations, setIsLoadingSimulations] = useState(true);
+    const [contracts, setContracts] = useState([]);
+    const [isLoadingContracts, setIsLoadingContracts] = useState(true);
+    const [downloadingContractId, setDownloadingContractId] = useState(null);
     const [deletingSimulationId, setDeletingSimulationId] = useState(null);
     const [simulationPendingDelete, setSimulationPendingDelete] = useState(null);
 
@@ -126,9 +133,47 @@ export default function ClientDetailsDrawer({
         return () => { active = false; };
     }, [client.id]);
 
+    useEffect(() => {
+        let active = true;
+        fetchClientContracts(client.id)
+            .then(data => active && setContracts(Array.isArray(data) ? data : []))
+            .catch(() => active && setContracts([]))
+            .finally(() => active && setIsLoadingContracts(false));
+        return () => { active = false; };
+    }, [client.id]);
+
     const openSimulation = (simulation) => {
         onClose();
         navigate('/simulador', { state: { housingSimulation: simulation } });
+    };
+
+    const startContract = () => {
+        onClose();
+        navigate('/contract-generator', { state: { contractClientId: client.id } });
+    };
+
+    const openContract = (contract) => {
+        onClose();
+        navigate('/contract-generator', { state: { contractClientId: client.id, contractData: contract.contractData } });
+    };
+
+    const downloadContract = async (contract) => {
+        setDownloadingContractId(contract.id);
+        try {
+            const { blob, fileName } = await downloadContractDocx(contract.id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            toast.error(error.message || 'Não foi possível baixar o contrato.');
+        } finally {
+            setDownloadingContractId(null);
+        }
     };
 
     const removeSimulation = async () => {
@@ -195,6 +240,28 @@ export default function ClientDetailsDrawer({
                             <DetailItem icon={<FileText size={17} />} label="Matrícula" value={client.matricula} />
                             <DetailItem icon={<Calendar size={17} />} label="Assinatura" value={client.dataAssinaturaContrato ? formatDate(client.dataAssinaturaContrato) : 'Não informada'} />
                         </div>
+                    </section>
+
+                    <section>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900"><FileSignature size={17} className="text-primary" />Contratos gerados</h3>
+                            <button type="button" onClick={startContract} className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition hover:bg-primary hover:text-white">Novo contrato</button>
+                        </div>
+                        {isLoadingContracts ? (
+                            <div className="space-y-3">{[1, 2].map(item => <div key={item} className="h-24 animate-pulse rounded-xl bg-gray-100" />)}</div>
+                        ) : contracts.length ? (
+                            <div className="space-y-3">
+                                {contracts.map(contract => (
+                                    <article key={contract.id} className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0"><span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">CONTRATO · {String(contract.templateVersion || 'v1').toUpperCase()}</span><p className="mt-2 truncate text-sm font-bold text-gray-900">{contract.buyerName}</p><p className="mt-1 text-xs text-gray-500">Imóvel {formatCurrency(contract.propertyValue)} · Financiamento {formatCurrency(contract.financed)}</p></div>
+                                            <button type="button" disabled={downloadingContractId === contract.id} onClick={() => downloadContract(contract)} className="rounded-lg p-2 text-gray-400 transition hover:bg-primary/10 hover:text-primary disabled:opacity-40" title="Baixar Word">{downloadingContractId === contract.id ? <Clock3 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button>
+                                        </div>
+                                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200/70 pt-3"><p className="min-w-0 truncate text-[11px] text-gray-400">{formatDate(contract.createdAt, true)} · {contract.createdByName}</p><button type="button" onClick={() => openContract(contract)} className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-primary shadow-sm ring-1 ring-gray-200 transition hover:bg-primary hover:text-white">Reabrir dados</button></div>
+                                    </article>
+                                ))}
+                            </div>
+                        ) : <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">Nenhum contrato gerado para este cliente.</p>}
                     </section>
 
                     <section>
