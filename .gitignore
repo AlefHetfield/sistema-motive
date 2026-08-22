@@ -11,3 +11,4 @@ node_modules
 # Artefatos locais de validação e exportação
 /tmp/
 /output/
+/exports/

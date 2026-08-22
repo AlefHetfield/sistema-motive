@@ -193,6 +193,17 @@ export async function fetchPropertySitePreview(sourceUrl) {
     return response.json();
 }
 
+export async function refreshPropertyListings(cursor = 0, limit = 6) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/refresh-listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cursor, limit }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao atualizar os anúncios.');
+    return response.json();
+}
+
 export async function createProperty(property) {
     const response = await fetch(`${API_BASE_URL}/api/properties`, {
         method: 'POST',

@@ -248,8 +248,11 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
   };
 
   if (!partial) {
+    data.isFavorite = source.isFavorite === true;
     data.createdById = user.id;
     data.createdByName = user.nome;
+  } else if (typeof source.isFavorite === 'boolean') {
+    data.isFavorite = source.isFavorite;
   }
   return data;
 };
@@ -452,6 +455,69 @@ export function createPropertyRouter(prisma, requireAuth) {
     }
   });
 
+  router.post('/refresh-listings', async (req, res) => {
+    const cursor = Math.max(0, integerValue(req.body?.cursor) || 0);
+    const limit = Math.min(10, Math.max(1, integerValue(req.body?.limit) || 6));
+    try {
+      const candidates = await prisma.property.findMany({
+        where: {
+          id: { gt: cursor },
+          sourceUrl: { contains: 'motiveimoveis.com', mode: 'insensitive' },
+        },
+        orderBy: { id: 'asc' },
+        take: limit + 1,
+      });
+      const batch = candidates.slice(0, limit);
+      const updated = [];
+      const failed = [];
+
+      for (let index = 0; index < batch.length; index += 3) {
+        const chunk = batch.slice(index, index + 3);
+        const results = await Promise.all(chunk.map(async property => {
+          try {
+            const preview = await listingPreview(property.sourceUrl);
+            const data = {
+              sourceUrl: preview.sourceUrl || property.sourceUrl,
+              lastAvailabilityCheck: new Date(),
+            };
+            if (preview.imageUrl) data.photoUrl = preview.imageUrl;
+            for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces', 'neighborhood', 'city', 'propertyType', 'description']) {
+              const value = preview.property?.[field];
+              if (value !== null && value !== undefined && value !== '') data[field] = value;
+            }
+            data.title = automaticPropertyTitle({ ...property, ...data });
+            return { property: await prisma.property.update({ where: { id: property.id }, data }) };
+          } catch (error) {
+            console.warn(`Não foi possível atualizar o anúncio do imóvel ${property.code || property.id}:`, error.message);
+            return {
+              failure: {
+                id: property.id,
+                code: property.code,
+                title: property.title,
+                error: error.message || 'O anúncio não respondeu corretamente.',
+              },
+            };
+          }
+        }));
+        for (const result of results) {
+          if (result.property) updated.push(result.property);
+          if (result.failure) failed.push(result.failure);
+        }
+      }
+
+      res.json({
+        processed: batch.length,
+        updated,
+        failed,
+        nextCursor: batch.at(-1)?.id || cursor,
+        hasMore: candidates.length > limit,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar anúncios em lote:', error);
+      res.status(500).json({ error: 'Não foi possível atualizar os anúncios em lote.' });
+    }
+  });
+
   router.post('/import', async (req, res) => {
     try {
       const properties = parsePropertyImport(req.body?.content, req.body?.format);
@@ -488,7 +554,18 @@ export function createPropertyRouter(prisma, requireAuth) {
           skipped += 1;
           continue;
         }
-        normalized.code = allocateReference(normalized.propertyType);
+        const requestedCode = cleanText(normalized.code, 60);
+        if (requestedCode && !usedCodes.has(requestedCode)) {
+          normalized.code = requestedCode;
+          usedCodes.add(requestedCode);
+          const match = requestedCode.match(/^([A-Z]{2})-(\d+)$/i);
+          if (match) {
+            const prefix = match[1].toUpperCase();
+            referenceCounters.set(prefix, Math.max(referenceCounters.get(prefix) || 0, Number(match[2])));
+          }
+        } else {
+          normalized.code = allocateReference(normalized.propertyType);
+        }
         if (key) keys.add(key);
         prepared.push(normalized);
       }

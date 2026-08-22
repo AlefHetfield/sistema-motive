@@ -25,6 +25,8 @@ const integerValue = (value) => {
   return parsed === null ? null : Math.max(0, Math.round(parsed));
 };
 
+const booleanValue = value => ['1', 'sim', 's', 'true', 'yes'].includes(normalizeKey(value));
+
 const priceValue = (value) => {
   const parsed = numberValue(value);
   if (parsed === null) return null;
@@ -118,6 +120,7 @@ const recordToProperty = (record) => {
     photoUrl: extractUrl(mediaUrl, true) || extractUrl(description, true),
     sourceUrl: motiveUrl || extractUrl(siteUrl) || extractUrl(photosUrl) || extractUrl(description),
     captador: clean(valueFrom(record, ['captador', 'corretor', 'responsável', 'responsavel']), 160) || null,
+    isFavorite: booleanValue(valueFrom(record, ['favorito', 'favorite', 'is favorite', 'isfavorite'])),
     ...coordinates,
   };
 };

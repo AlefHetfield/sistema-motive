@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarCheck,
   Car,
+  CheckCircle2,
   ChevronRight,
   ExternalLink,
   FileUp,
@@ -17,11 +18,13 @@ import {
   Maximize2,
   Pencil,
   Plus,
+  RefreshCw,
   Route,
   Search,
   Star,
   Trash2,
   UserRound,
+  AlertTriangle,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,11 +33,12 @@ import PropertyFormModal from '../components/properties/PropertyFormModal';
 import PropertyImportModal from '../components/properties/PropertyImportModal';
 import PropertyAddressSearch from '../components/properties/PropertyAddressSearch';
 import { PROPERTY_CITY_PRIORITY, PROPERTY_STATUSES, PROPERTY_STATUS_COLORS, propertyCityColor } from '../components/properties/propertyConstants';
-import { createProperty, deleteProperty, fetchProperties, geocodePropertyPlace, importProperties, setPropertyFavorite, updateProperty } from '../services/api';
+import { createProperty, deleteProperty, fetchProperties, geocodePropertyPlace, importProperties, refreshPropertyListings, setPropertyFavorite, updateProperty } from '../services/api';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '' };
+const initialListingRefresh = { running: false, complete: false, processed: 0, updated: 0, failed: [], cursor: 0, error: '' };
 
 const formatDate = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não confirmada';
 
@@ -121,6 +125,55 @@ function DeleteModal({ property, onClose, onConfirm, isDeleting }) {
   return <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Cancelar exclusão" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="h-5 w-5" /></span><h2 className="mt-4 text-lg font-bold text-gray-900">Excluir imóvel?</h2><p className="mt-2 text-sm leading-6 text-gray-500">O imóvel <strong>{property.title}</strong> será removido do mapa e não poderá ser recuperado.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="button" disabled={isDeleting} onClick={onConfirm} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">{isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}Excluir imóvel</button></div></div></div>;
 }
 
+function RefreshListingsModal({ total, state, onClose, onConfirm }) {
+  const progress = total ? Math.min(100, Math.round((state.processed / total) * 100)) : 0;
+  const canClose = !state.running;
+  return (
+    <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]">
+      <button type="button" className="absolute inset-0" onClick={canClose ? onClose : undefined} aria-label="Fechar atualização" />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <header className="flex items-start gap-3 border-b border-gray-100 p-5">
+          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${state.complete ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-primary'}`}>
+            {state.complete ? <CheckCircle2 className="h-5 w-5" /> : <RefreshCw className={`h-5 w-5 ${state.running ? 'animate-spin' : ''}`} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-gray-900">{state.complete ? 'Anúncios atualizados' : 'Atualizar dados dos anúncios'}</h2>
+            <p className="mt-1 text-sm leading-5 text-gray-500">Fotos, valores, metragens e demais informações serão consultados novamente no site da Motive.</p>
+          </div>
+          {canClose && <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>}
+        </header>
+
+        <div className="p-5">
+          {!state.running && !state.complete && state.processed === 0 && !state.error && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-800">
+              Encontramos <strong>{total} imóvel(is)</strong> com link do site. A atualização é feita em pequenos lotes e pode levar alguns minutos. Mantenha esta tela aberta até a conclusão.
+            </div>
+          )}
+
+          {(state.running || state.processed > 0) && (
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold text-gray-600"><span>{state.running ? 'Atualizando anúncios...' : 'Processamento concluído'}</span><span>{state.processed} de {total}</span></div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Atualizados</p><p className="mt-1 text-xl font-bold text-emerald-700">{state.updated}</p></div>
+                <div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Não atualizados</p><p className="mt-1 text-xl font-bold text-amber-700">{state.failed.length}</p></div>
+              </div>
+            </div>
+          )}
+
+          {state.error && <div className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{state.error} Você pode continuar do ponto em que parou.</span></div>}
+          {state.complete && state.failed.length > 0 && <div className="mt-4 max-h-32 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"><p className="mb-2 font-bold">Anúncios que precisam de revisão:</p>{state.failed.map(item => <p key={item.id} className="py-0.5">{item.code || item.title}: {item.error}</p>)}</div>}
+        </div>
+
+        <footer className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4">
+          {canClose && <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200">{state.complete ? 'Concluir' : 'Cancelar'}</button>}
+          {!state.complete && <button type="button" onClick={onConfirm} disabled={state.running || total === 0} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-[#4a637a] disabled:cursor-not-allowed disabled:opacity-50">{state.running && <Loader2 className="h-4 w-4 animate-spin" />}{state.error ? 'Continuar atualização' : state.running ? 'Atualizando...' : 'Atualizar todos'}</button>}
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 export default function PropertiesMap() {
   const [properties, setProperties] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
@@ -137,6 +190,8 @@ export default function PropertiesMap() {
   const [isImporting, setIsImporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [favoritePending, setFavoritePending] = useState(() => new Set());
+  const [showListingRefresh, setShowListingRefresh] = useState(false);
+  const [listingRefresh, setListingRefresh] = useState(initialListingRefresh);
 
   const loadProperties = useCallback(async () => {
     setIsLoading(true);
@@ -195,6 +250,7 @@ export default function PropertiesMap() {
     if (!locatedAddress) return [];
     return properties.filter(property => Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude)) && distanceInMeters(locatedAddress, property) <= 80).slice(0, 5);
   }, [locatedAddress, properties]);
+  const listingRefreshTotal = useMemo(() => properties.filter(property => /https?:\/\/(?:www\.)?motiveimoveis\.com/i.test(property.sourceUrl || '')).length, [properties]);
 
   const selectProperty = useCallback(property => setSelectedProperty(property), []);
   const createAtLocation = useCallback(location => {
@@ -265,6 +321,43 @@ export default function PropertiesMap() {
     }
   };
 
+  const openListingRefresh = () => {
+    setListingRefresh(initialListingRefresh);
+    setShowListingRefresh(true);
+  };
+
+  const runListingRefresh = async () => {
+    let cursor = listingRefresh.cursor;
+    let hasMore = true;
+    setListingRefresh(current => ({ ...current, running: true, complete: false, error: '' }));
+    try {
+      while (hasMore) {
+        const result = await refreshPropertyListings(cursor, 6);
+        const refreshed = Array.isArray(result.updated) ? result.updated : [];
+        const failures = Array.isArray(result.failed) ? result.failed : [];
+        if (refreshed.length) {
+          const byId = new Map(refreshed.map(property => [property.id, property]));
+          setProperties(current => current.map(property => byId.get(property.id) || property));
+          setSelectedProperty(current => current ? byId.get(current.id) || current : current);
+        }
+        cursor = result.nextCursor || cursor;
+        hasMore = Boolean(result.hasMore);
+        setListingRefresh(current => ({
+          ...current,
+          processed: current.processed + Number(result.processed || 0),
+          updated: current.updated + refreshed.length,
+          failed: [...current.failed, ...failures],
+          cursor,
+        }));
+      }
+      setListingRefresh(current => ({ ...current, running: false, complete: true, cursor }));
+      toast.success('Atualização dos anúncios concluída.');
+    } catch (error) {
+      setListingRefresh(current => ({ ...current, running: false, cursor, error: error.message }));
+      toast.error(error.message);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deletePending) return;
     setIsDeleting(true);
@@ -310,7 +403,7 @@ export default function PropertiesMap() {
       <header className="shrink-0 border-b border-gray-200 bg-white px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPinned className="h-5 w-5" /></span><div><h1 className="text-lg font-bold text-gray-900">Mapa de Imóveis</h1><p className="text-xs text-gray-500">{filtered.length} imóvel(is) · {mappedCount} visível(is) no mapa</p></div></div>
-          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setShowImport(true)} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50"><FileUp className="h-4 w-4" />Importar My Maps</button><button type="button" onClick={() => { setCreationLocation(null); setEditingProperty(null); }} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#4a637a]"><Plus className="h-4 w-4" />Cadastrar imóvel</button></div>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={openListingRefresh} disabled={!listingRefreshTotal} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><RefreshCw className="h-4 w-4" />Atualizar anúncios</button><button type="button" onClick={() => setShowImport(true)} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50"><FileUp className="h-4 w-4" />Importar My Maps</button><button type="button" onClick={() => { setCreationLocation(null); setEditingProperty(null); }} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#4a637a]"><Plus className="h-4 w-4" />Cadastrar imóvel</button></div>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_160px_160px_120px_auto]">
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, bairro ou código" className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
@@ -346,6 +439,7 @@ export default function PropertiesMap() {
 
       {editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
       {showImport && <PropertyImportModal onClose={() => setShowImport(false)} onImport={handleImport} isImporting={isImporting} />}
+      {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}
       {deletePending && <DeleteModal property={deletePending} onClose={() => setDeletePending(null)} onConfirm={confirmDelete} isDeleting={isDeleting} />}
     </div>
   );
