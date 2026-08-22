@@ -8,6 +8,7 @@
     "build": "vite build",
     "vercel-build": "vite build",
     "lint": "eslint .",
+    "test:simulator": "node scripts/verify-housing-simulator.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

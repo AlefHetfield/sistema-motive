@@ -8,3 +8,6 @@ node_modules
 
 # Ferramentas e banco local de desenvolvimento
 .local/
+# Artefatos locais de validação e exportação
+/tmp/
+/output/

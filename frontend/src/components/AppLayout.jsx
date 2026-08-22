@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, Calculator, MapPin, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, Calculator, Landmark, MapPin, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 
 const corretorNavItems = [
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
@@ -16,6 +17,7 @@ const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
 ];
@@ -25,6 +27,7 @@ const adminNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator },
+    { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon },
     { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, adminOnly: true },
