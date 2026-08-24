@@ -231,14 +231,16 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
       marker.setIcon(selected || hovered ? priceMarkerIcon(property, selected, hovered) : markerIcon(property, false));
       marker.setZIndex(selected ? 2000 : hovered ? 1500 : undefined);
     });
+  }, [hoveredPropertyId, mapReady, selectedPropertyId]);
 
-    if (!selectedPropertyId) return;
+  useEffect(() => {
+    if (!mapReady || !selectedPropertyId) return;
     const selected = markersRef.current.find(item => item.property.id === selectedPropertyId)?.property;
     if (!selected) return;
     const map = mapRef.current;
     map.panTo({ lat: Number(selected.latitude), lng: Number(selected.longitude) });
     if ((map.getZoom() || 0) < 17) map.setZoom(17);
-  }, [hoveredPropertyId, mapReady, selectedPropertyId]);
+  }, [mapReady, selectedPropertyId]);
 
   useEffect(() => {
     locatedMarkerRef.current?.setMap(null);
