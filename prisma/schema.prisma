@@ -144,6 +144,8 @@ model Property {
   parkingSpaces         Int?
   photoUrl              String?
   sourceUrl             String?
+  driveFolderUrl        String?
+  driveCoverFileId      String?
   captador              String?
   isFavorite            Boolean  @default(false)
   latitude              Float?
@@ -157,5 +159,6 @@ model Property {
   @@index([status])
   @@index([city])
   @@index([latitude, longitude])
+  @@index([driveFolderUrl])
   @@map("properties")
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImageIcon, Loader2, MapPin, RefreshCw, X } from 'lucide-react';
+import { FolderOpen, ImageIcon, Loader2, MapPin, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchNextPropertyReference, fetchPropertySitePreview, geocodePropertyPlace, reverseGeocodePropertyCoordinates } from '../../services/api';
+import { fetchNextPropertyReference, fetchPropertyDrivePreview, fetchPropertySitePreview, geocodePropertyPlace, propertyDriveImageUrl, reverseGeocodePropertyCoordinates } from '../../services/api';
 import { PROPERTY_STATUSES } from './propertyConstants';
 import PropertyAddressSearch from './PropertyAddressSearch';
 
@@ -13,6 +13,13 @@ const LISTING_FIELD_LABELS = {
   neighborhood: 'bairro', city: 'cidade', propertyType: 'tipo', description: 'descrição',
 };
 const hasListingValue = value => value !== null && value !== undefined && value !== '' && value !== 0;
+const titleWithoutPrice = value => String(value || '')
+  .replace(/\s*,?\s*R\$\s*[\d.\s]+(?:,\d{2})?\s*$/i, '')
+  .trim();
+const condominiumTitle = value => {
+  const name = String(value || '').trim();
+  return /\b(?:condom[ií]nio|edif[ií]cio|residence|residencial)\b/i.test(name) ? name : '';
+};
 const isMotiveListingUrl = value => {
   try {
     const url = new URL(value);
@@ -24,16 +31,20 @@ const isMotiveListingUrl = value => {
 
 const blankProperty = {
   code: '', title: '', description: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
-  price: 0, area: '', landArea: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', captador: '', latitude: '', longitude: '',
+  price: 0, area: '', landArea: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', latitude: '', longitude: '',
   lastAvailabilityCheck: new Date().toISOString().slice(0, 10),
 };
 
-const initialForm = (property, initialLocation) => ({
-  ...blankProperty,
-  ...(property || {}),
-  ...(initialLocation || {}),
-  lastAvailabilityCheck: property?.lastAvailabilityCheck ? String(property.lastAvailabilityCheck).slice(0, 10) : blankProperty.lastAvailabilityCheck,
-});
+const initialForm = (property, initialLocation) => {
+  const form = {
+    ...blankProperty,
+    ...(property || {}),
+    ...(initialLocation || {}),
+    lastAvailabilityCheck: property?.lastAvailabilityCheck ? String(property.lastAvailabilityCheck).slice(0, 10) : blankProperty.lastAvailabilityCheck,
+  };
+  form.title = titleWithoutPrice(form.title);
+  return form;
+};
 
 const Field = ({ label, className = '', inputClassName = '', ...props }) => (
   <label className={`block ${className}`}>
@@ -54,9 +65,13 @@ export default function PropertyFormModal({ property, initialLocation, propertie
   const [isLocating, setIsLocating] = useState(Boolean(initialLocation));
   const [isGeneratingCode, setIsGeneratingCode] = useState(!property);
   const [isLoadingPhoto, setIsLoadingPhoto] = useState(false);
+  const [isLoadingDrive, setIsLoadingDrive] = useState(false);
+  const [drivePreview, setDrivePreview] = useState(() => property?.driveCoverFileId ? [{ id: property.driveCoverFileId, name: 'Foto principal' }] : []);
+  const [drivePreviewError, setDrivePreviewError] = useState('');
   const [photoPreviewError, setPhotoPreviewError] = useState('');
   const [importedFields, setImportedFields] = useState([]);
   const touchedFields = useRef(new Set());
+  const isTitleAutomatic = useRef(!property?.id);
   const lastImportedSource = useRef(property?.sourceUrl || '');
   const update = (field, value) => {
     touchedFields.current.add(field);
@@ -81,13 +96,11 @@ export default function PropertyFormModal({ property, initialLocation, propertie
   }, [property?.id]);
 
   useEffect(() => {
+    if (!isTitleAutomatic.current) return;
     const location = String(form.neighborhood || form.city || 'Imóvel').trim();
-    const formattedValue = Number(form.price) > 0
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(Number(form.price))
-      : 'Valor sob consulta';
-    const title = `${location}, ${formattedValue}`;
+    const title = location;
     setForm(current => current.title === title ? current : { ...current, title });
-  }, [form.city, form.neighborhood, form.price]);
+  }, [form.city, form.neighborhood]);
 
   useEffect(() => {
     if (property?.id) return undefined;
@@ -162,22 +175,52 @@ export default function PropertyFormModal({ property, initialLocation, propertie
     }
   };
 
-  const selectSuggestedAddress = async suggestion => {
-    setIsLocating(true);
+  const refreshDrivePhotos = async () => {
+    if (!form.driveFolderUrl?.trim()) return toast.error('Informe o link da pasta de fotos do Google Drive.');
+    setIsLoadingDrive(true);
+    setDrivePreviewError('');
     try {
-      const result = await geocodePropertyPlace(suggestion.placeId);
-      for (const field of ['address', 'neighborhood', 'city', 'latitude', 'longitude']) touchedFields.current.add(field);
+      const result = await fetchPropertyDrivePreview(form.driveFolderUrl);
+      const files = Array.isArray(result.files) ? result.files : [];
+      setDrivePreview(files);
       setForm(current => ({
         ...current,
-        address: result.address || result.formattedAddress || suggestion.description,
+        driveFolderUrl: result.driveFolderUrl || current.driveFolderUrl,
+        driveCoverFileId: files[0]?.id || '',
+      }));
+      toast.success(files.length ? `${files.length} foto(s) encontrada(s) no Drive.` : 'A pasta não possui imagens.');
+    } catch (error) {
+      setDrivePreview([]);
+      setDrivePreviewError(error.message);
+      toast.error(error.message);
+    } finally {
+      setIsLoadingDrive(false);
+    }
+  };
+
+  const selectSuggestedAddress = async suggestion => {
+    setIsLocating(true);
+    const hasSelectedLocation = Number.isFinite(suggestion.latitude) && Number.isFinite(suggestion.longitude);
+
+    try {
+      const result = hasSelectedLocation ? suggestion : await geocodePropertyPlace(suggestion.placeId);
+      for (const field of ['address', 'neighborhood', 'city', 'latitude', 'longitude']) touchedFields.current.add(field);
+      const selectedCondominium = condominiumTitle(suggestion.displayName);
+      if (selectedCondominium && !touchedFields.current.has('title')) isTitleAutomatic.current = false;
+      setForm(current => ({
+        ...current,
+        address: suggestion.description || result.address || result.formattedAddress,
         neighborhood: result.neighborhood || current.neighborhood,
         city: result.city || current.city,
         latitude: result.latitude,
         longitude: result.longitude,
+        title: selectedCondominium && !touchedFields.current.has('title') ? selectedCondominium : current.title,
       }));
       toast.success('Endereço e localização preenchidos.');
-    } catch (error) {
-      toast.error(error.message);
+    } catch {
+      touchedFields.current.add('address');
+      setForm(current => ({ ...current, address: suggestion.description || current.address }));
+      toast.warning('Endereço selecionado. Não foi possível preencher bairro, cidade e localização automaticamente.');
     } finally {
       setIsLocating(false);
     }
@@ -203,7 +246,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
             <h3 className="mb-3 text-sm font-bold text-gray-900">Identificação e localização</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Código / referência" value={isGeneratingCode ? 'Gerando...' : form.code || ''} readOnly inputClassName="bg-gray-50 text-gray-500" placeholder="Gerado automaticamente" />
-              <Field label="Título do imóvel" value={form.title || ''} readOnly className="sm:col-span-1 lg:col-span-3" inputClassName="bg-gray-50 text-gray-600" placeholder="Bairro, valor" />
+              <Field label="Título do imóvel" value={form.title || ''} onChange={event => { isTitleAutomatic.current = false; update('title', event.target.value); }} className="sm:col-span-1 lg:col-span-3" placeholder="Bairro ou nome do condomínio" />
               <div className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold text-gray-600">Buscar endereço</span><PropertyAddressSearch value={form.address || ''} onChange={value => update('address', value)} properties={properties} onSelectProperty={existing => toast.warning(`Este endereço pode já estar cadastrado: ${existing.title}`)} onSelectAddress={selectSuggestedAddress} placeholder="Digite a rua, número, bairro ou condomínio" /></div>
               <Field label="Bairro" value={form.neighborhood || ''} onChange={event => update('neighborhood', event.target.value)} />
               <Field label="Cidade" value={form.city || ''} onChange={event => update('city', event.target.value)} />
@@ -241,6 +284,17 @@ export default function PropertyFormModal({ property, initialLocation, propertie
                   </button>
                 </div>
                 <p className={`mt-1.5 text-xs ${photoPreviewError ? 'text-amber-600' : 'text-gray-400'}`}>{photoPreviewError || 'Ao colar um anúncio da Motive, a foto e os dados disponíveis serão preenchidos automaticamente.'}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="flex items-end gap-2">
+                  <Field className="min-w-0 flex-1" label="Pasta de fotos no Google Drive" type="url" value={form.driveFolderUrl || ''} onChange={event => { update('driveFolderUrl', event.target.value); setDrivePreviewError(''); }} placeholder="https://drive.google.com/drive/folders/..." />
+                  <button type="button" onClick={refreshDrivePhotos} disabled={isLoadingDrive || !form.driveFolderUrl} className="inline-flex h-[42px] shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-bold text-gray-600 hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50">
+                    {isLoadingDrive ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                    <span className="hidden sm:inline">Carregar fotos</span>
+                  </button>
+                </div>
+                <p className={`mt-1.5 text-xs ${drivePreviewError ? 'text-amber-600' : 'text-gray-400'}`}>{drivePreviewError || (drivePreview.length ? `${drivePreview.length} foto(s) vinculada(s). A primeira será usada como capa.` : 'Cole o link da pasta para usar a primeira imagem como capa e as demais na galeria.')}</p>
+                {drivePreview.length > 0 && <div className="mt-2 flex gap-2 overflow-x-auto pb-1">{drivePreview.slice(0, 8).map((file, index) => <img key={file.id} src={propertyDriveImageUrl(file.id)} alt={file.name || `Foto ${index + 1}`} className={`h-16 w-24 shrink-0 rounded-lg object-cover ring-2 ${index === 0 ? 'ring-primary' : 'ring-transparent'}`} />)}</div>}
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50 sm:col-span-2">
                 {form.photoUrl && !photoPreviewError ? (

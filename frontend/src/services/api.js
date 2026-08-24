@@ -193,6 +193,38 @@ export async function fetchPropertySitePreview(sourceUrl) {
     return response.json();
 }
 
+export function propertyDriveImageUrl(fileId) {
+    return fileId ? `${API_BASE_URL}/api/properties/drive-image/${encodeURIComponent(fileId)}` : '';
+}
+
+export async function fetchPropertyDrivePreview(driveFolderUrl) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/drive-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ driveFolderUrl }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar as fotos do Google Drive.');
+    return response.json();
+}
+
+export async function fetchPropertyDrivePhotos(propertyId) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/${propertyId}/drive-photos`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar as fotos do Google Drive.');
+    return response.json();
+}
+
+export async function refreshPropertyDrivePhotos(cursor = 0, limit = 10) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/refresh-drive-photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cursor, limit }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao atualizar as fotos do Google Drive.');
+    return response.json();
+}
+
 export async function refreshPropertyListings(cursor = 0, limit = 6) {
     const response = await fetch(`${API_BASE_URL}/api/properties/refresh-listings`, {
         method: 'POST',

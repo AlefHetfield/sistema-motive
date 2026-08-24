@@ -15,15 +15,15 @@ const normalizeCity = value => String(value || '')
   .toLocaleLowerCase('pt-BR');
 
 const PROPERTY_CITY_COLORS = {
-  sumare: '#0ea5e9',
-  'nova odessa': '#9333ea',
-  hortolandia: '#eab308',
-  americana: '#f97316',
-  paulinia: '#16a34a',
-  campinas: '#ef4444',
-  'monte mor': '#14b8a6',
+  sumare: '#0288d1',
+  'nova odessa': '#9c27b0',
+  hortolandia: '#ffea00',
+  americana: '#0f9d58',
+  paulinia: '#757575',
+  campinas: '#000000',
+  'monte mor': '#ff5252',
 };
 
 export const PROPERTY_CITY_PRIORITY = ['Sumaré', 'Nova Odessa', 'Hortolândia', 'Americana', 'Paulínia', 'Campinas', 'Monte Mor'];
-export const DEFAULT_PROPERTY_CITY_COLOR = '#64748b';
+export const DEFAULT_PROPERTY_CITY_COLOR = '#757575';
 export const propertyCityColor = city => PROPERTY_CITY_COLORS[normalizeCity(city)] || DEFAULT_PROPERTY_CITY_COLOR;

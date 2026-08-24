@@ -4,6 +4,11 @@ import { DOMParser } from '@xmldom/xmldom';
 const MAX_IMPORT_ITEMS = 2000;
 
 const clean = (value, max = 3000) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+const cleanMultiline = (value, max = 5000) => String(value ?? '')
+  .replace(/\r\n?/g, '\n')
+  .replace(/\u0000/g, '')
+  .trim()
+  .slice(0, max);
 const normalizeKey = (value) => clean(value, 100)
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -90,9 +95,16 @@ const extractMotiveUrl = (...values) => {
   return match ? match.replace(/&amp;/gi, '&').replace(/[),.;]+$/, '') : null;
 };
 
+const extractDriveFolderUrl = (...values) => {
+  const text = values.flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).join('\n');
+  const id = text.match(/https?:\/\/drive\.google\.com\/drive\/folders\/([\w-]+)/i)?.[1]
+    || text.match(/https?:\/\/drive\.google\.com\/[^\s<>"]*[?&]id=([\w-]+)/i)?.[1];
+  return id ? `https://drive.google.com/drive/folders/${id}` : null;
+};
+
 const recordToProperty = (record) => {
   const title = clean(valueFrom(record, ['name', 'nome', 'title', 'título', 'titulo']), 220);
-  const description = clean(valueFrom(record, ['description', 'descrição', 'descricao', 'observações', 'observacoes']), 5000);
+  const description = cleanMultiline(valueFrom(record, ['description', 'descrição', 'descricao', 'observações', 'observacoes']), 5000);
   const coordinates = extractCoordinates(record);
   const address = clean(valueFrom(record, ['address', 'endereço', 'endereco', 'localização', 'localizacao']), 500);
   const titleCode = title.match(/^\s*([A-Za-z]{1,5}[-_]?\d+)\s*[-–]/)?.[1] || '';
@@ -100,6 +112,7 @@ const recordToProperty = (record) => {
   const photosUrl = valueFrom(record, ['fotos', 'pasta de fotos']);
   const siteUrl = valueFrom(record, ['site', 'link do imóvel', 'link do imovel']);
   const motiveUrl = extractMotiveUrl(siteUrl, description, Object.values(record));
+  const driveFolderUrl = extractDriveFolderUrl(photosUrl, description, Object.values(record));
   return {
     code: clean(valueFrom(record, ['código', 'codigo', 'ref', 'referência', 'referencia']) || titleCode, 60) || null,
     title: title || 'Imóvel importado',
@@ -119,6 +132,7 @@ const recordToProperty = (record) => {
     parkingSpaces: integerValue(valueFrom(record, ['vagas', 'garagem', 'parking'])),
     photoUrl: extractUrl(mediaUrl, true) || extractUrl(description, true),
     sourceUrl: motiveUrl || extractUrl(siteUrl) || extractUrl(photosUrl) || extractUrl(description),
+    driveFolderUrl,
     captador: clean(valueFrom(record, ['captador', 'corretor', 'responsável', 'responsavel']), 160) || null,
     isFavorite: booleanValue(valueFrom(record, ['favorito', 'favorite', 'is favorite', 'isfavorite'])),
     ...coordinates,

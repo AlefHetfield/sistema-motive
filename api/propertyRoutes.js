@@ -1,5 +1,6 @@
 import express from 'express';
 import { parsePropertyImport } from './propertyImporter.js';
+import { fetchDriveImage, listDriveFolderImages, normalizeDriveFolderUrl } from './googleDrive.js';
 
 const PROPERTY_STATUSES = ['Disponível', 'Reservado', 'Vendido', 'Indisponível', 'Confirmar disponibilidade'];
 const PROPERTY_REFERENCE_PREFIXES = {
@@ -16,6 +17,12 @@ const MOTIVE_LISTING_HOSTS = new Set(['motiveimoveis.com', 'www.motiveimoveis.co
 const LISTING_HTML_LIMIT = 2 * 1024 * 1024;
 const cleanText = (value, max = 500) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const nullableText = (value, max) => cleanText(value, max) || null;
+const cleanMultilineText = (value, max = 5000) => String(value ?? '')
+  .replace(/\r\n?/g, '\n')
+  .replace(/\u0000/g, '')
+  .trim()
+  .slice(0, max);
+const nullableMultilineText = (value, max) => cleanMultilineText(value, max) || null;
 
 const numberValue = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -126,7 +133,7 @@ const listingDetails = (html) => {
     neighborhood: nullableText(jsonTextValue(html, 'neighborhood'), 160),
     city: nullableText(schema.address?.addressLocality || jsonTextValue(html, 'city'), 120),
     propertyType: propertyTypeFromSite(jsonTextValue(html, 'property_type')),
-    description: nullableText(embeddedDescription || schema.description, 5000),
+    description: nullableMultilineText(embeddedDescription || schema.description, 5000),
     externalReference: nullableText(jsonTextValue(html, 'property_reference'), 60),
   };
 };
@@ -214,10 +221,7 @@ const nextPropertyReference = async (prisma, propertyType) => {
 
 const automaticPropertyTitle = data => {
   const location = cleanText(data.neighborhood || data.city || 'Imóvel', 160);
-  const value = Number(data.price) > 0
-    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(Number(data.price))
-    : 'Valor sob consulta';
-  return `${location}, ${value}`;
+  return location;
 };
 
 const normalizeProperty = (payload, user, { partial = false } = {}) => {
@@ -225,7 +229,7 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
   const data = {
     code: nullableText(source.code, 60),
     title: cleanText(source.title, 220),
-    description: nullableText(source.description, 5000),
+    description: nullableMultilineText(source.description, 5000),
     address: cleanText(source.address, 500),
     city: nullableText(source.city, 120),
     neighborhood: nullableText(source.neighborhood, 160),
@@ -241,6 +245,8 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
     parkingSpaces: integerValue(source.parkingSpaces),
     photoUrl: urlValue(source.photoUrl),
     sourceUrl: urlValue(source.sourceUrl),
+    driveFolderUrl: normalizeDriveFolderUrl(source.driveFolderUrl),
+    driveCoverFileId: nullableText(source.driveCoverFileId, 300),
     captador: nullableText(source.captador, 160),
     latitude: numberValue(source.latitude),
     longitude: numberValue(source.longitude),
@@ -423,6 +429,84 @@ export function createPropertyRouter(prisma, requireAuth) {
     }
   });
 
+  router.get('/drive-image/:fileId', async (req, res) => {
+    try {
+      const response = await fetchDriveImage(req.params.fileId);
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      res.send(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      console.error('Erro ao carregar foto do Drive:', error.message);
+      res.status(error.status || 502).json({ error: error.message || 'Não foi possível carregar a foto.' });
+    }
+  });
+
+  router.get('/:id/drive-photos', async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID do imóvel inválido.' });
+    try {
+      const property = await prisma.property.findUnique({ where: { id }, select: { driveFolderUrl: true } });
+      if (!property) return res.status(404).json({ error: 'Imóvel não encontrado.' });
+      if (!property.driveFolderUrl) return res.json({ files: [] });
+      const files = await listDriveFolderImages(property.driveFolderUrl);
+      res.json({ files });
+    } catch (error) {
+      console.error('Erro ao listar fotos do Drive:', error.message);
+      res.status(error.status || 502).json({ error: error.message || 'Não foi possível carregar as fotos do Drive.' });
+    }
+  });
+
+  router.post('/drive-preview', async (req, res) => {
+    try {
+      const driveFolderUrl = normalizeDriveFolderUrl(req.body?.driveFolderUrl);
+      if (!driveFolderUrl) return res.status(400).json({ error: 'Informe um link válido de pasta do Google Drive.' });
+      const files = await listDriveFolderImages(driveFolderUrl);
+      res.json({ driveFolderUrl, files });
+    } catch (error) {
+      console.error('Erro ao consultar pasta do Drive:', error.message);
+      res.status(error.status || 502).json({ error: error.message || 'Não foi possível consultar a pasta do Drive.' });
+    }
+  });
+
+  router.post('/refresh-drive-photos', async (req, res) => {
+    const cursor = Math.max(0, integerValue(req.body?.cursor) || 0);
+    const limit = Math.min(20, Math.max(1, integerValue(req.body?.limit) || 10));
+    try {
+      const candidates = await prisma.property.findMany({
+        where: { id: { gt: cursor }, driveFolderUrl: { not: null } },
+        orderBy: { id: 'asc' },
+        take: limit + 1,
+      });
+      const batch = candidates.slice(0, limit);
+      const updated = [];
+      const failed = [];
+      for (const property of batch) {
+        try {
+          const files = await listDriveFolderImages(property.driveFolderUrl);
+          const saved = await prisma.property.update({
+            where: { id: property.id },
+            data: { driveCoverFileId: files[0]?.id || null },
+          });
+          updated.push(saved);
+        } catch (error) {
+          failed.push({ id: property.id, code: property.code, title: property.title, error: error.message });
+        }
+      }
+      res.json({
+        processed: batch.length,
+        updated,
+        failed,
+        nextCursor: batch.at(-1)?.id || cursor,
+        hasMore: candidates.length > limit,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar fotos do Drive:', error.message);
+      res.status(500).json({ error: 'Não foi possível atualizar as fotos do Google Drive.' });
+    }
+  });
+
   router.post('/geocode', async (req, res) => {
     const address = cleanText(req.body?.address, 500);
     const placeId = cleanText(req.body?.placeId, 300);
@@ -485,7 +569,7 @@ export function createPropertyRouter(prisma, requireAuth) {
               const value = preview.property?.[field];
               if (value !== null && value !== undefined && value !== '') data[field] = value;
             }
-            data.title = automaticPropertyTitle({ ...property, ...data });
+            data.title = property.title || automaticPropertyTitle({ ...property, ...data });
             return { property: await prisma.property.update({ where: { id: property.id }, data }) };
           } catch (error) {
             console.warn(`Não foi possível atualizar o anúncio do imóvel ${property.code || property.id}:`, error.message);
@@ -594,13 +678,21 @@ export function createPropertyRouter(prisma, requireAuth) {
         }
       }
       data.code = await nextPropertyReference(prisma, data.propertyType);
-      data.title = automaticPropertyTitle(data);
+      data.title = data.title || automaticPropertyTitle(data);
       const errors = validateProperty(data);
       if (errors.length) return res.status(400).json({ error: errors[0], details: errors });
       if ((data.latitude === null || data.longitude === null) && process.env.GOOGLE_MAPS_API_KEY) {
         const location = await geocodeAddress([data.address, data.neighborhood, data.city].filter(Boolean).join(', '));
         data.latitude = location.latitude;
         data.longitude = location.longitude;
+      }
+      if (data.driveFolderUrl) {
+        try {
+          const files = await listDriveFolderImages(data.driveFolderUrl);
+          data.driveCoverFileId = files[0]?.id || null;
+        } catch (error) {
+          console.warn('Cadastro seguirá sem capa do Drive:', error.message);
+        }
       }
       const property = await prisma.property.create({ data });
       res.status(201).json(property);
@@ -617,6 +709,7 @@ export function createPropertyRouter(prisma, requireAuth) {
       const existing = await prisma.property.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: 'Imóvel não encontrado.' });
       const data = normalizeProperty(req.body, req.user, { partial: true });
+      if (data.driveFolderUrl !== existing.driveFolderUrl) data.driveCoverFileId = null;
       if (motiveListingUrl(data.sourceUrl)) {
         try {
           const preview = await listingPreview(data.sourceUrl);
@@ -626,9 +719,17 @@ export function createPropertyRouter(prisma, requireAuth) {
           console.warn('Atualização seguirá sem dados automáticos:', error.message);
         }
       }
-      data.title = automaticPropertyTitle(data);
+      data.title = data.title || existing.title || automaticPropertyTitle({ ...existing, ...data });
       const errors = validateProperty(data);
       if (errors.length) return res.status(400).json({ error: errors[0], details: errors });
+      if (data.driveFolderUrl && !data.driveCoverFileId) {
+        try {
+          const files = await listDriveFolderImages(data.driveFolderUrl);
+          data.driveCoverFileId = files[0]?.id || null;
+        } catch (error) {
+          console.warn('Atualização seguirá sem capa do Drive:', error.message);
+        }
+      }
       const property = await prisma.property.update({ where: { id }, data });
       res.json(property);
     } catch (error) {

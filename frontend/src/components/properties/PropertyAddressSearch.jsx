@@ -6,6 +6,11 @@ const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300
 
 const predictionText = value => value?.text || value?.toString?.() || '';
 
+const addressComponentValue = (components, ...types) => {
+  const component = components?.find(item => types.some(type => item.types?.includes(type)));
+  return component?.longText || component?.shortText || '';
+};
+
 export default function PropertyAddressSearch({
   value,
   onChange,
@@ -19,6 +24,7 @@ export default function PropertyAddressSearch({
   const requestRef = useRef(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
   const [googleResults, setGoogleResults] = useState([]);
   const [placesUnavailable, setPlacesUnavailable] = useState(false);
 
@@ -77,6 +83,42 @@ export default function PropertyAddressSearch({
     return () => window.clearTimeout(timer);
   }, [isOpen, value]);
 
+  const selectGoogleAddress = async prediction => {
+    const description = predictionText(prediction.text);
+    setIsOpen(false);
+    setIsSelecting(true);
+
+    try {
+      const place = prediction.toPlace();
+      await place.fetchFields({
+        fields: ['displayName', 'formattedAddress', 'location', 'addressComponents'],
+      });
+
+      const components = place.addressComponents || [];
+      const route = addressComponentValue(components, 'route');
+      const streetNumber = addressComponentValue(components, 'street_number');
+
+      await onSelectAddress?.({
+        placeId: prediction.placeId,
+        description,
+        displayName: place.displayName || predictionText(prediction.mainText),
+        formattedAddress: place.formattedAddress || description,
+        address: description || place.formattedAddress,
+        streetAddress: [route, streetNumber].filter(Boolean).join(', '),
+        neighborhood: addressComponentValue(components, 'sublocality_level_1', 'sublocality', 'neighborhood'),
+        city: addressComponentValue(components, 'administrative_area_level_2', 'locality'),
+        state: addressComponentValue(components, 'administrative_area_level_1'),
+        postalCode: addressComponentValue(components, 'postal_code'),
+        latitude: place.location?.lat?.(),
+        longitude: place.location?.lng?.(),
+      });
+    } catch {
+      await onSelectAddress?.({ placeId: prediction.placeId, description });
+    } finally {
+      setIsSelecting(false);
+    }
+  };
+
   const showDropdown = isOpen && value.trim().length >= 2;
 
   return (
@@ -91,7 +133,7 @@ export default function PropertyAddressSearch({
         autoComplete="off"
         className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm font-medium text-gray-800 shadow-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
       />
-      {isSearching && <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />}
+      {(isSearching || isSelecting) && <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />}
 
       {showDropdown && (
         <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[80] max-h-[360px] overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-2xl">
@@ -105,7 +147,7 @@ export default function PropertyAddressSearch({
 
           {googleResults.length > 0 && <p className="mt-1 border-t border-gray-100 px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Endereços encontrados</p>}
           {googleResults.map(prediction => (
-            <button key={prediction.placeId} type="button" onClick={() => { setIsOpen(false); onSelectAddress?.({ placeId: prediction.placeId, description: predictionText(prediction.text) }); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50">
+            <button key={prediction.placeId} type="button" onClick={() => selectGoogleAddress(prediction)} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50">
               <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500"><MapPin className="h-4 w-4" /></span>
               <span className="min-w-0"><span className="block text-sm font-semibold text-gray-700">{predictionText(prediction.mainText) || predictionText(prediction.text)}</span>{prediction.secondaryText && <span className="mt-0.5 block truncate text-xs text-gray-400">{predictionText(prediction.secondaryText)}</span>}</span>
             </button>
