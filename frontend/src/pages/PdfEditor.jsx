@@ -16,6 +16,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, FileText, XCircle, UploadCloud, Trash2, Save, Loader2, FileInput, Eye, Move, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
+import ConfirmModal from '../components/ConfirmModal';
 
 // Componente para cada página do PDF com preview
 function SortablePageItem({ page, id, index, onRemove, isLoading }) {
@@ -129,6 +131,7 @@ const PdfEditor = () => {
     const [isLoadingPages, setIsLoadingPages] = useState(false);
     const [activeId, setActiveId] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
     const fileInputRef = useRef(null);
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -194,7 +197,7 @@ const PdfEditor = () => {
             setPages(current => [...current, ...newPages]);
         } catch (error) {
             console.error('Erro ao processar arquivos:', error);
-            alert('Erro ao processar os arquivos. Verifique se são válidos.');
+            toast.error('Erro ao processar os arquivos. Verifique se são válidos.');
         } finally {
             setIsLoadingPages(false);
             event.target.value = null;
@@ -206,13 +209,18 @@ const PdfEditor = () => {
     };
 
     const handleClearAll = () => {
+        setShowClearConfirm(true);
+    };
+
+    const clearAllPages = () => {
         setPages([]);
         setSuccessMessage('');
+        toast.success('Todas as páginas foram removidas.');
     };
 
     const handleMergePdfs = async () => {
         if (pages.length < 1) {
-            alert('Por favor, adicione ao menos uma página.');
+            toast.warning('Adicione ao menos uma página antes de gerar o PDF.');
             return;
         }
 
@@ -274,7 +282,7 @@ const PdfEditor = () => {
             setTimeout(() => setSuccessMessage(''), 5000);
         } catch (error) {
             console.error("Erro ao juntar os arquivos:", error);
-            alert("Ocorreu um erro ao gerar o PDF. Verifique se todos os arquivos são válidos.");
+            toast.error('Ocorreu um erro ao gerar o PDF. Verifique se todos os arquivos são válidos.');
         } finally {
             setIsMerging(false);
         }
@@ -534,6 +542,17 @@ const PdfEditor = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={showClearConfirm}
+                onClose={() => setShowClearConfirm(false)}
+                onConfirm={clearAllPages}
+                title="Remover todas as páginas?"
+                message={`Os ${pages.length} arquivo(s) adicionados serão removidos do editor.`}
+                confirmText="Limpar editor"
+                confirmColor="red"
+                warning="Você precisará adicionar os arquivos novamente para continuar."
+            />
         </div>
     );
 };

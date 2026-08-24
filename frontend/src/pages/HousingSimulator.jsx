@@ -31,6 +31,8 @@ import { MUNICIPAL_LIMITS, MUNICIPAL_TABLE_EFFECTIVE_DATE } from '../data/munici
 import { calculateHousingSimulation } from '../utils/housingSimulator';
 import { downloadHousingSimulationPdf } from '../utils/housingSimulationPdf';
 import SaveSimulationModal from '../components/SaveSimulationModal';
+import Button from '../components/ui/Button';
+import { controlClass, surfaceClass } from '../components/ui/styles';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -125,7 +127,7 @@ function buildShareSummary(result) {
   ].join('\n');
 }
 
-const fieldClass = 'w-full rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-800 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-gray-100';
+const fieldClass = controlClass;
 
 function Field({ label, hint, children }) {
   return (
@@ -257,7 +259,7 @@ function ComparisonPanel({ current, alternative, onClose }) {
   };
 
   return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className={`mt-5 overflow-hidden ${surfaceClass}`}>
       <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
         <div><div className="flex items-center gap-2 font-bold text-gray-900"><GitCompareArrows className="h-5 w-5 text-primary" /> Comparativo de condições</div><p className="mt-1 text-xs text-gray-500">Mesmos dados aplicados às regras de cada instituição.</p></div>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="Fechar comparação"><X className="h-4 w-4" /></button>
@@ -487,19 +489,14 @@ function HousingSimulator() {
   return (
     <div className="min-h-full bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary"><Calculator className="h-4 w-4" /> Ferramenta comercial</div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Simulador habitacional</h1>
-            <p className="mt-1 text-sm text-gray-500">Compare condições CAIXA e Bradesco com prazo, seguros e capacidade de pagamento.</p>
-          </div>
-          <button type="button" onClick={reset} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50">
+        <div className="mb-4 flex justify-end">
+          <Button onClick={reset} variant="secondary">
             <RotateCcw className="h-4 w-4" /> Limpar simulação
-          </button>
+          </Button>
         </div>
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(390px,.8fr)]">
-          <form onSubmit={calculate} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <form onSubmit={calculate} className={`overflow-hidden ${surfaceClass}`}>
             <div className="border-b border-gray-100 p-5 sm:p-6">
               <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Instituição financeira</p>
               <div className="flex gap-3">
@@ -574,9 +571,9 @@ function HousingSimulator() {
               </section>
 
               {validation && <Alert type="error" message={validation} />}
-              <button type="submit" className={`flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 ${isCaixa ? 'bg-primary shadow-primary/20 hover:bg-[#4a637a]' : 'bg-red-600 shadow-red-600/20 hover:bg-red-700'}`}>
+              <Button type="submit" size="lg" variant={isCaixa ? 'primary' : 'danger'} className="w-full">
                 <Calculator className="h-5 w-5" /> Calcular financiamento <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </form>
 
@@ -588,7 +585,7 @@ function HousingSimulator() {
                 <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">Preencha os dados ao lado para conferir financiamento estimado, entrada necessária, prazo, taxa e composição da primeira parcela.</p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className={`overflow-hidden ${surfaceClass}`}>
                 <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-[#4b6d8b] to-[#344b60]' : 'bg-gradient-to-br from-red-600 to-red-800'} p-6 text-white`}>
                   <div className="flex items-start justify-between gap-4">
                     <div><p className="text-xs font-semibold uppercase tracking-wider text-white/70">Enquadramento</p><h2 className="mt-1 text-xl font-bold">{result.program}</h2></div>
@@ -616,15 +613,15 @@ function HousingSimulator() {
                   </div>
 
                   <div className="space-y-2.5">{result.alerts.map((alert, index) => <Alert key={`${alert.type}-${index}`} {...alert} />)}</div>
-                  <button type="button" onClick={compareBanks} className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-bold text-primary transition hover:border-primary/30 hover:bg-primary/10">
+                  <Button onClick={compareBanks} variant="primarySoft" size="lg" className="w-full">
                     <GitCompareArrows className="h-4 w-4" /> Comparar com {result.bank === 'CAIXA' ? 'Bradesco' : 'CAIXA'}
-                  </button>
-                  <button type="button" onClick={() => setShowSaveModal(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100">
+                  </Button>
+                  <Button onClick={() => setShowSaveModal(true)} variant="successSoft" size="lg" className="w-full">
                     <Save className="h-4 w-4" /> Salvar no cadastro do cliente
-                  </button>
+                  </Button>
                   <div className="grid grid-cols-2 gap-2.5">
-                    <button type="button" onClick={copySummary} className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50"><Copy className="h-4 w-4" /> Copiar resumo</button>
-                    <button type="button" onClick={generatePdf} className="flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#4a637a]"><FileDown className="h-4 w-4" /> Gerar PDF</button>
+                    <Button onClick={copySummary} variant="secondary" size="lg" className="w-full px-3"><Copy className="h-4 w-4" /> Copiar resumo</Button>
+                    <Button onClick={generatePdf} size="lg" className="w-full px-3"><FileDown className="h-4 w-4" /> Gerar PDF</Button>
                   </div>
                   <p className="text-xs leading-5 text-gray-400">Estimativa comercial sujeita à análise de crédito, avaliação do imóvel e regras vigentes da instituição.</p>
                 </div>

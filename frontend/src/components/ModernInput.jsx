@@ -1,4 +1,5 @@
 import React from 'react';
+import { controlClass, formLabelClass, textAreaClass } from './ui/styles';
 
 // ModernInput + ModernTextArea
 // Props: id, label, Icon, type, value, onChange, placeholder, required, maxLength
@@ -19,7 +20,7 @@ export function ModernInput({
 }) {
   return (
     <label htmlFor={id} className={`block ${className}`}>
-      {label && <div className="text-xs text-gray-600 mb-1">{label}{required ? ' *' : ''}</div>}
+      {label && <div className={formLabelClass}>{label}{required ? ' *' : ''}</div>}
       <div className="relative">
         {Icon && (
           <div className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
@@ -35,7 +36,7 @@ export function ModernInput({
           required={required}
           maxLength={maxLength}
           disabled={disabled}
-          className="w-full pl-10 pr-3 py-2 rounded-2xl bg-gray-50 focus:bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition"
+          className={`${controlClass} ${Icon ? 'pl-10' : ''}`}
           {...rest}
         />
       </div>
@@ -59,7 +60,7 @@ export function ModernTextArea({
 }) {
   return (
     <label htmlFor={id} className={`block ${className}`}>
-      {label && <div className="text-xs text-gray-600 mb-1">{label}{required ? ' *' : ''}</div>}
+      {label && <div className={formLabelClass}>{label}{required ? ' *' : ''}</div>}
       <div className="relative">
         {Icon && (
           <div className="absolute inset-y-0 left-3 flex items-start pt-2 text-gray-400 pointer-events-none">
@@ -75,7 +76,7 @@ export function ModernTextArea({
           required={required}
           maxLength={maxLength}
           disabled={disabled}
-          className="w-full pl-10 pr-3 py-2 rounded-2xl bg-gray-50 focus:bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none transition resize-vertical"
+          className={`${textAreaClass} ${Icon ? 'pl-10' : ''}`}
           {...rest}
         />
       </div>

@@ -5,8 +5,9 @@ import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingAnimation from '../components/LoadingAnimation';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { usePerformanceMonitor, useRequestPerformance } from '../hooks/usePerformance';
+import { usePerformanceMonitor } from '../hooks/usePerformance';
 import logoDark from '../assets/logo-dark.png';
+import { toast } from 'sonner';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -16,7 +17,6 @@ const Login = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { login, isAuthenticated, isLoading } = useAuth();
     const navigate = useNavigate();
-    const { measureFetch } = useRequestPerformance();
 
     // Monitora performance da página
     usePerformanceMonitor('LoginPage');
@@ -116,7 +116,7 @@ const Login = () => {
                             <div className="mt-2 text-right">
                                 <button
                                     type="button"
-                                    onClick={() => alert('Contate o administrador para redefinir sua senha.')}
+                                    onClick={() => toast.info('Contate o administrador do sistema para redefinir sua senha.')}
                                     className="text-xs font-medium text-primary hover:text-secondary transition-colors underline-offset-4 hover:underline"
                                 >
                                     Esqueci minha senha

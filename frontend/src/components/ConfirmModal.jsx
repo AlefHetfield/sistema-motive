@@ -1,85 +1,97 @@
-import { X } from 'lucide-react';
-import { useToast } from '../hooks/useToast';
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Archive, CheckCircle2, HelpCircle, Loader2, Trash2, X } from 'lucide-react';
+import Button from './ui/Button';
 
-const ConfirmModal = ({ isOpen, onClose, onCancel, onConfirm, title, message, confirmText = "OK", cancelText = "Cancelar", confirmColor = "blue" }) => {
-    const notify = useToast();
-    
+const toneConfig = {
+    red: { icon: Trash2, iconClass: 'bg-red-50 text-red-600 ring-red-50/70', variant: 'danger' },
+    green: { icon: CheckCircle2, iconClass: 'bg-emerald-50 text-emerald-600 ring-emerald-50/70', variant: 'success' },
+    orange: { icon: Archive, iconClass: 'bg-amber-50 text-amber-600 ring-amber-50/70', variant: 'warning' },
+    purple: { icon: CheckCircle2, iconClass: 'bg-purple-50 text-purple-600 ring-purple-50/70', variant: 'primary' },
+    blue: { icon: HelpCircle, iconClass: 'bg-primary/10 text-primary ring-primary/5', variant: 'primary' },
+};
+
+export default function ConfirmModal({
+    isOpen,
+    onClose,
+    onCancel,
+    onConfirm,
+    title,
+    message,
+    confirmText = 'Confirmar',
+    cancelText = 'Cancelar',
+    confirmColor = 'blue',
+    warning,
+}) {
+    const [isConfirming, setIsConfirming] = useState(false);
+    const confirmButtonRef = useRef(null);
+    const closeModal = onClose || onCancel;
+    const tone = toneConfig[confirmColor] || toneConfig.blue;
+    const Icon = tone.icon;
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const previousActiveElement = document.activeElement;
+        const focusTimer = window.setTimeout(() => confirmButtonRef.current?.focus(), 0);
+        const handleKeyDown = event => {
+            if (event.key === 'Escape' && !isConfirming) closeModal?.();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.clearTimeout(focusTimer);
+            document.removeEventListener('keydown', handleKeyDown);
+            previousActiveElement?.focus?.();
+        };
+    }, [closeModal, isConfirming, isOpen]);
+
     if (!isOpen) return null;
 
-    const handleCancel = onCancel || onClose;
-    
-    const handleConfirm = () => {
-        onConfirm();
-        onClose();
-        
-        // Mostrar mensagem apropriada baseada na ação
-        if (confirmText === 'Deletar' || confirmText === 'Delete') {
-            notify.success('Item deletado com sucesso! 🗑️');
-        } else {
-            notify.success('Ação confirmada com sucesso! ✅');
+    const handleConfirm = async () => {
+        if (isConfirming) return;
+        setIsConfirming(true);
+        try {
+            await onConfirm?.();
+            closeModal?.();
+        } finally {
+            setIsConfirming(false);
         }
     };
 
-    const colorClasses = {
-        blue: "bg-blue-500 hover:bg-blue-600",
-        green: "bg-green-500 hover:bg-green-600",
-        orange: "bg-orange-500 hover:bg-orange-600",
-        purple: "bg-purple-500 hover:bg-purple-600",
-        red: "bg-red-500 hover:bg-red-600"
-    };
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div 
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={handleCancel}
-            />
-            
-            {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h.01M15 10h.01M9.5 15.5c1 1 2.5 1.5 3.5 1.5s2.5-.5 3.5-1.5" />
-                            </svg>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
+            <button type="button" className="absolute inset-0" disabled={isConfirming} onClick={() => closeModal?.()} aria-label="Cancelar ação" />
+            <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-description" className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-5 sm:px-6">
+                    <div className="flex gap-3">
+                        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-4 ${tone.iconClass}`}>
+                            <Icon className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 id="confirm-modal-title" className="text-lg font-bold text-gray-900">{title}</h2>
+                            <p id="confirm-modal-description" className="mt-1 text-sm leading-6 text-gray-500">{message}</p>
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
                     </div>
-                    <button
-                        onClick={handleCancel}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                        <X size={20} />
+                    <button type="button" disabled={isConfirming} onClick={() => closeModal?.()} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40" aria-label="Fechar">
+                        <X className="h-5 w-5" />
                     </button>
-                </div>
+                </header>
 
-                {/* Body */}
-                <div className="p-6">
-                    <p className="text-gray-600 leading-relaxed">{message}</p>
-                </div>
+                {warning && (
+                    <div className="px-5 pt-5 sm:px-6">
+                        <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm leading-5 text-amber-800">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <p>{warning}</p>
+                        </div>
+                    </div>
+                )}
 
-                {/* Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-                    <button
-                        onClick={handleCancel}
-                        className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
-                    >
-                        {cancelText}
-                    </button>
-                    <button
-                        onClick={handleConfirm}
-                        className={`px-4 py-2 text-white rounded-lg transition-colors font-medium ${colorClasses[confirmColor] || colorClasses.blue}`}
-                    >
-                        {confirmText}
-                    </button>
-                </div>
+                <footer className="mt-5 flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                    <Button disabled={isConfirming} onClick={() => closeModal?.()} variant="ghost">{cancelText}</Button>
+                    <Button ref={confirmButtonRef} disabled={isConfirming} onClick={handleConfirm} variant={tone.variant}>
+                        {isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                        {isConfirming ? 'Processando...' : confirmText}
+                    </Button>
+                </footer>
             </div>
         </div>
     );
-};
-
-export default ConfirmModal;
+}

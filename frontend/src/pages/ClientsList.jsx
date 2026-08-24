@@ -4,7 +4,7 @@ import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
 import { useAuth } from '../context/AuthContext';
-import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, Clock, AlertCircle, AlertTriangle, Calendar, CheckCircle2, FileCheck, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, PauseCircle, PlayCircle } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, AlertCircle, AlertTriangle, Calendar, CheckCircle2, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, PauseCircle, PlayCircle } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
 import LoadingAnimation from '../components/LoadingAnimation';
 import ClientModal from '../components/ClientModal';
@@ -13,6 +13,7 @@ import CompleteProcessModal from '../components/CompleteProcessModal';
 import ClientDetailsDrawer from '../components/ClientDetailsDrawer';
 import PauseClientModal from '../components/PauseClientModal';
 import { ModernInput } from '../components/ModernInput';
+import StatusBadge from '../components/ui/StatusBadge';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = [
@@ -33,27 +34,6 @@ const STATUS_OPTIONS = [
 ];
 const SIGNED_STATUSES = ["Assinado-Movido", "Assinado"];
 const FINAL_STATUSES = [...SIGNED_STATUSES, "Arquivado"];
-
-const statusConfig = {
-    'Documentação Recebida': { style: 'bg-gray-50 text-gray-700 border border-gray-100', icon: FileCheck },
-    Aprovado: { style: 'bg-emerald-50 text-emerald-700 border border-emerald-100', icon: CheckCircle2 },
-    'Solicitando Engenharia': { style: 'bg-amber-50 text-amber-700 border border-amber-100', icon: Clock },
-    'Engenharia Solicitada': { style: 'bg-orange-50 text-orange-700 border border-orange-100', icon: AlertCircle },
-    'Baixando FGTS': { style: 'bg-yellow-50 text-yellow-700 border border-yellow-100', icon: Clock },
-    'Preenchendo Fichas': { style: 'bg-teal-50 text-teal-700 border border-teal-100', icon: FileCheck },
-    'Assinando Fichas': { style: 'bg-cyan-50 text-cyan-700 border border-cyan-100', icon: Calendar },
-    'Finalizando': { style: 'bg-purple-50 text-purple-700 border border-purple-100', icon: FileCheck },
-    'Aguardando Reserva': { style: 'bg-blue-50 text-blue-700 border border-blue-100', icon: Calendar },
-    'Enviando para Conformidade': { style: 'bg-pink-50 text-pink-700 border border-pink-100', icon: AlertCircle },
-    'Aguardando Conformidade': { style: 'bg-rose-50 text-rose-700 border border-rose-100', icon: AlertCircle },
-    'Inconforme': { style: 'bg-red-50 text-red-700 border border-red-100', icon: AlertTriangle },
-    'Conforme - Ag. Contrato': { style: 'bg-lime-50 text-lime-700 border border-lime-100', icon: FileCheck },
-    'Assinando Contrato': { style: 'bg-indigo-50 text-indigo-700 border border-indigo-100', icon: FileCheck },
-    Assinado: { style: 'bg-green-50 text-green-700 border border-green-100', icon: CheckCircle2 },
-    'Assinado-Movido': { style: 'bg-emerald-50 text-emerald-700 border border-emerald-100', icon: CheckCircle2 },
-    Arquivado: { style: 'bg-gray-100 text-gray-600 border border-gray-200', icon: Archive },
-    default: { style: 'bg-gray-50 text-gray-600 border border-gray-100', icon: CheckCircle2 }
-};
 
 const AVATAR_PALETTES = [
     'bg-indigo-50 text-indigo-700',
@@ -206,9 +186,6 @@ const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loa
         };
     }, [open]);
 
-    const cfg = statusConfig[currentStatus] || statusConfig.default;
-    const Icon = cfg.icon || statusConfig.default.icon;
-
     return (
         <>
             <button
@@ -218,17 +195,9 @@ const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loa
                 disabled={disabled}
                 aria-haspopup="listbox"
                 aria-expanded={open}
-                className={`group flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-sm active:scale-[0.97]'} ${cfg.style}`}
+                className={`group flex items-center gap-1 rounded-full transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:shadow-sm active:scale-[0.97]'}`}
             >
-                {loading ? (
-                    <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                ) : (
-                    <Icon size={14} aria-hidden className="shrink-0" />
-                )}
-                <span>{currentStatus}</span>
+                <StatusBadge status={currentStatus} loading={loading} />
                 <ChevronDown size={14} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && !disabled && createPortal(
@@ -240,8 +209,6 @@ const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loa
                     <ul role="listbox" aria-label={`Status do cliente ${clientId}`} className="py-2">
                         {STATUS_OPTIONS.map(opt => {
                             const active = opt === currentStatus;
-                            const optCfg = statusConfig[opt] || statusConfig.default;
-                            const OptIcon = optCfg.icon || statusConfig.default.icon;
                             return (
                                 <li key={opt} role="option" aria-selected={active}>
                                     <button
@@ -249,10 +216,7 @@ const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loa
                                         onClick={() => handleSelect(opt)}
                                         className={`w-full flex items-center gap-3 px-3 py-2.5 mx-1 text-left text-sm font-medium transition rounded-lg ${active ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-700'} focus:outline-none focus:ring-2 focus:ring-primary/30`}
                                     >
-                                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${optCfg.style}`}>
-                                            <OptIcon size={15} />
-                                        </span>
-                                        <span className="flex-1 font-semibold">{opt}</span>
+                                        <span className="flex-1"><StatusBadge status={opt} size="xs" /></span>
                                         {active && <Check size={16} className="text-primary font-bold" />}
                                     </button>
                                 </li>
@@ -263,26 +227,6 @@ const StatusSelect = ({ currentStatus, clientId, onChange, disabled = false, loa
                 document.body
             )}
         </>
-    );
-};
-
-// Sub-componente StatusBadge — exibe ícone + texto com estilo do statusConfig
-const StatusBadge = ({ status, loading = false }) => {
-    const cfg = statusConfig[status] || statusConfig.default;
-    const Icon = cfg.icon || statusConfig.default.icon;
-    const displayStatus = SIGNED_STATUSES.includes(status) ? 'Assinado' : status;
-    return (
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.style}`} title={displayStatus} aria-busy={loading} role="status">
-            {loading ? (
-                <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                </svg>
-            ) : (
-                <Icon size={14} aria-hidden className="shrink-0" />
-            )}
-            <span>{displayStatus}</span>
-        </div>
     );
 };
 
@@ -536,6 +480,8 @@ const ClientsList = () => {
             title: 'Excluir Cliente',
             message: `Tem certeza que deseja excluir o cliente '${client.nome}'?`,
             confirmColor: 'red',
+            confirmText: 'Excluir cliente',
+            warning: 'Esta ação não pode ser desfeita e removerá o cliente do sistema.',
             onConfirm: async () => {
                 try {
                     await deleteClient(client.id);
@@ -600,6 +546,7 @@ const ClientsList = () => {
             title: 'Retomar atendimento',
             message: `Retomar o atendimento de ${client.nome} na etapa “${client.status}”?`,
             confirmColor: 'green',
+            confirmText: 'Retomar atendimento',
             onConfirm: async () => {
                 try {
                     await saveClient({ id: client.id, emEspera: false });
@@ -621,6 +568,7 @@ const ClientsList = () => {
             title: 'Arquivar Cliente',
             message: `Arquivar o cliente ${client.nome}?`,
             confirmColor: 'orange',
+            confirmText: 'Arquivar cliente',
             onConfirm: async () => {
                 try {
                     await saveClient({ id: client.id, status: 'Arquivado' });
@@ -643,6 +591,7 @@ const ClientsList = () => {
             title: 'Restaurar Cliente',
             message: `Restaurar ${client.nome} para Processos Ativos?`,
             confirmColor: 'purple',
+            confirmText: 'Restaurar cliente',
             onConfirm: async () => {
                 try {
                     await saveClient({ id: client.id, status: 'Aprovado' });
@@ -665,6 +614,7 @@ const ClientsList = () => {
             title: 'Restaurar Cliente',
             message: `Restaurar ${client.nome} para Assinados?`,
             confirmColor: 'blue',
+            confirmText: 'Restaurar cliente',
             onConfirm: async () => {
                 try {
                     await saveClient({ id: client.id, status: 'Assinado-Movido' });
@@ -1390,7 +1340,7 @@ const ClientsList = () => {
                                                         <div className="flex items-center gap-2">
                                                             <button type="button" onClick={() => setDetailsClientId(client.id)} className="truncate text-left text-sm font-semibold text-gray-900 hover:text-primary" title="Ver detalhes do cliente">{client.nome}</button>
                                                             <NewBadge creationDate={client.createdAt} />
-                                                            {client.emEspera && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"><PauseCircle size={11} />Em espera</span>}
+                                                            {client.emEspera && <StatusBadge status="Em espera" size="xs" />}
                                                         </div>
                                                         <span className="text-xs text-gray-500">{formatCPF(client.cpf) || 'CPF não informado'}</span>
                                                     </div>
@@ -1486,7 +1436,7 @@ const ClientsList = () => {
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         <button type="button" onClick={() => setDetailsClientId(client.id)} className="block max-w-full truncate text-left text-sm font-semibold text-gray-900 hover:text-primary">{client.nome}</button>
                                                         <NewBadge creationDate={client.createdAt} />
-                                                        {client.emEspera && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"><PauseCircle size={11} />Em espera</span>}
+                                                        {client.emEspera && <StatusBadge status="Em espera" size="xs" />}
                                                     </div>
                                                     <p className="text-xs text-gray-500 truncate mt-0.5">{formatCPF(client.cpf)}</p>
                                                     
@@ -1775,6 +1725,8 @@ const ClientsList = () => {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 confirmColor={confirmModal.confirmColor}
+                confirmText={confirmModal.confirmText}
+                warning={confirmModal.warning}
             />
             {/* Toasts empilhados com animação */}
             <div className="fixed right-2 sm:right-4 bottom-2 sm:bottom-4 left-2 sm:left-auto z-50 flex flex-col items-end gap-2" aria-live="polite">

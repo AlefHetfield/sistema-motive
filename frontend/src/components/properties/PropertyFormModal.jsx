@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { fetchNextPropertyReference, fetchPropertyDrivePreview, fetchPropertySitePreview, geocodePropertyPlace, propertyDriveImageUrl, reverseGeocodePropertyCoordinates } from '../../services/api';
 import { PROPERTY_STATUSES } from './propertyConstants';
 import PropertyAddressSearch from './PropertyAddressSearch';
+import { controlClass, formLabelClass, textAreaClass } from '../ui/styles';
 
 const PROPERTY_TYPES = ['Casa', 'Apartamento', 'Lote', 'Terreno', 'Sobrado', 'Chácara', 'Comercial', 'Outro'];
 const CONDITIONS = ['Novo', 'Usado', 'Em construção', 'Reformado', 'Para reforma'];
@@ -48,15 +49,15 @@ const initialForm = (property, initialLocation) => {
 
 const Field = ({ label, className = '', inputClassName = '', ...props }) => (
   <label className={`block ${className}`}>
-    <span className="mb-1.5 block text-xs font-bold text-gray-600">{label}</span>
-    <input {...props} className={`w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 ${inputClassName}`} />
+    <span className={formLabelClass}>{label}</span>
+    <input {...props} className={`${controlClass} ${inputClassName}`} />
   </label>
 );
 
 const Select = ({ label, children, ...props }) => (
   <label className="block">
-    <span className="mb-1.5 block text-xs font-bold text-gray-600">{label}</span>
-    <select {...props} className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10">{children}</select>
+    <span className={formLabelClass}>{label}</span>
+    <select {...props} className={controlClass}>{children}</select>
   </label>
 );
 
@@ -310,7 +311,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
                   <div className="flex h-28 items-center justify-center gap-2 px-4 text-center text-xs text-gray-400"><ImageIcon className="h-5 w-5" />A prévia da foto principal aparecerá aqui.</div>
                 )}
               </div>
-              <label className="block sm:col-span-2"><span className="mb-1.5 block text-xs font-bold text-gray-600">Descrição</span><textarea rows={6} value={form.description || ''} onChange={event => update('description', event.target.value)} placeholder="Condições, diferenciais e observações do imóvel..." className="w-full resize-y rounded-xl border border-gray-200 px-3.5 py-3 text-sm leading-6 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
+              <label className="block sm:col-span-2"><span className={formLabelClass}>Descrição</span><textarea rows={6} value={form.description || ''} onChange={event => update('description', event.target.value)} placeholder="Condições, diferenciais e observações do imóvel..." className={textAreaClass} /></label>
             </div>
           </section>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchClients } from '../services/api';
 import HealthCheck from '../components/HealthCheck';
+import StatusBadge from '../components/ui/StatusBadge';
 
 import { TrendingUp, TrendingDown, Users, Clock, AlertTriangle, Award, Sparkles, CheckCircle2, FileCheck, AlertCircle, Calendar } from 'lucide-react';
 // 1. Novos Imports para o gráfico
@@ -245,19 +246,6 @@ const Dashboard = () => {
         'Conformidade': AlertCircle,
         'Inconforme': AlertTriangle,
     };
-
-    const statusColorClasses = {
-        'Documentação Recebida': 'bg-gray-50 text-gray-700 border-gray-200',
-        'Aprovado': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'Engenharia': 'bg-amber-50 text-amber-700 border-amber-200',
-        'Baixando FGTS': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        'Fichas e Cadastros': 'bg-teal-50 text-teal-700 border-teal-200',
-        'Finalização': 'bg-purple-50 text-purple-700 border-purple-200',
-        'Aguardando Reserva': 'bg-cyan-50 text-cyan-700 border-cyan-200',
-        'Conformidade': 'bg-orange-50 text-orange-700 border-orange-200',
-        'Inconforme': 'bg-red-50 text-red-700 border-red-200',
-    };
-
 
     // Função para envio manual do relatório/backup
     const handleSendBackup = async () => {
@@ -518,9 +506,7 @@ const Dashboard = () => {
                                             </div>
                                             <p className="text-xs text-gray-500 mt-0.5">{formatDate(client.createdAt)}</p>
                                         </div>
-                                        <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[client.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                            {client.status}
-                                        </span>
+                                        <StatusBadge status={client.status} size="xs" />
                                     </div>
                                 )) : (
                                     <p className="text-gray-400 text-sm text-center py-8">Nenhum cliente recente</p>
@@ -590,9 +576,7 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                     <div className="text-right flex-shrink-0 ml-4">
-                                        <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${statusColorClasses[activity.statusDepois] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                            {statusToShow}
-                                        </span>
+                                        <StatusBadge status={activity.statusDepois} label={statusToShow} size="xs" />
                                         <p className="text-xs text-gray-500 mt-1">{timeText}</p>
                                     </div>
                                 </div>

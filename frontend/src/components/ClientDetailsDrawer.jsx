@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { deleteClientSimulation, downloadContractDocx, fetchClientActivities, fetchClientContracts, fetchClientSimulations } from '../services/api';
 import DeleteSimulationModal from './DeleteSimulationModal';
+import StatusBadge from './ui/StatusBadge';
 
 const SIGNED_STATUSES = ['Assinado', 'Assinado-Movido'];
 
@@ -200,10 +201,8 @@ export default function ClientDetailsDrawer({
                     <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
-                                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${SIGNED_STATUSES.includes(client.status) ? 'bg-emerald-50 text-emerald-700' : client.status === 'Arquivado' ? 'bg-gray-100 text-gray-600' : 'bg-indigo-50 text-indigo-700'}`}>
-                                    {statusLabel(client.status)}
-                                </span>
-                                {client.emEspera && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800"><PauseCircle size={13} />Em espera</span>}
+                                <StatusBadge status={client.status} label={statusLabel(client.status)} />
+                                {client.emEspera && <StatusBadge status="Em espera" />}
                                 <span className="text-xs text-gray-400">Cliente #{client.id}</span>
                             </div>
                             <h2 id="client-details-title" className="truncate text-xl font-bold text-gray-900">{client.nome}</h2>

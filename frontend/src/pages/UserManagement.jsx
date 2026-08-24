@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, Plus, Edit2, Trash2, Shield, ShieldOff, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Shield, ShieldOff, AlertCircle, CheckCircle } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import UserModal from '../components/UserModal';
 import ConfirmModal from '../components/ConfirmModal';
 import LoadingAnimation from '../components/LoadingAnimation';
 import LoadingSpinner from '../components/LoadingSpinner';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -189,43 +190,11 @@ const UserManagement = () => {
     });
 
     const getRoleBadge = (role) => {
-        if (role === 'ADM') {
-            return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-lg">
-                    <Shield size={12} />
-                    Administrador
-                </span>
-            );
-        } else if (role === 'ASSISTENTE') {
-            return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-lg">
-                    <Users size={12} />
-                    Assistente
-                </span>
-            );
-        } else {
-            return (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">
-                    <Users size={12} />
-                    Corretor
-                </span>
-            );
-        }
+        const label = role === 'ADM' ? 'Administrador' : role === 'ASSISTENTE' ? 'Assistente' : 'Corretor';
+        return <StatusBadge status={label} />;
     };
 
-    const getStatusBadge = (isActive) => {
-        return isActive ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-lg">
-                <CheckCircle size={12} />
-                Ativo
-            </span>
-        ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg">
-                <X size={12} />
-                Inativo
-            </span>
-        );
-    };
+    const getStatusBadge = isActive => <StatusBadge status={isActive ? 'Ativo' : 'Inativo'} />;
 
     if (!isAdmin()) {
         return null; // O PrivateRoute já vai bloquear, mas por segurança

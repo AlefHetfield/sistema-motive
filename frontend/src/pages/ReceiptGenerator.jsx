@@ -11,6 +11,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ReceiptPreview from '../components/ReceiptPreview';
 import { ModernInput } from '../components/ModernInput';
 import { useToast } from '../hooks/useToast';
+import Button from '../components/ui/Button';
+import { surfaceClass } from '../components/ui/styles';
 
 
 const initialTaxes = {
@@ -318,15 +320,10 @@ const ReceiptGenerator = () => {
     return (
         <div id="receipt-view" className="fade-in p-6">
             <div className="max-w-screen-2xl mx-auto">
-                <header className="mb-8">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Gerador de Recibo de Pró-Labore</h2>
-                        <p className="text-gray-500">Preencha os dados para calcular e gerar o recibo em PDF</p>
-                    </div>
-                    
+                <header className="mb-6">
                     {/* Indicador de Progresso */}
                     {filledFields < totalFields && (
-                        <div className="mt-6 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm animate-fade-in">
+                        <div className={`${surfaceClass} animate-fade-in p-5`}>
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-sm font-medium text-gray-700">Progresso do Formulário</span>
                                 <span className="text-sm font-semibold text-primary">{filledFields}/{totalFields} campos</span>
@@ -346,7 +343,7 @@ const ReceiptGenerator = () => {
                     <main className="lg:col-span-2 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Input Card */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in">
+                            <div className={`${surfaceClass} animate-fade-in p-6 transition-shadow duration-200 hover:shadow-md`}>
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-primary/10 rounded-lg">
@@ -399,21 +396,22 @@ const ReceiptGenerator = () => {
                                     </div>
 
                                     <div className="mt-2">
-                                        <button 
+                                        <Button
                                             id="generate-pdf-btn" 
                                             onClick={handleGeneratePdf}
                                             disabled={!isFormValid}
-                                            className="group w-full font-semibold py-3.5 px-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white"
+                                            size="lg"
+                                            className="group w-full"
                                         >
                                             <FileDown size={18} className="group-hover:animate-bounce" />
                                             Gerar Recibo em PDF
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Results Card */}
-                            <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                            <div className={`${surfaceClass} flex flex-col justify-between p-6 transition-shadow duration-200 hover:shadow-md animate-fade-in`} style={{ animationDelay: '100ms' }}>
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-green-50 rounded-lg">
@@ -463,7 +461,7 @@ const ReceiptGenerator = () => {
                         </div>
 
                         {/* Card de Dados Adicionais */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                        <div className={`${surfaceClass} transition-shadow duration-200 hover:shadow-md animate-fade-in`} style={{ animationDelay: '200ms' }}>
                              <details open={isEditingEmitter} onToggle={(e) => setIsEditingEmitter(e.currentTarget.open)}>
                                 <summary className="p-6 text-lg font-semibold text-gray-800 cursor-pointer flex justify-between items-center hover:text-primary transition-colors">
                                     <span className="flex items-center gap-3">
@@ -484,13 +482,13 @@ const ReceiptGenerator = () => {
                                                 <label className="block text-xs text-gray-600 mb-1 font-medium">CNPJ</label>
                                                 <div className="flex gap-2">
                                                     <ModernInput id="empresa-cnpj" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
-                                                    <button
+                                                    <Button
                                                         onClick={handleCnpjSearch}
-                                                        className="py-2 px-5 rounded-2xl flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed font-medium border border-primary/20 hover:border-primary"
                                                         disabled={isCnpjLoading}
+                                                        variant="primarySoft"
                                                     >
                                                         {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : <><Search size={16} /> Buscar</>}
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                              <div>

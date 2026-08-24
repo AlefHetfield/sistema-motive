@@ -486,6 +486,8 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
           onCancel={() => setDeletingClient(null)}
           confirmText="Deletar"
           cancelText="Cancelar"
+          confirmColor="red"
+          warning="Esta ação não pode ser desfeita."
         />
       )}
     </div>

@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { motion as Motion } from 'framer-motion';
 import { Edit, Trash2, Home, Copy, Check, CheckCircle2, FileText, PauseCircle, PlayCircle } from 'lucide-react';
 import { useState } from 'react';
+import StatusBadge from './ui/StatusBadge';
 
 const AVATAR_PALETTES = [
   'bg-indigo-50 text-indigo-700',
@@ -108,7 +109,7 @@ export default function KanbanCard({
           <h4 className="font-semibold text-gray-900 text-sm truncate">
             {client.nome}
           </h4>
-          {client.emEspera && <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"><PauseCircle className="h-3 w-3" />Em espera</span>}
+          {client.emEspera && <StatusBadge status="Em espera" size="xs" className="mt-1" />}
         </div>
       </div>
 
