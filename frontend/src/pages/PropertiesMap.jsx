@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
   ExternalLink,
   FileUp,
   FilterX,
@@ -36,12 +37,13 @@ import { compactControlClass } from '../components/ui/styles';
 import { EmptyState, LoadingState } from '../components/ui/FeedbackState';
 import StatusBadge from '../components/ui/StatusBadge';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
 import PropertyMap from '../components/properties/PropertyMap';
 import PropertyFormModal from '../components/properties/PropertyFormModal';
 import PropertyImportModal from '../components/properties/PropertyImportModal';
 import PropertyAddressSearch from '../components/properties/PropertyAddressSearch';
 import { PROPERTY_CITY_PRIORITY, PROPERTY_STATUSES, propertyCityColor } from '../components/properties/propertyConstants';
-import { createProperty, deleteProperty, fetchProperties, fetchPropertyDrivePhotos, geocodePropertyPlace, importProperties, propertyDriveImageUrl, refreshPropertyDrivePhotos, refreshPropertyListings, setPropertyFavorite, updateProperty } from '../services/api';
+import { clearAllProperties, createProperty, deleteProperty, downloadPropertiesBackup, fetchProperties, fetchPropertyDrivePhotos, geocodePropertyPlace, importProperties, propertyDriveImageUrl, refreshPropertyDrivePhotos, refreshPropertyListings, setPropertyFavorite, updateProperty } from '../services/api';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
@@ -194,6 +196,28 @@ function DeleteModal({ property, onClose, onConfirm, isDeleting }) {
   return <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Cancelar exclusão" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="h-5 w-5" /></span><h2 className="mt-4 text-lg font-bold text-gray-900">Excluir imóvel?</h2><p className="mt-2 text-sm leading-6 text-gray-500">O imóvel <strong>{cleanPropertyTitle(property.title)}</strong> será removido do mapa e não poderá ser recuperado.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="button" disabled={isDeleting} onClick={onConfirm} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">{isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}Excluir imóvel</button></div></div></div>;
 }
 
+function ClearMapModal({ count, confirmation, onConfirmationChange, onClose, onConfirm, isClearing }) {
+  const isConfirmed = confirmation === 'LIMPAR MAPA';
+  return (
+    <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/50 p-4 backdrop-blur-[2px]">
+      <button type="button" className="absolute inset-0" onClick={isClearing ? undefined : onClose} aria-label="Cancelar limpeza do mapa" />
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="p-6">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600"><AlertTriangle className="h-6 w-6" /></span>
+          <h2 className="mt-4 text-xl font-bold text-gray-900">Limpar todo o mapa?</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500">Esta ação excluirá permanentemente <strong>{count} imóvel(is)</strong>. O arquivo de backup já deve estar salvo no seu computador.</p>
+          <label className="mt-5 block text-xs font-bold text-gray-600">Digite <strong className="text-red-600">LIMPAR MAPA</strong> para confirmar</label>
+          <input autoFocus value={confirmation} onChange={event => onConfirmationChange(event.target.value.toUpperCase())} disabled={isClearing} placeholder="LIMPAR MAPA" className="mt-2 h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm font-semibold outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100 disabled:bg-gray-50" />
+        </div>
+        <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4">
+          <Button onClick={onClose} variant="ghost" disabled={isClearing}>Cancelar</Button>
+          <Button onClick={onConfirm} variant="danger" loading={isClearing} loadingLabel="Limpando..." disabled={!isConfirmed}>Excluir todos os imóveis</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RefreshListingsModal({ total, state, onClose, onConfirm }) {
   const progress = total ? Math.min(100, Math.round((state.processed / total) * 100)) : 0;
   const canClose = !state.running;
@@ -244,6 +268,7 @@ function RefreshListingsModal({ total, state, onClose, onConfirm }) {
 }
 
 export default function PropertiesMap() {
+  const { isAdmin } = useAuth();
   const propertyListRef = useRef(null);
   const sidebarResizeRef = useRef(null);
   const [properties, setProperties] = useState([]);
@@ -268,6 +293,11 @@ export default function PropertiesMap() {
   const [sidebarWidth, setSidebarWidth] = useState(350);
   const [showListingRefresh, setShowListingRefresh] = useState(false);
   const [listingRefresh, setListingRefresh] = useState(initialListingRefresh);
+  const [backupDownloaded, setBackupDownloaded] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [showClearMap, setShowClearMap] = useState(false);
+  const [clearConfirmation, setClearConfirmation] = useState('');
+  const [isClearingMap, setIsClearingMap] = useState(false);
 
   const loadProperties = useCallback(async () => {
     setIsLoading(true);
@@ -421,6 +451,7 @@ export default function PropertiesMap() {
       setEditingProperty(undefined);
       setCreationLocation(null);
       setLocatedAddress(null);
+      setBackupDownloaded(false);
       toast.success(editingProperty ? 'Imóvel atualizado no mapa.' : 'Imóvel cadastrado no mapa.');
     } catch (error) {
       toast.error(error.message);
@@ -435,12 +466,67 @@ export default function PropertiesMap() {
       const result = await importProperties(content, format);
       setShowImport(false);
       await loadProperties();
+      setBackupDownloaded(false);
       toast.success(`${result.imported} imóvel(is) importado(s).${result.skipped ? ` ${result.skipped} ignorado(s).` : ''}`);
       if (result.withoutCoordinates) toast.info(`${result.withoutCoordinates} imóvel(is) precisam de coordenadas para aparecer no mapa.`);
     } catch (error) {
       toast.error(error.message);
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const downloadBackup = async () => {
+    if (isBackingUp) return;
+    setIsBackingUp(true);
+    try {
+      const backup = await downloadPropertiesBackup();
+      const url = URL.createObjectURL(backup.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = backup.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setBackupDownloaded(true);
+      toast.success(`Backup de ${backup.count} imóvel(is) baixado.`);
+    } catch (error) {
+      setBackupDownloaded(false);
+      toast.error(error.message);
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const openClearMap = () => {
+    if (!backupDownloaded) {
+      toast.warning('Baixe o backup antes de limpar o mapa.');
+      return;
+    }
+    setClearConfirmation('');
+    setShowClearMap(true);
+  };
+
+  const confirmClearMap = async () => {
+    if (clearConfirmation !== 'LIMPAR MAPA' || isClearingMap) return;
+    setIsClearingMap(true);
+    try {
+      const result = await clearAllProperties(clearConfirmation);
+      setProperties([]);
+      setSelectedProperty(null);
+      setHoveredPropertyId(null);
+      setLocatedAddress(null);
+      setAddressQuery('');
+      setFilters(initialFilters);
+      setShowClearMap(false);
+      setClearConfirmation('');
+      setBackupDownloaded(false);
+      toast.success(`${result.deleted} imóvel(is) removido(s). O mapa está pronto para a nova importação.`);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setIsClearingMap(false);
     }
   };
 
@@ -453,6 +539,7 @@ export default function PropertiesMap() {
     let cursor = listingRefresh.cursor;
     let hasMore = true;
     setListingRefresh(current => ({ ...current, running: true, complete: false, error: '' }));
+    setBackupDownloaded(false);
     try {
       while (hasMore) {
         const result = await refreshPropertyListings(cursor, 6);
@@ -484,6 +571,7 @@ export default function PropertiesMap() {
   const runDrivePhotosRefresh = async () => {
     if (isRefreshingDrivePhotos || !drivePhotosTotal) return;
     setIsRefreshingDrivePhotos(true);
+    setBackupDownloaded(false);
     let cursor = 0;
     let hasMore = true;
     let updatedCount = 0;
@@ -519,6 +607,7 @@ export default function PropertiesMap() {
       setProperties(current => current.filter(item => item.id !== deletePending.id));
       if (selectedProperty?.id === deletePending.id) setSelectedProperty(null);
       setDeletePending(null);
+      setBackupDownloaded(false);
       toast.success('Imóvel excluído do mapa.');
     } catch (error) {
       toast.error(error.message);
@@ -530,6 +619,7 @@ export default function PropertiesMap() {
   const toggleFavorite = async property => {
     if (favoritePending.has(property.id)) return;
     const isFavorite = !property.isFavorite;
+    setBackupDownloaded(false);
     setFavoritePending(current => new Set(current).add(property.id));
     setProperties(current => current.map(item => item.id === property.id ? { ...item, isFavorite } : item));
     setSelectedProperty(current => current?.id === property.id ? { ...current, isFavorite } : current);
@@ -557,6 +647,16 @@ export default function PropertiesMap() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-gray-500"><strong className="text-gray-800">{filtered.length}</strong> imóvel(is) · <strong className="text-gray-800">{mappedCount}</strong> visível(is) no mapa</p>
           <div className="flex flex-wrap items-center gap-2">
+            {isAdmin() && (
+              <details className="group relative z-40">
+                <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"><Download className="h-4 w-4" />Backup<ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
+                <div className="absolute right-0 top-[calc(100%+6px)] w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                  <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); downloadBackup(); }} disabled={isBackingUp} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Download className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold text-gray-700">Baixar backup</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">Salva todos os dados em um arquivo JSON</span></span></button>
+                  <div className="my-1 border-t border-gray-100" />
+                  <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); openClearMap(); }} disabled={!properties.length || !backupDownloaded} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /><span><span className="block text-sm font-bold text-red-600">Limpar mapa</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">{backupDownloaded ? `Excluir os ${properties.length} imóveis cadastrados` : 'Disponível após baixar o backup'}</span></span></button>
+                </div>
+              </details>
+            )}
             <details className="group relative z-40">
               <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"><RefreshCw className={`h-4 w-4 ${isRefreshingDrivePhotos ? 'animate-spin' : ''}`} />Sincronizar<ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
               <div className="absolute right-0 top-[calc(100%+6px)] w-64 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
@@ -606,6 +706,7 @@ export default function PropertiesMap() {
       {showImport && <PropertyImportModal onClose={() => setShowImport(false)} onImport={handleImport} isImporting={isImporting} />}
       {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}
       {deletePending && <DeleteModal property={deletePending} onClose={() => setDeletePending(null)} onConfirm={confirmDelete} isDeleting={isDeleting} />}
+      {showClearMap && <ClearMapModal count={properties.length} confirmation={clearConfirmation} onConfirmationChange={setClearConfirmation} onClose={() => { setShowClearMap(false); setClearConfirmation(''); }} onConfirm={confirmClearMap} isClearing={isClearingMap} />}
     </div>
   );
 }

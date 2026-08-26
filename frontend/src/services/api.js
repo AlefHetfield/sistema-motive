@@ -175,6 +175,30 @@ export async function fetchProperties(filters = {}) {
     return response.json();
 }
 
+export async function downloadPropertiesBackup() {
+    const response = await fetch(`${API_BASE_URL}/api/properties/backup`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao gerar o backup do mapa.');
+    const metadata = await response.clone().json().catch(() => ({}));
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `backup-mapa-motive-${new Date().toISOString().slice(0, 10)}.json`;
+    return {
+        blob: await response.blob(),
+        fileName,
+        count: Number(response.headers.get('X-Property-Count') || metadata.count || 0),
+    };
+}
+
+export async function clearAllProperties(confirmation) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/all`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ confirmation }),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao limpar o mapa.');
+    return response.json();
+}
+
 export async function fetchNextPropertyReference(propertyType) {
     const query = new URLSearchParams({ propertyType: propertyType || 'Outro' });
     const response = await fetch(`${API_BASE_URL}/api/properties/next-reference?${query}`, { credentials: 'include' });

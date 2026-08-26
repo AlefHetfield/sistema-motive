@@ -420,6 +420,28 @@ export function createPropertyRouter(prisma, requireAuth) {
     }
   });
 
+  router.get('/backup', async (req, res) => {
+    if (req.user.role !== 'ADM') return res.status(403).json({ error: 'Apenas administradores podem gerar o backup do mapa.' });
+    try {
+      const properties = await prisma.property.findMany({ orderBy: { id: 'asc' } });
+      const date = new Date().toISOString().slice(0, 10);
+      const backup = {
+        format: 'sistema-motive-properties-backup',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        count: properties.length,
+        properties,
+      };
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="backup-mapa-motive-${date}.json"`);
+      res.setHeader('X-Property-Count', String(properties.length));
+      res.send(`${JSON.stringify(backup, null, 2)}\n`);
+    } catch (error) {
+      console.error('Erro ao gerar backup dos imóveis:', error);
+      res.status(500).json({ error: 'Não foi possível gerar o backup do mapa.' });
+    }
+  });
+
   router.get('/next-reference', async (req, res) => {
     try {
       res.json({ code: await nextPropertyReference(prisma, req.query.propertyType) });
@@ -750,6 +772,20 @@ export function createPropertyRouter(prisma, requireAuth) {
     } catch (error) {
       console.error('Erro ao atualizar favorito:', error);
       res.status(500).json({ error: 'Não foi possível atualizar o favorito.' });
+    }
+  });
+
+  router.delete('/all', async (req, res) => {
+    if (req.user.role !== 'ADM') return res.status(403).json({ error: 'Apenas administradores podem limpar o mapa.' });
+    if (req.body?.confirmation !== 'LIMPAR MAPA') {
+      return res.status(400).json({ error: 'Digite LIMPAR MAPA para confirmar a exclusão.' });
+    }
+    try {
+      const result = await prisma.property.deleteMany();
+      res.json({ deleted: result.count });
+    } catch (error) {
+      console.error('Erro ao limpar o mapa:', error);
+      res.status(500).json({ error: 'Não foi possível limpar o mapa.' });
     }
   });
 
