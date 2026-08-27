@@ -8,6 +8,7 @@ import { controlClass, formLabelClass, textAreaClass } from '../ui/styles';
 
 const PROPERTY_TYPES = ['Casa', 'Apartamento', 'Lote', 'Terreno', 'Sobrado', 'Chácara', 'Comercial', 'Outro'];
 const CONDITIONS = ['Novo', 'Usado', 'Em construção', 'Reformado', 'Para reforma'];
+const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const LISTING_FIELD_LABELS = {
   price: 'valor', area: 'área construída', landArea: 'terreno', bedrooms: 'dormitórios', suites: 'suítes', bathrooms: 'banheiros', parkingSpaces: 'vagas',
@@ -50,7 +51,7 @@ const motiveReferenceFromUrl = value => {
 
 const blankProperty = {
   code: '', title: '', description: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
-  price: 0, area: '', landArea: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', ownerName: '', ownerWhatsapp: '', latitude: '', longitude: '',
+  price: 0, area: '', landArea: '', landConfiguration: '', floor: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', ownerName: '', ownerWhatsapp: '', latitude: '', longitude: '',
   lastAvailabilityCheck: new Date().toISOString().slice(0, 10),
 };
 
@@ -100,6 +101,15 @@ export default function PropertyFormModal({ property, initialLocation, propertie
     touchedFields.current.add('sourceUrl');
     const siteReference = motiveReferenceFromUrl(value);
     setForm(current => ({ ...current, sourceUrl: value, ...(siteReference ? { code: siteReference } : {}) }));
+  };
+  const updatePropertyType = value => {
+    touchedFields.current.add('propertyType');
+    setForm(current => ({
+      ...current,
+      propertyType: value,
+      ...(!['Casa', 'Sobrado'].includes(value) ? { landConfiguration: '' } : {}),
+      ...(value !== 'Apartamento' ? { floor: '' } : {}),
+    }));
   };
 
   const applyListingResult = useCallback((result, { includeDetails = !property?.id } = {}) => {
@@ -286,12 +296,14 @@ export default function PropertyFormModal({ property, initialLocation, propertie
           <section className="border-t border-gray-100 pt-5">
             <h3 className="mb-3 text-sm font-bold text-gray-900">Características</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Select label="Tipo" value={form.propertyType || ''} onChange={event => update('propertyType', event.target.value)}>{PROPERTY_TYPES.map(item => <option key={item}>{item}</option>)}</Select>
+              <Select label="Tipo" value={form.propertyType || ''} onChange={event => updatePropertyType(event.target.value)}>{PROPERTY_TYPES.map(item => <option key={item}>{item}</option>)}</Select>
               <Select label="Condição" value={form.condition || ''} onChange={event => update('condition', event.target.value)}>{CONDITIONS.map(item => <option key={item}>{item}</option>)}</Select>
               <Select label="Status" value={form.status || 'Disponível'} onChange={event => update('status', event.target.value)}>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</Select>
               <Field label="Valor" inputMode="numeric" value={currency.format(Number(form.price) || 0)} onChange={event => update('price', Number(event.target.value.replace(/\D/g, '')) / 100)} />
               <Field label="Área construída (m²)" type="number" min="0" step="0.01" value={form.area ?? ''} onChange={event => update('area', event.target.value)} />
               <Field label="Terreno (m²)" type="number" min="0" step="0.01" value={form.landArea ?? ''} onChange={event => update('landArea', event.target.value)} />
+              {['Casa', 'Sobrado'].includes(form.propertyType) && <Select label="Configuração do terreno" value={form.landConfiguration || ''} onChange={event => update('landConfiguration', event.target.value)}><option value="">Não informado</option>{LAND_CONFIGURATIONS.map(item => <option key={item}>{item}</option>)}</Select>}
+              {form.propertyType === 'Apartamento' && <Field label="Andar" type="number" min="0" value={form.floor ?? ''} onChange={event => update('floor', event.target.value)} placeholder="0 para térreo" />}
               <Field label="Dormitórios" type="number" min="0" value={form.bedrooms ?? ''} onChange={event => update('bedrooms', event.target.value)} />
               <Field label="Suítes" type="number" min="0" value={form.suites ?? ''} onChange={event => update('suites', event.target.value)} />
               <Field label="Banheiros" type="number" min="0" value={form.bathrooms ?? ''} onChange={event => update('bathrooms', event.target.value)} />

@@ -138,6 +138,8 @@ model Property {
   price                 Float?
   area                  Float?
   landArea              Float?
+  landConfiguration     String?
+  floor                 Int?
   bedrooms              Int?
   suites                Int?
   bathrooms             Int?

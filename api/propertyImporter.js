@@ -46,6 +46,15 @@ const conditionValue = value => ({
   novo: 'Novo', nova: 'Novo', usado: 'Usado', usada: 'Usado', 'emconstrucao': 'Em construção', reformado: 'Reformado', reformada: 'Reformado',
 })[normalizeKey(value)] || clean(value, 80) || null;
 
+const landConfigurationValue = value => ({
+  meio: 'Meio', intermediario: 'Intermediário', inteiro: 'Inteiro',
+})[normalizeKey(value)] || null;
+
+const floorValue = value => {
+  if (['terreo', 'térreo'].includes(clean(value, 40).toLocaleLowerCase('pt-BR'))) return 0;
+  return integerValue(value);
+};
+
 const valueFrom = (record, aliases) => {
   const normalized = Object.fromEntries(Object.entries(record).map(([key, value]) => [normalizeKey(key), value]));
   for (const alias of aliases) {
@@ -127,6 +136,8 @@ const recordToProperty = (record) => {
   const motiveUrl = extractMotiveUrl(siteUrl, description, Object.values(record));
   const motiveReference = motiveReferenceFromUrl(motiveUrl);
   const driveFolderUrl = extractDriveFolderUrl(photosUrl, description, Object.values(record));
+  const propertyType = propertyTypeValue(valueFrom(record, ['tipo', 'type', 'tipo do imóvel', 'tipo do imovel']));
+  const terrainOrFloor = valueFrom(record, ['terreno / andar', 'terreno ou andar']);
   return {
     code: motiveReference || clean(valueFrom(record, ['código', 'codigo', 'ref', 'referência', 'referencia']) || titleCode, 60) || null,
     title: title || 'Imóvel importado',
@@ -134,12 +145,14 @@ const recordToProperty = (record) => {
     address: address || 'Endereço não informado',
     city: clean(valueFrom(record, ['cidade', 'city']), 120) || null,
     neighborhood: clean(valueFrom(record, ['bairro', 'neighborhood']), 160) || null,
-    propertyType: propertyTypeValue(valueFrom(record, ['tipo', 'type', 'tipo do imóvel', 'tipo do imovel'])),
+    propertyType,
     condition: conditionValue(valueFrom(record, ['condição', 'condicao', 'condition'])),
     status: inferStatus(record, description),
     price: priceValue(valueFrom(record, ['valor', 'preço', 'preco', 'price'])),
     area: numberValue(valueFrom(record, ['área', 'area', 'área construída', 'area construida'])),
     landArea: numberValue(valueFrom(record, ['terreno', 'área do terreno', 'area do terreno'])),
+    landConfiguration: ['Casa', 'Sobrado'].includes(propertyType) ? landConfigurationValue(valueFrom(record, ['configuração do terreno', 'configuracao do terreno']) || terrainOrFloor) : null,
+    floor: propertyType === 'Apartamento' ? floorValue(valueFrom(record, ['andar', 'pavimento']) || terrainOrFloor) : null,
     bedrooms: integerValue(valueFrom(record, ['dormitórios', 'dormitorios', 'quartos', 'bedrooms'])),
     suites: integerValue(valueFrom(record, ['suítes', 'suites', 'suite'])),
     bathrooms: integerValue(valueFrom(record, ['banheiros', 'banheiro', 'bathrooms'])),

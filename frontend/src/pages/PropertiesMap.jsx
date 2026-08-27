@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Route,
   Search,
+  SlidersHorizontal,
   Star,
   Trash2,
   UserRound,
@@ -49,7 +50,8 @@ import { clearAllProperties, createProperty, deleteProperty, downloadPropertiesB
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
-const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '' };
+const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '', floorGroup: '', suite: '', landConfiguration: '' };
+const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 const initialListingRefresh = { running: false, complete: false, processed: 0, updated: 0, failed: [], cursor: 0, error: '' };
 
 const formatDate = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não confirmada';
@@ -197,6 +199,8 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
         <div className="mt-5 space-y-3 border-t border-gray-100 pt-5 text-sm">
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Condição</span><strong className="text-gray-800">{property.condition || 'Não informada'}</strong></div>
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Tipo</span><strong className="text-gray-800">{property.propertyType || 'Não informado'}</strong></div>
+          {property.propertyType === 'Apartamento' && <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Andar</span><strong className="text-gray-800">{property.floor === null || property.floor === undefined ? 'Não informado' : Number(property.floor) === 0 ? 'Térreo' : `${property.floor}º andar`}</strong></div>}
+          {['Casa', 'Sobrado'].includes(property.propertyType) && <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Configuração do terreno</span><strong className="text-gray-800">{property.landConfiguration || 'Não informada'}</strong></div>}
           <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><UserRound className="h-4 w-4" />Captador</span><strong className="text-gray-800">{property.captador || 'Não informado'}</strong></div>
           {property.ownerName && <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><UserRound className="h-4 w-4" />Proprietário</span><strong className="text-right text-gray-800">{property.ownerName}</strong></div>}
           {property.ownerWhatsapp && <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><MessageCircle className="h-4 w-4" />WhatsApp</span><button type="button" onClick={copyOwnerWhatsapp} title="Copiar contato" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold text-emerald-700 transition hover:bg-emerald-100"><span>{formatWhatsapp(property.ownerWhatsapp)}</span><Copy className="h-3.5 w-3.5" /></button></div>}
@@ -366,6 +370,13 @@ export default function PropertiesMap() {
       if (filters.city && property.city !== filters.city) return false;
       if (filters.propertyType && property.propertyType !== filters.propertyType) return false;
       if (filters.bedrooms && Number(property.bedrooms || 0) < Number(filters.bedrooms)) return false;
+      if (filters.floorGroup === 'ground' && (property.floor === null || property.floor === undefined || Number(property.floor) !== 0)) return false;
+      if (filters.floorGroup === 'upper' && (property.floor === null || property.floor === undefined || Number(property.floor) < 1)) return false;
+      if (filters.floorGroup === 'unknown' && property.floor !== null && property.floor !== undefined) return false;
+      if (filters.suite === 'yes' && (property.suites === null || property.suites === undefined || Number(property.suites) < 1)) return false;
+      if (filters.suite === 'no' && Number(property.suites || 0) > 0) return false;
+      if (filters.landConfiguration === 'unknown' && property.landConfiguration) return false;
+      if (filters.landConfiguration && filters.landConfiguration !== 'unknown' && property.landConfiguration !== filters.landConfiguration) return false;
       return true;
     });
   }, [filters, properties]);
@@ -375,6 +386,9 @@ export default function PropertiesMap() {
     filters.city ? { field: 'city', label: filters.city } : null,
     filters.propertyType ? { field: 'propertyType', label: filters.propertyType } : null,
     filters.bedrooms ? { field: 'bedrooms', label: `${filters.bedrooms}+ dormitórios` } : null,
+    filters.floorGroup ? { field: 'floorGroup', label: filters.floorGroup === 'ground' ? 'Andar: térreo' : filters.floorGroup === 'upper' ? 'Andar: 1º ou superior' : 'Andar: não informado' } : null,
+    filters.suite ? { field: 'suite', label: filters.suite === 'yes' ? 'Suíte: sim' : 'Suíte: não' } : null,
+    filters.landConfiguration ? { field: 'landConfiguration', label: filters.landConfiguration === 'unknown' ? 'Terreno: não informado' : `Terreno: ${filters.landConfiguration}` } : null,
   ].filter(Boolean), [filters]);
   const mappedCount = filtered.filter(item => item.latitude !== null && item.longitude !== null).length;
   const cityGroups = useMemo(() => {
@@ -440,6 +454,12 @@ export default function PropertiesMap() {
     setEditingProperty(null);
   };
   const updateFilter = (field, value) => setFilters(current => ({ ...current, [field]: value }));
+  const updatePropertyTypeFilter = value => setFilters(current => ({
+    ...current,
+    propertyType: value,
+    ...(!['Casa', 'Sobrado'].includes(value) ? { landConfiguration: '' } : {}),
+    ...(value !== 'Apartamento' ? { floorGroup: '' } : {}),
+  }));
   const toggleCity = city => setCollapsedCities(current => {
     const next = new Set(current);
     if (next.has(city)) next.delete(city);
@@ -693,12 +713,20 @@ export default function PropertiesMap() {
             <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
           </div>
         </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px]">
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]">
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <select value={filters.status} onChange={event => updateFilter('status', event.target.value)} className={compactControlClass}><option value="">Todos os status</option>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.city} onChange={event => updateFilter('city', event.target.value)} className={compactControlClass}><option value="">Todas as cidades</option>{cities.map(item => <option key={item}>{item}</option>)}</select>
-          <select value={filters.propertyType} onChange={event => updateFilter('propertyType', event.target.value)} className={compactControlClass}><option value="">Todos os tipos</option>{propertyTypes.map(item => <option key={item}>{item}</option>)}</select>
+          <select value={filters.propertyType} onChange={event => updatePropertyTypeFilter(event.target.value)} className={compactControlClass}><option value="">Todos os tipos</option>{propertyTypes.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.bedrooms} onChange={event => updateFilter('bedrooms', event.target.value)} className={compactControlClass}><option value="">Dormitórios</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select>
+          <details className="group relative z-30">
+            <summary className={`${compactControlClass} flex cursor-pointer list-none items-center justify-between gap-2 font-bold text-gray-600 [&::-webkit-details-marker]:hidden`}><span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Mais filtros</span><ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
+            <div className="absolute right-0 top-[calc(100%+6px)] w-72 space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+              <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Suíte</span><select value={filters.suite} onChange={event => updateFilter('suite', event.target.value)} className={compactControlClass}><option value="">Todas</option><option value="yes">Sim</option><option value="no">Não</option></select></label>
+              {(!filters.propertyType || filters.propertyType === 'Apartamento') && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Andar</span><select value={filters.floorGroup} onChange={event => updateFilter('floorGroup', event.target.value)} className={compactControlClass}><option value="">Todos</option><option value="ground">Térreo</option><option value="upper">1º andar ou superior</option><option value="unknown">Não informado</option></select></label>}
+              {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Configuração do terreno</span><select value={filters.landConfiguration} onChange={event => updateFilter('landConfiguration', event.target.value)} className={compactControlClass}><option value="">Todas</option>{LAND_CONFIGURATIONS.map(item => <option key={item}>{item}</option>)}<option value="unknown">Não informado</option></select></label>}
+            </div>
+          </details>
         </div>
         {activeFilterChips.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-2.5 py-2"><span className="mr-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">Filtros ativos</span>{activeFilterChips.map(chip => <button key={chip.field} type="button" onClick={() => updateFilter(chip.field, '')} aria-label={`Remover filtro ${chip.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary/5">{chip.label}<X className="h-3 w-3" /></button>)}<span className="ml-auto text-xs font-semibold text-gray-500">{filtered.length} resultado(s)</span><button type="button" onClick={() => setFilters(initialFilters)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-700"><FilterX className="h-3.5 w-3.5" />Limpar todos</button></div>}
       </header>

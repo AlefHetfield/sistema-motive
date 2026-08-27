@@ -3,6 +3,7 @@ import { parsePropertyImport } from './propertyImporter.js';
 import { fetchDriveImage, listDriveFolderImages, normalizeDriveFolderUrl } from './googleDrive.js';
 
 const PROPERTY_STATUSES = ['Disponível', 'Reservado', 'Vendido', 'Indisponível', 'Confirmar disponibilidade'];
+const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 const PROPERTY_REFERENCE_PREFIXES = {
   Casa: 'CA',
   Apartamento: 'AP',
@@ -53,6 +54,11 @@ const motiveListingUrl = (value) => {
   if (!normalized) return null;
   const url = new URL(normalized);
   return url.protocol === 'https:' && MOTIVE_LISTING_HOSTS.has(url.hostname.toLowerCase()) ? url : null;
+};
+
+const landConfigurationValue = value => {
+  const text = cleanText(value, 40).toLocaleLowerCase('pt-BR');
+  return LAND_CONFIGURATIONS.find(item => item.toLocaleLowerCase('pt-BR') === text) || null;
 };
 
 const listingReferenceFromUrl = (value) => {
@@ -248,6 +254,8 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
     price: numberValue(source.price),
     area: numberValue(source.area),
     landArea: numberValue(source.landArea),
+    landConfiguration: landConfigurationValue(source.landConfiguration),
+    floor: integerValue(source.floor),
     bedrooms: integerValue(source.bedrooms),
     suites: integerValue(source.suites),
     bathrooms: integerValue(source.bathrooms),
@@ -278,7 +286,7 @@ const validateProperty = (data) => {
   const errors = [];
   if (!data.title) errors.push('Informe o título do imóvel.');
   if (!data.address) errors.push('Informe o endereço do imóvel.');
-  for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces']) {
+  for (const field of ['price', 'area', 'landArea', 'floor', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces']) {
     if (data[field] !== null && data[field] < 0) errors.push('Valores e quantidades não podem ser negativos.');
   }
   if (data.latitude !== null && (data.latitude < -90 || data.latitude > 90)) errors.push('Latitude inválida.');
@@ -403,6 +411,10 @@ export function createPropertyRouter(prisma, requireAuth) {
       const status = cleanText(req.query.status, 80);
       const city = cleanText(req.query.city, 120);
       const propertyType = cleanText(req.query.propertyType, 80);
+      const landConfigurationFilter = cleanText(req.query.landConfiguration, 40);
+      const landConfiguration = landConfigurationValue(landConfigurationFilter);
+      const floorGroup = cleanText(req.query.floorGroup, 30);
+      const suiteFilter = cleanText(req.query.suite, 30);
       const minPrice = numberValue(req.query.minPrice);
       const maxPrice = numberValue(req.query.maxPrice);
       const bedrooms = integerValue(req.query.bedrooms);
@@ -419,6 +431,13 @@ export function createPropertyRouter(prisma, requireAuth) {
           ...(status ? { status } : {}),
           ...(city ? { city } : {}),
           ...(propertyType ? { propertyType } : {}),
+          ...(landConfiguration ? { landConfiguration } : {}),
+          ...(landConfigurationFilter === 'unknown' ? { landConfiguration: null } : {}),
+          ...(floorGroup === 'ground' ? { floor: 0 } : {}),
+          ...(floorGroup === 'upper' ? { floor: { gte: 1 } } : {}),
+          ...(floorGroup === 'unknown' ? { floor: null } : {}),
+          ...(suiteFilter === 'yes' ? { suites: { gte: 1 } } : {}),
+          ...(suiteFilter === 'no' ? { AND: [{ OR: [{ suites: 0 }, { suites: null }] }] } : {}),
           ...(minPrice !== null || maxPrice !== null ? { price: {
             ...(minPrice !== null ? { gte: minPrice } : {}),
             ...(maxPrice !== null ? { lte: maxPrice } : {}),
