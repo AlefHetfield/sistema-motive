@@ -149,6 +149,7 @@ function DetailMetric({ icon, label, value }) {
 function PropertyDetail({ property, onClose, onEdit, onDelete }) {
   const [drivePhotos, setDrivePhotos] = useState([]);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [failedPhotoIds, setFailedPhotoIds] = useState(() => new Set());
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(Boolean(property.driveFolderUrl));
   useEffect(() => {
     let active = true;
@@ -162,9 +163,10 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
 
   const siteCover = property.photoUrl ? [{ id: 'site-cover', name: property.title, url: property.photoUrl }] : [];
   const driveGallery = drivePhotos.map(file => ({ id: file.id, name: file.name, url: propertyDriveImageUrl(file.id) }));
-  const gallery = [...siteCover, ...driveGallery];
-  if (!gallery.length && propertyCoverUrl(property)) gallery.push({ id: 'cover', name: property.title, url: propertyCoverUrl(property) });
-  const displayedPhoto = gallery[Math.min(activePhoto, Math.max(0, gallery.length - 1))];
+  const gallery = [...siteCover, ...driveGallery].filter(photo => !failedPhotoIds.has(photo.id));
+  if (!gallery.length && !siteCover.length && !isLoadingPhotos && propertyCoverUrl(property) && !failedPhotoIds.has('cover')) gallery.push({ id: 'cover', name: property.title, url: propertyCoverUrl(property) });
+  const displayedPhotoIndex = Math.min(activePhoto, Math.max(0, gallery.length - 1));
+  const displayedPhoto = gallery[displayedPhotoIndex];
   const hasCoordinates = Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude));
   const routeUrl = hasCoordinates ? `https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address)}`;
   const copyOwnerWhatsapp = async () => {
@@ -178,8 +180,8 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
   return (
     <aside className="absolute inset-y-3 right-3 z-20 flex w-[min(390px,calc(100%-24px))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
       <div className="relative h-48 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100">
-        {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setActivePhoto(current => current < gallery.length - 1 ? current + 1 : current)} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
-        {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto(current => (current - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto(current => (current + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{activePhoto + 1}/{gallery.length}</span></>}
+        {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setFailedPhotoIds(current => new Set(current).add(displayedPhoto.id))} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
+        {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
         <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
         <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
       </div>
