@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   ExternalLink,
   FileUp,
@@ -19,6 +20,7 @@ import {
   Loader2,
   MapPin,
   Maximize2,
+  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -51,7 +53,15 @@ const initialFilters = { search: '', status: '', city: '', propertyType: '', bed
 const initialListingRefresh = { running: false, complete: false, processed: 0, updated: 0, failed: [], cursor: 0, error: '' };
 
 const formatDate = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não confirmada';
-const propertyCoverUrl = property => property?.driveCoverFileId ? propertyDriveImageUrl(property.driveCoverFileId) : property?.photoUrl || '';
+const whatsappDigits = value => String(value || '').replace(/\D/g, '');
+const formatWhatsapp = value => {
+  const digits = whatsappDigits(value);
+  const local = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+  if (local.length === 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  if (local.length === 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  return value || '';
+};
+const propertyCoverUrl = property => property?.photoUrl || (property?.driveCoverFileId ? propertyDriveImageUrl(property.driveCoverFileId) : '');
 
 const cleanPropertyTitle = value => String(value || '')
   .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
@@ -108,12 +118,13 @@ const distanceInMeters = (first, second) => {
 function PropertyListCard({ property, selected, highlighted, onClick, onHover, onToggleFavorite, isFavoriteUpdating }) {
   const displayTitle = propertyCardTitle(property);
   const coverUrl = propertyCoverUrl(property);
+  const driveCoverUrl = property.driveCoverFileId ? propertyDriveImageUrl(property.driveCoverFileId) : '';
   return (
     <div data-property-id={property.id} onMouseEnter={() => onHover(property.id)} onMouseLeave={() => onHover(null)} className={`relative w-full overflow-hidden rounded-xl border bg-white text-left transition [content-visibility:auto] [contain-intrinsic-size:76px] ${selected ? 'border-primary shadow-md ring-2 ring-primary/10' : highlighted ? 'border-primary/50 shadow-sm ring-2 ring-primary/5' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'}`}>
       <button type="button" onClick={onClick} className="block w-full text-left">
         <div className="flex gap-2.5 p-2.5">
         <div className="flex h-[52px] w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
-          {coverUrl ? <img src={coverUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-gray-300" />}
+          {coverUrl ? <img src={coverUrl} alt="" loading="lazy" decoding="async" onError={event => { if (driveCoverUrl && !event.currentTarget.dataset.driveFallback) { event.currentTarget.dataset.driveFallback = 'true'; event.currentTarget.src = driveCoverUrl; } }} className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-gray-300" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1.5"><p className="truncate pr-7 text-sm font-bold leading-4 text-gray-900" title={displayTitle}>{displayTitle}</p><ChevronRight className="h-4 w-4 shrink-0 text-gray-300" /></div>
@@ -147,16 +158,25 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
     return () => { active = false; };
   }, [property.driveFolderUrl, property.id]);
 
-  const gallery = drivePhotos.length
-    ? drivePhotos.map(file => ({ id: file.id, name: file.name, url: propertyDriveImageUrl(file.id) }))
-    : propertyCoverUrl(property) ? [{ id: 'cover', name: property.title, url: propertyCoverUrl(property) }] : [];
+  const siteCover = property.photoUrl ? [{ id: 'site-cover', name: property.title, url: property.photoUrl }] : [];
+  const driveGallery = drivePhotos.map(file => ({ id: file.id, name: file.name, url: propertyDriveImageUrl(file.id) }));
+  const gallery = [...siteCover, ...driveGallery];
+  if (!gallery.length && propertyCoverUrl(property)) gallery.push({ id: 'cover', name: property.title, url: propertyCoverUrl(property) });
   const displayedPhoto = gallery[Math.min(activePhoto, Math.max(0, gallery.length - 1))];
   const hasCoordinates = Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude));
   const routeUrl = hasCoordinates ? `https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address)}`;
+  const copyOwnerWhatsapp = async () => {
+    try {
+      await navigator.clipboard.writeText(formatWhatsapp(property.ownerWhatsapp));
+      toast.success('Contato do proprietário copiado.');
+    } catch {
+      toast.error('Não foi possível copiar o contato.');
+    }
+  };
   return (
     <aside className="absolute inset-y-3 right-3 z-20 flex w-[min(390px,calc(100%-24px))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
       <div className="relative h-48 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100">
-        {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
+        {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setActivePhoto(current => current < gallery.length - 1 ? current + 1 : current)} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
         {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto(current => (current - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto(current => (current + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{activePhoto + 1}/{gallery.length}</span></>}
         <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
         <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
@@ -178,6 +198,8 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Condição</span><strong className="text-gray-800">{property.condition || 'Não informada'}</strong></div>
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Tipo</span><strong className="text-gray-800">{property.propertyType || 'Não informado'}</strong></div>
           <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><UserRound className="h-4 w-4" />Captador</span><strong className="text-gray-800">{property.captador || 'Não informado'}</strong></div>
+          {property.ownerName && <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><UserRound className="h-4 w-4" />Proprietário</span><strong className="text-right text-gray-800">{property.ownerName}</strong></div>}
+          {property.ownerWhatsapp && <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><MessageCircle className="h-4 w-4" />WhatsApp</span><button type="button" onClick={copyOwnerWhatsapp} title="Copiar contato" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold text-emerald-700 transition hover:bg-emerald-100"><span>{formatWhatsapp(property.ownerWhatsapp)}</span><Copy className="h-3.5 w-3.5" /></button></div>}
           <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><CalendarCheck className="h-4 w-4" />Disponibilidade</span><strong className="text-gray-800">{formatDate(property.lastAvailabilityCheck)}</strong></div>
         </div>
         {property.description && <div className="mt-5 whitespace-pre-wrap break-words border-t border-gray-100 pt-5 text-sm leading-6 text-gray-600">{property.description}</div>}
@@ -335,8 +357,11 @@ export default function PropertiesMap() {
   const propertyTypes = useMemo(() => [...new Set(properties.map(item => item.propertyType).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [properties]);
   const filtered = useMemo(() => {
     const search = filters.search.trim().toLocaleLowerCase('pt-BR');
+    const searchDigits = search.replace(/\D/g, '');
     return properties.filter(property => {
-      if (search && ![property.title, property.code, property.address, property.neighborhood].some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(search))) return false;
+      const matchesText = [property.title, property.code, property.address, property.neighborhood, property.ownerName].some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(search));
+      const matchesWhatsapp = searchDigits && whatsappDigits(property.ownerWhatsapp).includes(searchDigits);
+      if (search && !matchesText && !matchesWhatsapp) return false;
       if (filters.status && property.status !== filters.status) return false;
       if (filters.city && property.city !== filters.city) return false;
       if (filters.propertyType && property.propertyType !== filters.propertyType) return false;
@@ -669,7 +694,7 @@ export default function PropertiesMap() {
           </div>
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px]">
-          <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar nos imóveis" className={`${compactControlClass} pl-9`} /></label>
+          <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <select value={filters.status} onChange={event => updateFilter('status', event.target.value)} className={compactControlClass}><option value="">Todos os status</option>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.city} onChange={event => updateFilter('city', event.target.value)} className={compactControlClass}><option value="">Todas as cidades</option>{cities.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.propertyType} onChange={event => updateFilter('propertyType', event.target.value)} className={compactControlClass}><option value="">Todos os tipos</option>{propertyTypes.map(item => <option key={item}>{item}</option>)}</select>

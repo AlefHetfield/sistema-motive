@@ -95,6 +95,19 @@ const extractMotiveUrl = (...values) => {
   return match ? match.replace(/&amp;/gi, '&').replace(/[),.;]+$/, '') : null;
 };
 
+const motiveReferenceFromUrl = (value) => {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!['motiveimoveis.com', 'www.motiveimoveis.com'].includes(url.hostname.toLowerCase())) return null;
+    const candidate = decodeURIComponent(url.pathname.split('/').filter(Boolean).at(-1) || '').trim();
+    if (!candidate || !/\d/.test(candidate) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(candidate)) return null;
+    return candidate.toUpperCase().slice(0, 60);
+  } catch {
+    return null;
+  }
+};
+
 const extractDriveFolderUrl = (...values) => {
   const text = values.flatMap(value => Array.isArray(value) ? value : [value]).filter(Boolean).join('\n');
   const id = text.match(/https?:\/\/drive\.google\.com\/drive\/folders\/([\w-]+)/i)?.[1]
@@ -112,9 +125,10 @@ const recordToProperty = (record) => {
   const photosUrl = valueFrom(record, ['fotos', 'pasta de fotos']);
   const siteUrl = valueFrom(record, ['site', 'link do imóvel', 'link do imovel']);
   const motiveUrl = extractMotiveUrl(siteUrl, description, Object.values(record));
+  const motiveReference = motiveReferenceFromUrl(motiveUrl);
   const driveFolderUrl = extractDriveFolderUrl(photosUrl, description, Object.values(record));
   return {
-    code: clean(valueFrom(record, ['código', 'codigo', 'ref', 'referência', 'referencia']) || titleCode, 60) || null,
+    code: motiveReference || clean(valueFrom(record, ['código', 'codigo', 'ref', 'referência', 'referencia']) || titleCode, 60) || null,
     title: title || 'Imóvel importado',
     description: description || null,
     address: address || 'Endereço não informado',
@@ -134,6 +148,8 @@ const recordToProperty = (record) => {
     sourceUrl: motiveUrl || extractUrl(siteUrl) || extractUrl(photosUrl) || extractUrl(description),
     driveFolderUrl,
     captador: clean(valueFrom(record, ['captador', 'corretor', 'responsável', 'responsavel']), 160) || null,
+    ownerName: clean(valueFrom(record, ['proprietário', 'proprietario', 'nome do proprietário', 'nome do proprietario', 'owner']), 160) || null,
+    ownerWhatsapp: clean(valueFrom(record, ['whatsapp', 'telefone do proprietário', 'telefone do proprietario', 'contato do proprietário', 'contato do proprietario']), 40) || null,
     isFavorite: booleanValue(valueFrom(record, ['favorito', 'favorite', 'is favorite', 'isfavorite'])),
     ...coordinates,
   };

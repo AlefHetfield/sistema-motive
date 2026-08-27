@@ -55,6 +55,14 @@ const motiveListingUrl = (value) => {
   return url.protocol === 'https:' && MOTIVE_LISTING_HOSTS.has(url.hostname.toLowerCase()) ? url : null;
 };
 
+const listingReferenceFromUrl = (value) => {
+  const url = motiveListingUrl(value);
+  if (!url) return null;
+  const candidate = decodeURIComponent(url.pathname.split('/').filter(Boolean).at(-1) || '').trim();
+  if (!candidate || !/\d/.test(candidate) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(candidate)) return null;
+  return candidate.toUpperCase().slice(0, 60);
+};
+
 const decodeHtml = value => String(value || '')
   .replace(/&amp;/gi, '&')
   .replace(/&quot;/gi, '"')
@@ -168,6 +176,7 @@ const listingPreview = async (sourceUrl) => {
     const schemaImages = Array.isArray(schema.image) ? schema.image : [schema.image].filter(Boolean);
     const imageValue = metaContent(html, ['og:image', 'og:image:secure_url', 'twitter:image']) || schemaImages[0];
     const property = listingDetails(html);
+    property.externalReference = property.externalReference || listingReferenceFromUrl(response.url);
     if (!imageValue && !Object.values(property).some(value => value !== null)) {
       const error = new Error('Não encontrei informações publicadas nesse anúncio.');
       error.status = 422;
@@ -248,6 +257,8 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
     driveFolderUrl: normalizeDriveFolderUrl(source.driveFolderUrl),
     driveCoverFileId: nullableText(source.driveCoverFileId, 300),
     captador: nullableText(source.captador, 160),
+    ownerName: nullableText(source.ownerName, 160),
+    ownerWhatsapp: nullableText(String(source.ownerWhatsapp ?? '').replace(/\D/g, ''), 20),
     latitude: numberValue(source.latitude),
     longitude: numberValue(source.longitude),
     lastAvailabilityCheck: dateValue(source.lastAvailabilityCheck),
@@ -372,6 +383,7 @@ const propertyKey = property => `${cleanText(property.title, 220).toLocaleLowerC
 
 const enrichPropertyFromListing = (data, listing) => {
   if (!listing) return data;
+  if (listing.externalReference) data.code = cleanText(listing.externalReference, 60).toUpperCase();
   const empty = value => value === null || value === undefined || value === '' || value === 0;
   for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces', 'neighborhood', 'city', 'propertyType', 'description']) {
     const value = listing[field];
@@ -387,6 +399,7 @@ export function createPropertyRouter(prisma, requireAuth) {
   router.get('/', async (req, res) => {
     try {
       const search = cleanText(req.query.search, 120);
+      const searchDigits = search.replace(/\D/g, '');
       const status = cleanText(req.query.status, 80);
       const city = cleanText(req.query.city, 120);
       const propertyType = cleanText(req.query.propertyType, 80);
@@ -400,6 +413,8 @@ export function createPropertyRouter(prisma, requireAuth) {
             { address: { contains: search, mode: 'insensitive' } },
             { neighborhood: { contains: search, mode: 'insensitive' } },
             { code: { contains: search, mode: 'insensitive' } },
+            { ownerName: { contains: search, mode: 'insensitive' } },
+            ...(searchDigits ? [{ ownerWhatsapp: { contains: searchDigits } }] : []),
           ] } : {}),
           ...(status ? { status } : {}),
           ...(city ? { city } : {}),
@@ -587,6 +602,7 @@ export function createPropertyRouter(prisma, requireAuth) {
               lastAvailabilityCheck: new Date(),
             };
             if (preview.imageUrl) data.photoUrl = preview.imageUrl;
+            if (preview.property?.externalReference) data.code = cleanText(preview.property.externalReference, 60).toUpperCase();
             for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces', 'neighborhood', 'city', 'propertyType', 'description']) {
               const value = preview.property?.[field];
               if (value !== null && value !== undefined && value !== '') data[field] = value;
@@ -628,10 +644,11 @@ export function createPropertyRouter(prisma, requireAuth) {
     try {
       const properties = parsePropertyImport(req.body?.content, req.body?.format);
       const existing = await prisma.property.findMany({
-        where: { latitude: { not: null }, longitude: { not: null } },
         select: { code: true, title: true, latitude: true, longitude: true },
       });
-      const keys = new Set(existing.map(propertyKey));
+      const keys = new Set(existing
+        .filter(property => property.latitude !== null && property.longitude !== null)
+        .map(propertyKey));
       const usedCodes = new Set(existing.map(property => property.code).filter(Boolean));
       const referenceCounters = new Map();
       for (const code of usedCodes) {
@@ -656,12 +673,16 @@ export function createPropertyRouter(prisma, requireAuth) {
         const normalized = normalizeProperty(item, req.user);
         const errors = validateProperty(normalized);
         const key = normalized.latitude !== null && normalized.longitude !== null ? propertyKey(normalized) : null;
-        if (errors.length || (key && keys.has(key))) {
+        const siteReference = listingReferenceFromUrl(normalized.sourceUrl);
+        if (errors.length || (key && keys.has(key)) || (siteReference && usedCodes.has(siteReference))) {
           skipped += 1;
           continue;
         }
         const requestedCode = cleanText(normalized.code, 60);
-        if (requestedCode && !usedCodes.has(requestedCode)) {
+        if (siteReference) {
+          normalized.code = siteReference;
+          usedCodes.add(siteReference);
+        } else if (requestedCode && !usedCodes.has(requestedCode)) {
           normalized.code = requestedCode;
           usedCodes.add(requestedCode);
           const match = requestedCode.match(/^([A-Z]{2})-(\d+)$/i);
@@ -690,16 +711,18 @@ export function createPropertyRouter(prisma, requireAuth) {
   router.post('/', async (req, res) => {
     try {
       const data = normalizeProperty(req.body, req.user);
+      const siteReference = listingReferenceFromUrl(data.sourceUrl);
+      if (siteReference) data.code = siteReference;
       if (motiveListingUrl(data.sourceUrl)) {
         try {
           const preview = await listingPreview(data.sourceUrl);
-          if (!data.photoUrl) data.photoUrl = preview.imageUrl;
+          if (preview.imageUrl) data.photoUrl = preview.imageUrl;
           enrichPropertyFromListing(data, preview.property);
         } catch (error) {
           console.warn('Cadastro seguirá sem dados automáticos:', error.message);
         }
       }
-      data.code = await nextPropertyReference(prisma, data.propertyType);
+      data.code = data.code || await nextPropertyReference(prisma, data.propertyType);
       data.title = data.title || automaticPropertyTitle(data);
       const errors = validateProperty(data);
       if (errors.length) return res.status(400).json({ error: errors[0], details: errors });
@@ -731,11 +754,13 @@ export function createPropertyRouter(prisma, requireAuth) {
       const existing = await prisma.property.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: 'Imóvel não encontrado.' });
       const data = normalizeProperty(req.body, req.user, { partial: true });
+      const siteReference = listingReferenceFromUrl(data.sourceUrl);
+      if (siteReference) data.code = siteReference;
       if (data.driveFolderUrl !== existing.driveFolderUrl) data.driveCoverFileId = null;
       if (motiveListingUrl(data.sourceUrl)) {
         try {
           const preview = await listingPreview(data.sourceUrl);
-          if (!data.photoUrl) data.photoUrl = preview.imageUrl;
+          if (preview.imageUrl) data.photoUrl = preview.imageUrl;
           enrichPropertyFromListing(data, preview.property);
         } catch (error) {
           console.warn('Atualização seguirá sem dados automáticos:', error.message);

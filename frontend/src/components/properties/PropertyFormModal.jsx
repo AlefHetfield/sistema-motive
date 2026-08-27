@@ -14,6 +14,15 @@ const LISTING_FIELD_LABELS = {
   neighborhood: 'bairro', city: 'cidade', propertyType: 'tipo', description: 'descrição',
 };
 const hasListingValue = value => value !== null && value !== undefined && value !== '' && value !== 0;
+const whatsappDigits = value => String(value || '').replace(/\D/g, '').slice(0, 13);
+const formatWhatsapp = value => {
+  const digits = whatsappDigits(value);
+  const local = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+  if (local.length <= 2) return local;
+  if (local.length <= 6) return `(${local.slice(0, 2)}) ${local.slice(2)}`;
+  if (local.length <= 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7, 11)}`;
+};
 const titleWithoutPrice = value => String(value || '')
   .replace(/\s*,?\s*R\$\s*[\d.\s]+(?:,\d{2})?\s*$/i, '')
   .trim();
@@ -29,10 +38,19 @@ const isMotiveListingUrl = value => {
     return false;
   }
 };
+const motiveReferenceFromUrl = value => {
+  if (!isMotiveListingUrl(value)) return '';
+  try {
+    const candidate = decodeURIComponent(new URL(value).pathname.split('/').filter(Boolean).at(-1) || '').trim();
+    return candidate && /\d/.test(candidate) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(candidate) ? candidate.toUpperCase().slice(0, 60) : '';
+  } catch {
+    return '';
+  }
+};
 
 const blankProperty = {
   code: '', title: '', description: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
-  price: 0, area: '', landArea: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', latitude: '', longitude: '',
+  price: 0, area: '', landArea: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', ownerName: '', ownerWhatsapp: '', latitude: '', longitude: '',
   lastAvailabilityCheck: new Date().toISOString().slice(0, 10),
 };
 
@@ -78,6 +96,11 @@ export default function PropertyFormModal({ property, initialLocation, propertie
     touchedFields.current.add(field);
     setForm(current => ({ ...current, [field]: value }));
   };
+  const updateSourceUrl = value => {
+    touchedFields.current.add('sourceUrl');
+    const siteReference = motiveReferenceFromUrl(value);
+    setForm(current => ({ ...current, sourceUrl: value, ...(siteReference ? { code: siteReference } : {}) }));
+  };
 
   const applyListingResult = useCallback((result, { includeDetails = !property?.id } = {}) => {
     const availableFields = Object.entries(result.property || {})
@@ -87,6 +110,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
     setForm(current => {
       const next = { ...current };
       if (result.imageUrl) next.photoUrl = result.imageUrl;
+      if (result.property?.externalReference) next.code = result.property.externalReference;
       if (includeDetails) {
         for (const field of availableFields) {
           if (!touchedFields.current.has(field)) next[field] = result.property[field];
@@ -105,6 +129,10 @@ export default function PropertyFormModal({ property, initialLocation, propertie
 
   useEffect(() => {
     if (property?.id) return undefined;
+    if (isMotiveListingUrl(form.sourceUrl)) {
+      setIsGeneratingCode(false);
+      return undefined;
+    }
     let active = true;
     setIsGeneratingCode(true);
     fetchNextPropertyReference(form.propertyType)
@@ -112,7 +140,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
       .catch(error => active && toast.error(error.message))
       .finally(() => active && setIsGeneratingCode(false));
     return () => { active = false; };
-  }, [form.propertyType, property?.id]);
+  }, [form.propertyType, form.sourceUrl, property?.id]);
 
   useEffect(() => {
     if (!initialLocation) return undefined;
@@ -274,11 +302,20 @@ export default function PropertyFormModal({ property, initialLocation, propertie
           </section>
 
           <section className="border-t border-gray-100 pt-5">
+            <h3 className="mb-1 text-sm font-bold text-gray-900">Proprietário</h3>
+            <p className="mb-3 text-xs leading-5 text-gray-400">Esses dados também poderão ser encontrados pela busca geral do mapa.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Nome do proprietário" value={form.ownerName || ''} onChange={event => update('ownerName', event.target.value)} placeholder="Nome completo" />
+              <Field label="WhatsApp do proprietário" type="tel" inputMode="tel" value={formatWhatsapp(form.ownerWhatsapp)} onChange={event => update('ownerWhatsapp', whatsappDigits(event.target.value))} placeholder="(19) 99999-9999" />
+            </div>
+          </section>
+
+          <section className="border-t border-gray-100 pt-5">
             <h3 className="mb-3 text-sm font-bold text-gray-900">Apresentação</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <div className="flex items-end gap-2">
-                  <Field className="min-w-0 flex-1" label="Link do imóvel no site" type="url" value={form.sourceUrl || ''} onChange={event => update('sourceUrl', event.target.value)} placeholder="https://www.motiveimoveis.com/imovel/..." />
+                  <Field className="min-w-0 flex-1" label="Link do imóvel no site" type="url" value={form.sourceUrl || ''} onChange={event => updateSourceUrl(event.target.value)} placeholder="https://www.motiveimoveis.com/imovel/..." />
                   <button type="button" onClick={refreshListingPhoto} disabled={isLoadingPhoto || !form.sourceUrl} className="inline-flex h-[42px] shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-bold text-gray-600 hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50">
                     {isLoadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     <span className="hidden sm:inline">Atualizar dados</span>
@@ -294,7 +331,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
                     <span className="hidden sm:inline">Carregar fotos</span>
                   </button>
                 </div>
-                <p className={`mt-1.5 text-xs ${drivePreviewError ? 'text-amber-600' : 'text-gray-400'}`}>{drivePreviewError || (drivePreview.length ? `${drivePreview.length} foto(s) vinculada(s). A primeira será usada como capa.` : 'Cole o link da pasta para usar a primeira imagem como capa e as demais na galeria.')}</p>
+                <p className={`mt-1.5 text-xs ${drivePreviewError ? 'text-amber-600' : 'text-gray-400'}`}>{drivePreviewError || (drivePreview.length ? `${drivePreview.length} foto(s) vinculada(s). O Drive será usado na galeria e como alternativa à foto do site.` : 'Cole o link da pasta para usar as imagens na galeria e como alternativa à foto do site.')}</p>
                 {drivePreview.length > 0 && <div className="mt-2 flex gap-2 overflow-x-auto pb-1">{drivePreview.slice(0, 8).map((file, index) => <img key={file.id} src={propertyDriveImageUrl(file.id)} alt={file.name || `Foto ${index + 1}`} className={`h-16 w-24 shrink-0 rounded-lg object-cover ring-2 ${index === 0 ? 'ring-primary' : 'ring-transparent'}`} />)}</div>}
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50 sm:col-span-2">

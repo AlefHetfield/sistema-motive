@@ -147,6 +147,8 @@ model Property {
   driveFolderUrl        String?
   driveCoverFileId      String?
   captador              String?
+  ownerName             String?
+  ownerWhatsapp         String?
   isFavorite            Boolean  @default(false)
   latitude              Float?
   longitude             Float?
