@@ -9,6 +9,20 @@ const cleanMultiline = (value, max = 5000) => String(value ?? '')
   .replace(/\u0000/g, '')
   .trim()
   .slice(0, max);
+const htmlToMultiline = (value, max = 5000) => cleanMultiline(String(value ?? '')
+  .replace(/<br\s*\/?\s*>/gi, '\n')
+  .replace(/<li\b[^>]*>/gi, '• ')
+  .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
+  .replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;|&#160;/gi, ' ')
+  .replace(/&amp;/gi, '&')
+  .replace(/&lt;/gi, '<')
+  .replace(/&gt;/gi, '>')
+  .replace(/&quot;/gi, '"')
+  .replace(/&#39;|&apos;/gi, "'")
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n[ \t]+/g, '\n')
+  .replace(/\n{3,}/g, '\n\n'), max);
 const normalizeKey = (value) => clean(value, 100)
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -124,9 +138,10 @@ const extractDriveFolderUrl = (...values) => {
   return id ? `https://drive.google.com/drive/folders/${id}` : null;
 };
 
-const recordToProperty = (record) => {
+const recordToProperty = (record, { descriptionIsInternal = false } = {}) => {
   const title = clean(valueFrom(record, ['name', 'nome', 'title', 'título', 'titulo']), 220);
   const description = cleanMultiline(valueFrom(record, ['description', 'descrição', 'descricao', 'observações', 'observacoes']), 5000);
+  const additionalInformation = cleanMultiline(valueFrom(record, ['informações complementares', 'informacoes complementares', 'informações internas', 'informacoes internas']), 5000);
   const coordinates = extractCoordinates(record);
   const address = clean(valueFrom(record, ['address', 'endereço', 'endereco', 'localização', 'localizacao']), 500);
   const titleCode = title.match(/^\s*([A-Za-z]{1,5}[-_]?\d+)\s*[-–]/)?.[1] || '';
@@ -141,7 +156,8 @@ const recordToProperty = (record) => {
   return {
     code: motiveReference || clean(valueFrom(record, ['código', 'codigo', 'ref', 'referência', 'referencia']) || titleCode, 60) || null,
     title: title || 'Imóvel importado',
-    description: description || null,
+    description: descriptionIsInternal ? null : description || null,
+    additionalInformation: descriptionIsInternal ? description || null : additionalInformation || null,
     address: address || 'Endereço não informado',
     city: clean(valueFrom(record, ['cidade', 'city']), 120) || null,
     neighborhood: clean(valueFrom(record, ['bairro', 'neighborhood']), 160) || null,
@@ -188,7 +204,7 @@ const parseKml = (content) => {
     const rawDescription = textOf(placemark, 'description');
     const record = {
       name: textOf(placemark, 'name'),
-      description: rawDescription.replace(/<[^>]+>/g, ' '),
+      description: htmlToMultiline(rawDescription),
       fotos: extractUrl(rawDescription, true) || '',
       site: extractUrl(rawDescription) || '',
       city: placemarkFolder(placemark),
@@ -200,7 +216,7 @@ const parseKml = (content) => {
     for (const data of Array.from(placemark.getElementsByTagName('SimpleData'))) {
       record[data.getAttribute('name') || ''] = clean(data.textContent, 5000);
     }
-    return recordToProperty(record);
+    return recordToProperty(record, { descriptionIsInternal: true });
   });
 };
 

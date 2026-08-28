@@ -245,6 +245,7 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
     code: nullableText(source.code, 60),
     title: cleanText(source.title, 220),
     description: nullableMultilineText(source.description, 5000),
+    additionalInformation: nullableMultilineText(source.additionalInformation, 5000),
     address: cleanText(source.address, 500),
     city: nullableText(source.city, 120),
     neighborhood: nullableText(source.neighborhood, 160),

@@ -50,7 +50,7 @@ const motiveReferenceFromUrl = value => {
 };
 
 const blankProperty = {
-  code: '', title: '', description: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
+  code: '', title: '', description: '', additionalInformation: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
   price: 0, area: '', landArea: '', landConfiguration: '', floor: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', ownerName: '', ownerWhatsapp: '', latitude: '', longitude: '',
   lastAvailabilityCheck: new Date().toISOString().slice(0, 10),
 };
@@ -361,6 +361,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
                 )}
               </div>
               <label className="block sm:col-span-2"><span className={formLabelClass}>Descrição</span><textarea rows={6} value={form.description || ''} onChange={event => update('description', event.target.value)} placeholder="Condições, diferenciais e observações do imóvel..." className={textAreaClass} /></label>
+              <label className="block sm:col-span-2"><span className={formLabelClass}>Informações complementares</span><textarea rows={5} value={form.additionalInformation || ''} onChange={event => update('additionalInformation', event.target.value)} placeholder="Informações internas, negociações, observações e detalhes que não serão publicados no site..." className={textAreaClass} /><span className="mt-1.5 block text-xs text-gray-400">Uso interno: este conteúdo não faz parte da descrição do anúncio.</span></label>
             </div>
           </section>
         </div>

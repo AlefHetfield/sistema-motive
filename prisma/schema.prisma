@@ -129,6 +129,7 @@ model Property {
   code                  String?
   title                 String
   description           String?
+  additionalInformation String?
   address               String
   city                  String?
   neighborhood          String?
