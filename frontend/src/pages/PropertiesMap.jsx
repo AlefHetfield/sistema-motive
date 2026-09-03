@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Bath,
   BedDouble,
@@ -297,6 +298,7 @@ function RefreshListingsModal({ total, state, onClose, onConfirm }) {
 
 export default function PropertiesMap() {
   const { isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const propertyListRef = useRef(null);
   const sidebarResizeRef = useRef(null);
   const [properties, setProperties] = useState([]);
@@ -340,6 +342,18 @@ export default function PropertiesMap() {
   }, []);
 
   useEffect(() => { loadProperties(); }, [loadProperties]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const requestedPropertyId = Number(searchParams.get('property'));
+    if (!requestedPropertyId) return;
+    const property = properties.find(item => item.id === requestedPropertyId);
+    if (!property) return;
+    setSelectedProperty(property);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('property');
+    setSearchParams(nextParams, { replace: true });
+  }, [isLoading, properties, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedProperty?.id || !propertyListRef.current) return undefined;

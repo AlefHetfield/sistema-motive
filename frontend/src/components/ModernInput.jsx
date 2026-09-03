@@ -16,6 +16,7 @@ export function ModernInput({
   maxLength,
   disabled = false,
   className = '',
+  inputClassName = '',
   ...rest
 }) {
   return (
@@ -36,7 +37,7 @@ export function ModernInput({
           required={required}
           maxLength={maxLength}
           disabled={disabled}
-          className={`${controlClass} ${Icon ? 'pl-10' : ''}`}
+          className={`${controlClass} ${Icon ? 'pl-10' : ''} ${inputClassName}`}
           {...rest}
         />
       </div>

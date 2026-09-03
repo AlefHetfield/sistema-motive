@@ -1,215 +1,130 @@
-import { useState, useEffect } from 'react';
-import { fetchClients } from '../services/api';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+    AlertCircle,
+    AlertTriangle,
+    ArrowRight,
+    Building2,
+    CalendarDays,
+    CheckCircle2,
+    ChevronRight,
+    Clock3,
+    FileText,
+    Home,
+    MapPinned,
+    RefreshCw,
+    Sparkles,
+    UserPlus,
+    Users,
+} from 'lucide-react';
 import HealthCheck from '../components/HealthCheck';
 import StatusBadge from '../components/ui/StatusBadge';
+import { useAuth } from '../context/AuthContext';
+import { fetchClients, fetchProperties } from '../services/api';
 
-import { TrendingUp, TrendingDown, Users, Clock, AlertTriangle, Award, Sparkles, CheckCircle2, FileCheck, AlertCircle, Calendar } from 'lucide-react';
-// 1. Novos Imports para o gráfico
-import { Line, Doughnut } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    ArcElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-} from 'chart.js';
+const FINAL_STATUSES = ['Assinado-Movido', 'Assinado', 'Arquivado'];
+const ATTENTION_STATUSES = ['Inconforme', 'Aguardando Reserva'];
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-// Registrar os componentes do Chart.js incluindo o Filler
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    ArcElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
-
-// Constantes de Status (para consistência)
-const STATUS_OPTIONS = [
-    "Documentação Recebida",
-    "Aprovado",
-    "Engenharia",
-    "Baixando FGTS",
-    "Fichas e Cadastros",
-    "Finalização",
-    "Aguardando Reserva",
-    "Conformidade",
-    "Inconforme",
-    "Emissão e Assinatura",
+const FUNNEL_STAGES = [
+    { label: 'Documentação', statuses: ['Documentação Recebida'], color: 'bg-slate-400' },
+    { label: 'Aprovação', statuses: ['Aprovado'], color: 'bg-emerald-500' },
+    { label: 'Engenharia', statuses: ['Solicitando Engenharia', 'Engenharia Solicitada'], color: 'bg-amber-500' },
+    { label: 'Fichas e finalização', statuses: ['Baixando FGTS', 'Preenchendo Fichas', 'Assinando Fichas', 'Finalizando'], color: 'bg-sky-500' },
+    { label: 'Conformidade', statuses: ['Aguardando Reserva', 'Enviando para Conformidade', 'Aguardando Conformidade', 'Inconforme', 'Conforme - Ag. Contrato'], color: 'bg-violet-500' },
+    { label: 'Contrato', statuses: ['Assinando Contrato'], color: 'bg-primary' },
 ];
-const FINAL_STATUSES = ["Assinado-Movido", "Assinado", "Arquivado"];
+
+const QUICK_ACTIONS = [
+    { label: 'Novo cliente', description: 'Iniciar atendimento', to: '/clients?new=1', icon: UserPlus, tone: 'bg-primary text-white shadow-primary/20' },
+    { label: 'Simular crédito', description: 'Abrir simulador', to: '/simulador', icon: Building2, tone: 'bg-white text-gray-700' },
+    { label: 'Gerar contrato', description: 'Criar documento', to: '/contract-generator', icon: FileText, tone: 'bg-white text-gray-700' },
+    { label: 'Mapa de imóveis', description: 'Consultar opções', to: '/properties-map', icon: MapPinned, tone: 'bg-white text-gray-700' },
+];
+
+const safeDate = value => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const daysSince = value => {
+    const date = safeDate(value);
+    return date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / DAY_IN_MS)) : null;
+};
+
+const formatRelativeTime = value => {
+    const date = safeDate(value);
+    if (!date) return 'agora';
+    const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+    if (minutes < 1) return 'agora';
+    if (minutes < 60) return `há ${minutes} min`;
+    if (minutes < 1440) return `há ${Math.floor(minutes / 60)} h`;
+    const days = Math.floor(minutes / 1440);
+    return `há ${days} dia${days === 1 ? '' : 's'}`;
+};
+
+const formatLongDate = date => new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+}).format(date);
+
+const activityLabel = action => ({
+    created: 'cadastrou',
+    updated: 'atualizou',
+    status_changed: 'alterou o status de',
+    deleted: 'excluiu',
+}[action] || 'atualizou');
+
+const MetricCard = props => {
+    const Icon = props.icon;
+    return (
+    <Link
+        to={props.to}
+        className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+    >
+        <div className="flex items-start justify-between gap-4">
+            <div>
+                <p className="text-sm font-medium text-gray-500">{props.label}</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">{props.value}</p>
+            </div>
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${props.tone}`}>
+                <Icon size={21} />
+            </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+            <span className="truncate text-xs text-gray-500">{props.helper}</span>
+            <ChevronRight size={15} className="shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+        </div>
+    </Link>
+    );
+};
 
 const Dashboard = () => {
+    const { user } = useAuth();
+    const [clients, setClients] = useState([]);
+    const [properties, setProperties] = useState([]);
+    const [activities, setActivities] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [allClients, setAllClients] = useState([]);
-
-    // Estado para as contagens por status
-    const [statusCounts, setStatusCounts] = useState({
-        totalActive: 0,
-        'Documentação Recebida': 0,
-        Aprovado: 0,
-        Engenharia: 0,
-        'Baixando FGTS': 0,
-        'Fichas e Cadastros': 0,
-        Finalização: 0,
-        'Aguardando Reserva': 0,
-        Conformidade: 0,
-        'Inconforme': 0,
-    });
-    // 2. Novos estados para métricas e gráfico
-    const [trendMetrics, setTrendMetrics] = useState({ monthlyGrowth: { percentage: 0, isPositive: true } });
-    const [lineChartData, setLineChartData] = useState({ labels: [], datasets: [] });
-    const [doughnutData, setDoughnutData] = useState({ labels: [], datasets: [] });
-    const [recentClients, setRecentClients] = useState([]);
-    const [topPerformers, setTopPerformers] = useState([]);
-    const [avgDaysByStatus, setAvgDaysByStatus] = useState([]);
-    const [recentActivities, setRecentActivities] = useState([]);
+    const [error, setError] = useState('');
 
     const loadDashboardData = async () => {
         setIsLoading(true);
+        setError('');
         try {
-            const fetchedClients = await fetchClients();
-            setAllClients(fetchedClients);
-            const activeClients = fetchedClients.filter(c => !FINAL_STATUSES.includes(c.status));
-            const operationalClients = activeClients.filter(c => !c.emEspera);
-
-            // Calcular contagens por status
-            const counts = { totalActive: activeClients.length };
-            STATUS_OPTIONS.forEach(status => {
-                counts[status] = operationalClients.filter(c => c.status === status).length;
-            });
-            setStatusCounts(counts);
-
-            // 3. Lógica de cálculo
-            const now = new Date();
-            const thisMonth = now.getMonth();
-            const thisYear = now.getFullYear();
-            const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-            const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-
-            const newClientsThisMonth = activeClients.filter(c => {
-                const createdAt = new Date(c.createdAt);
-                return createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear;
-            }).length;
-
-            const newClientsLastMonth = activeClients.filter(c => {
-                const createdAt = new Date(c.createdAt);
-                return createdAt.getMonth() === lastMonth && createdAt.getFullYear() === lastMonthYear;
-            }).length;
-
-            const growth = newClientsLastMonth > 0 ? ((newClientsThisMonth - newClientsLastMonth) / newClientsLastMonth) * 100 : (newClientsThisMonth > 0 ? 100 : 0);
-            setTrendMetrics({ monthlyGrowth: { percentage: growth.toFixed(1), isPositive: growth >= 0 } });
-
-            // Preparar dados para o gráfico de linha (últimos 6 meses)
-            const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-            const labels = [];
-            const data = [];
-            for (let i = 5; i >= 0; i--) {
-                const d = new Date(thisYear, thisMonth - i, 1);
-                labels.push(monthNames[d.getMonth()]);
-                const monthClients = activeClients.filter(c => {
-                    const createdAt = new Date(c.createdAt);
-                    return createdAt.getMonth() === d.getMonth() && createdAt.getFullYear() === d.getFullYear();
-                }).length;
-                data.push(monthClients);
-            }
-
-            setLineChartData({
-                labels,
-                datasets: [{
-                    label: 'Novos Clientes',
-                    data,
-                    borderColor: 'rgb(91, 124, 153)', // Cor primária Motive
-                    backgroundColor: 'rgba(91, 124, 153, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                }],
-            });
-
-            // Preparar dados para o gráfico de pizza (distribuição por status)
-            const statusColors = {
-                'Documentação Recebida': 'rgb(156, 163, 175)', // gray
-                'Aprovado': 'rgb(16, 185, 129)', // green
-                'Engenharia': 'rgb(245, 158, 11)', // amber
-                'Baixando FGTS': 'rgb(234, 179, 8)', // yellow
-                'Fichas e Cadastros': 'rgb(20, 184, 166)', // teal
-                'Finalização': 'rgb(168, 85, 247)', // purple
-                'Aguardando Reserva': 'rgb(6, 182, 212)', // cyan
-                'Conformidade': 'rgb(249, 115, 22)', // orange
-                'Inconforme': 'rgb(239, 68, 68)', // red
-                'Emissão e Assinatura': 'rgb(59, 130, 246)', // blue
-                'Assinado': 'rgb(99, 102, 241)', // indigo
-            };
-
-            setDoughnutData({
-                labels: STATUS_OPTIONS,
-                datasets: [{
-                    data: STATUS_OPTIONS.map(status => counts[status]),
-                    backgroundColor: STATUS_OPTIONS.map(status => statusColors[status]),
-                    borderWidth: 2,
-                    borderColor: '#fff',
-                }],
-            });
-
-            // Clientes mais recentes (últimos 5)
-            const sortedByDate = [...operationalClients].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setRecentClients(sortedByDate.slice(0, 5));
-
-            // Top performers (corretores com mais clientes)
-            const performerMap = {};
-            operationalClients.forEach(c => {
-                const name = c.responsavel || c.corretor || 'Não atribuído';
-                performerMap[name] = (performerMap[name] || 0) + 1;
-            });
-            const topPerfs = Object.entries(performerMap)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([name, count]) => ({ name, count }));
-            setTopPerformers(topPerfs);
-
-            // Tempo médio por status (em dias)
-            const avgDays = STATUS_OPTIONS.map(status => {
-                const clientsInStatus = operationalClients.filter(c => c.status === status);
-                if (clientsInStatus.length === 0) return { status, avgDays: 0 };
-                
-                const totalDays = clientsInStatus.reduce((sum, c) => {
-                    const created = new Date(c.createdAt);
-                    const today = new Date();
-                    const diffDays = Math.floor((today - created) / (1000 * 60 * 60 * 24));
-                    return sum + diffDays;
-                }, 0);
-                
-                return { status, avgDays: Math.round(totalDays / clientsInStatus.length) };
-            });
-            setAvgDaysByStatus(avgDays);
-
-            // Buscar últimas atividades
             const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
-            const activitiesResponse = await fetch(`${API_BASE_URL}/api/activities/recent?limit=9`, {
-                credentials: 'include'
-            });
-            if (activitiesResponse.ok) {
-                const contentType = activitiesResponse.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const activities = await activitiesResponse.json();
-                    setRecentActivities(activities);
-                } else {
-                    console.warn('Resposta de atividades não é JSON');
-                }
-            } else {
-                console.warn('Erro ao buscar atividades:', activitiesResponse.status);
-            }
-
-        } catch (error) {
-            console.error("Erro ao carregar dados do dashboard:", error);
+            const [clientData, propertyData, activityResponse] = await Promise.all([
+                fetchClients(),
+                fetchProperties(),
+                fetch(`${API_BASE_URL}/api/activities/recent?limit=6`, { credentials: 'include' }),
+            ]);
+            setClients(Array.isArray(clientData) ? clientData : []);
+            setProperties(Array.isArray(propertyData) ? propertyData : []);
+            if (activityResponse.ok) setActivities(await activityResponse.json());
+        } catch (loadError) {
+            console.error('Erro ao carregar o dashboard:', loadError);
+            setError('Não foi possível carregar todos os dados do painel.');
         } finally {
             setIsLoading(false);
         }
@@ -219,374 +134,221 @@ const Dashboard = () => {
         loadDashboardData();
     }, []);
 
-    const isNewClient = (creationDate) => {
-        if (!creationDate) return false;
-        const now = new Date();
-        const created = new Date(creationDate);
-        const diffHours = (now - created) / (1000 * 60 * 60);
-        return diffHours < 24;
-    };
+    const dashboard = useMemo(() => {
+        const active = clients.filter(client => !FINAL_STATUSES.includes(client.status));
+        const operational = active.filter(client => !client.emEspera);
+        const waitingAction = operational.filter(client => ATTENTION_STATUSES.includes(client.status));
+        const stalled = operational.filter(client => {
+            const age = daysSince(client.ultimaAtualizacao || client.updatedAt || client.createdAt);
+            return age !== null && age >= 7;
+        });
+        const today = new Date();
+        const signedThisMonth = clients.filter(client => {
+            if (!['Assinado-Movido', 'Assinado'].includes(client.status)) return false;
+            const signedAt = safeDate(client.dataAssinaturaContrato || client.ultimaAtualizacao || client.updatedAt);
+            return signedAt && signedAt.getMonth() === today.getMonth() && signedAt.getFullYear() === today.getFullYear();
+        });
+        const overdueProperties = properties.filter(property => {
+            if (property.status === 'Confirmar disponibilidade') return true;
+            if (property.status !== 'Disponível') return false;
+            const age = daysSince(property.lastAvailabilityCheck);
+            return age === null || age >= 15;
+        });
 
-    const formatDate = (isoDate) => {
-        if (!isoDate) return '';
-        const d = new Date(isoDate);
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}`;
-    };
+        const stalledIds = new Set(stalled.map(client => client.id));
+        const priorityClients = operational
+            .filter(client => ATTENTION_STATUSES.includes(client.status) || stalledIds.has(client.id))
+            .map(client => ({
+                id: `client-${client.id}`,
+                title: client.nome || 'Cliente sem nome',
+                description: client.status === 'Inconforme'
+                    ? 'Pendência de conformidade'
+                    : client.status === 'Aguardando Reserva'
+                        ? 'Aguardando reserva do imóvel'
+                        : `Sem atualização há ${daysSince(client.ultimaAtualizacao || client.updatedAt || client.createdAt)} dias`,
+                status: client.status,
+                kind: client.status === 'Inconforme' ? 'danger' : client.status === 'Aguardando Reserva' ? 'warning' : 'neutral',
+                to: `/clients?client=${client.id}`,
+                score: client.status === 'Inconforme' ? 3 : client.status === 'Aguardando Reserva' ? 2 : 1,
+            }));
 
-    const statusIcons = {
-        'Documentação Recebida': FileCheck,
-        'Aprovado': CheckCircle2,
-        'Engenharia': Clock,
-        'Baixando FGTS': Clock,
-        'Fichas e Cadastros': FileCheck,
-        'Finalização': FileCheck,
-        'Aguardando Reserva': Calendar,
-        'Conformidade': AlertCircle,
-        'Inconforme': AlertTriangle,
-    };
+        const priorityProperties = overdueProperties.slice(0, 4).map(property => ({
+            id: `property-${property.id}`,
+            title: property.title || property.code || 'Imóvel sem título',
+            description: property.status === 'Confirmar disponibilidade'
+                ? 'Disponibilidade precisa ser confirmada'
+                : property.lastAvailabilityCheck
+                    ? `Disponibilidade sem revisão há ${daysSince(property.lastAvailabilityCheck)} dias`
+                    : 'Disponibilidade ainda não revisada',
+            status: 'Mapa',
+            kind: 'property',
+            to: `/properties-map?property=${property.id}`,
+            score: property.status === 'Confirmar disponibilidade' ? 2 : 1,
+        }));
 
-    // Função para envio manual do relatório/backup
-    const handleSendBackup = async () => {
-        setSendingBackup(true);
-        setBackupStatus(null);
-        try {
-            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
-            const res = await fetch(`${API_BASE_URL}/api/reports/weekly/run`, { method: 'GET', credentials: 'include' });
-            if (res.ok) {
-                setBackupStatus('success');
-            } else {
-                setBackupStatus('error');
-            }
-        } catch (e) {
-            setBackupStatus('error');
-        } finally {
-            setSendingBackup(false);
-        }
-    };
+        const priorities = [...priorityClients, ...priorityProperties]
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8);
+
+        const funnel = FUNNEL_STAGES.map(stage => ({
+            ...stage,
+            count: operational.filter(client => stage.statuses.includes(client.status)).length,
+        }));
+
+        return { active, operational, waitingAction, stalled, signedThisMonth, overdueProperties, priorities, funnel };
+    }, [clients, properties]);
 
     if (isLoading) {
-        const cardSkeletons = [1, 2, 3, 4];
-
         return (
-            <div className="p-6 space-y-6 animate-fade-in">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse">
-                    <div className="h-4 w-40 bg-gray-200 rounded"></div>
+            <div className="space-y-5 p-4 sm:p-6">
+                <div className="h-28 animate-pulse rounded-2xl bg-gray-200" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {[1, 2, 3, 4].map(item => <div key={item} className="h-36 animate-pulse rounded-2xl bg-gray-200" />)}
                 </div>
-
-                <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                        <div className="h-7 w-44 bg-gray-200 rounded"></div>
-                        <div className="h-4 w-64 bg-gray-200 rounded"></div>
-                    </div>
-                    <div className="text-right space-y-2">
-                        <div className="h-4 w-24 bg-gray-200 rounded ml-auto"></div>
-                        <div className="h-4 w-36 bg-gray-200 rounded ml-auto"></div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {cardSkeletons.map((i) => (
-                        <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-2">
-                                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
-                                    <div className="h-8 w-16 bg-gray-200 rounded"></div>
-                                </div>
-                                <div className="w-12 h-12 bg-gray-100 rounded-xl"></div>
-                            </div>
-                            <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full w-1/2 bg-gray-200"></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse h-80">
-                            <div className="h-5 w-48 bg-gray-200 rounded mb-4"></div>
-                            <div className="h-full w-full bg-gray-100 rounded"></div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse h-72">
-                                <div className="h-5 w-40 bg-gray-200 rounded mb-4"></div>
-                                <div className="h-full w-full bg-gray-100 rounded"></div>
-                            </div>
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse h-72">
-                                <div className="h-5 w-40 bg-gray-200 rounded mb-4"></div>
-                                <div className="h-full w-full bg-gray-100 rounded"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse h-72">
-                            <div className="h-5 w-44 bg-gray-200 rounded mb-4"></div>
-                            <div className="space-y-3">
-                                {[...Array(4)].map((_, idx) => (
-                                    <div key={idx} className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-gray-100 rounded-full"></div>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-4 w-32 bg-gray-200 rounded"></div>
-                                            <div className="h-3 w-20 bg-gray-200 rounded"></div>
-                                        </div>
-                                        <div className="h-4 w-10 bg-gray-200 rounded"></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse h-72">
-                            <div className="h-5 w-44 bg-gray-200 rounded mb-4"></div>
-                            <div className="space-y-3">
-                                {[...Array(5)].map((_, idx) => (
-                                    <div key={idx} className="flex items-center gap-3">
-                                        <div className="w-3 h-3 bg-gray-200 rounded-full"></div>
-                                        <div className="h-4 w-48 bg-gray-200 rounded"></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                <div className="grid gap-5 xl:grid-cols-3">
+                    <div className="h-96 animate-pulse rounded-2xl bg-gray-200 xl:col-span-2" />
+                    <div className="h-96 animate-pulse rounded-2xl bg-gray-200" />
                 </div>
             </div>
         );
     }
 
+    const firstName = user?.nome?.trim().split(/\s+/)[0] || 'bem-vindo';
+    const maxFunnelCount = Math.max(...dashboard.funnel.map(stage => stage.count), 1);
 
     return (
-        <div className="p-6 space-y-6 animate-fade-in">
-            <HealthCheck />
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
-                    <p className="text-gray-500 mt-1">Visão geral do desempenho e métricas</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-sm text-gray-500">Atualizado em</p>
-                    <p className="text-sm font-medium text-gray-700">{new Date().toLocaleString('pt-BR')}</p>
-                </div>
-            </div>
+        <div className="min-h-full bg-gray-50/70 p-4 sm:p-6">
+            <div className="mx-auto max-w-[1600px] space-y-5">
+                <HealthCheck />
 
-            {/* Cards de métricas principais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Total de Clientes Ativos */}
-                <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 opacity-10">
-                        <Users size={120} />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-white/80 text-sm font-medium">Clientes Ativos</p>
-                        <p className="text-4xl font-bold mt-2">{statusCounts.totalActive}</p>
-                        <div className="mt-3 flex items-center gap-2">
-                            {trendMetrics.monthlyGrowth.isPositive ? (
-                                <TrendingUp size={16} />
-                            ) : (
-                                <TrendingDown size={16} />
-                            )}
-                            <span className="text-sm font-medium">
-                                {trendMetrics.monthlyGrowth.percentage}% vs mês anterior
-                            </span>
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-800 via-slate-700 to-primary shadow-sm">
+                    <div className="relative px-5 py-6 sm:px-7">
+                        <div className="absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
+                        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                            <div className="text-white">
+                                <p className="text-sm font-medium capitalize text-white/65">{formatLongDate(new Date())}</p>
+                                <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Olá, {firstName}. Aqui está o que pede atenção.</h1>
+                                <p className="mt-2 max-w-2xl text-sm text-white/70">Acompanhe clientes, pendências e imóveis em um único painel de trabalho.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                {QUICK_ACTIONS.map(action => {
+                                    const QuickIcon = action.icon;
+                                    return (
+                                    <Link key={action.label} to={action.to} className={`group flex min-w-0 items-center gap-3 rounded-xl border border-white/15 px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${action.tone}`}>
+                                        <QuickIcon size={19} className="shrink-0" />
+                                        <span className="min-w-0">
+                                            <span className="block truncate text-xs font-bold">{action.label}</span>
+                                            <span className={`hidden truncate text-[10px] sm:block ${action.tone.includes('text-white') ? 'text-white/65' : 'text-gray-400'}`}>{action.description}</span>
+                                        </span>
+                                    </Link>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Aprovado */}
-                <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-500 text-sm font-medium">Aprovado</p>
-                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Aprovado}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
-                            <CheckCircle2 size={24} className="text-emerald-600" />
-                        </div>
+                {error && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <span className="flex items-center gap-2"><AlertCircle size={17} />{error}</span>
+                        <button type="button" onClick={loadDashboardData} className="inline-flex items-center gap-1.5 font-semibold hover:underline"><RefreshCw size={15} />Tentar novamente</button>
                     </div>
-                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                            className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Aprovado / statusCounts.totalActive) * 100 : 0}%` }}
-                        />
-                    </div>
-                </div>
+                )}
 
-                {/* Engenharia */}
-                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-500 text-sm font-medium">Engenharia</p>
-                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Engenharia}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
-                            <Clock size={24} className="text-amber-600" />
-                        </div>
-                    </div>
-                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                            className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Engenharia / statusCounts.totalActive) * 100 : 0}%` }}
-                        />
-                    </div>
-                </div>
+                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <MetricCard label="Clientes ativos" value={dashboard.active.length} helper={`${dashboard.operational.length} em andamento`} icon={Users} tone="bg-blue-50 text-primary" to="/clients" />
+                    <MetricCard label="Aguardando ação" value={dashboard.waitingAction.length} helper="Inconformes ou aguardando reserva" icon={AlertTriangle} tone="bg-red-50 text-red-600" to="/clients" />
+                    <MetricCard label="Parados há 7+ dias" value={dashboard.stalled.length} helper="Clientes sem atualização recente" icon={Clock3} tone="bg-amber-50 text-amber-600" to="/clients" />
+                    <MetricCard label="Assinados no mês" value={dashboard.signedThisMonth.length} helper="Contratos concluídos neste mês" icon={CheckCircle2} tone="bg-emerald-50 text-emerald-600" to="/clients" />
+                </section>
 
-                {/* Conformidade */}
-                <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-gray-500 text-sm font-medium">Conformidade</p>
-                            <p className="text-3xl font-bold text-gray-900 mt-2">{statusCounts.Conformidade}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
-                            <AlertCircle size={24} className="text-orange-600" />
-                        </div>
-                    </div>
-                    <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                            className="bg-orange-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${statusCounts.totalActive > 0 ? (statusCounts.Conformidade / statusCounts.totalActive) * 100 : 0}%` }}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Grid Principal - 3 colunas com Últimas Alterações ocupando 2 linhas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Coluna 1 e 2: Evolução + Clientes e Distribuição */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Gráfico de Linha - Evolução */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center justify-between mb-6">
+                <section className="grid gap-5 xl:grid-cols-3">
+                    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:col-span-2">
+                        <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4">
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-800">Evolução de Novos Clientes</h3>
-                                <p className="text-sm text-gray-500 mt-1">Últimos 6 meses</p>
+                                <div className="flex items-center gap-2"><Sparkles size={19} className="text-amber-500" /><h2 className="font-bold text-gray-900">Prioridades de hoje</h2></div>
+                                <p className="mt-1 text-xs text-gray-500">Pendências organizadas por urgência</p>
                             </div>
+                            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{dashboard.priorities.length}</span>
                         </div>
-                        <div className="h-72">
-                            {lineChartData.labels.length > 0 ? (
-                                <Line 
-                                    data={lineChartData} 
-                                    options={{ 
-                                        responsive: true, 
-                                        maintainAspectRatio: false,
-                                        plugins: {
-                                            legend: { display: false }
-                                        }
-                                    }} 
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-gray-400">
-                                    <p>Sem dados disponíveis</p>
+
+                        <div className="divide-y divide-gray-100">
+                            {dashboard.priorities.length > 0 ? dashboard.priorities.map(item => {
+                                const itemStyle = item.kind === 'danger'
+                                    ? { icon: AlertCircle, box: 'bg-red-50 text-red-600', accent: 'bg-red-500' }
+                                    : item.kind === 'warning'
+                                        ? { icon: CalendarDays, box: 'bg-amber-50 text-amber-600', accent: 'bg-amber-500' }
+                                        : item.kind === 'property'
+                                            ? { icon: Home, box: 'bg-violet-50 text-violet-600', accent: 'bg-violet-500' }
+                                            : { icon: Clock3, box: 'bg-slate-100 text-slate-600', accent: 'bg-slate-400' };
+                                const ItemIcon = itemStyle.icon;
+                                return (
+                                    <Link key={item.id} to={item.to} className="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-gray-50">
+                                        <span className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${itemStyle.accent}`} />
+                                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${itemStyle.box}`}><ItemIcon size={17} /></span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold text-gray-900">{item.title}</span>
+                                            <span className="mt-0.5 block truncate text-xs text-gray-500">{item.description}</span>
+                                        </span>
+                                        <StatusBadge status={item.status} size="xs" />
+                                        <ChevronRight size={16} className="shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                                    </Link>
+                                );
+                            }) : (
+                                <div className="px-6 py-14 text-center">
+                                    <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
+                                    <p className="mt-3 text-sm font-semibold text-gray-800">Nenhuma prioridade pendente</p>
+                                    <p className="mt-1 text-xs text-gray-500">Tudo em dia por aqui.</p>
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* Grid de 2 colunas - Clientes Recentes e Distribuição */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Clientes Recentes */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles size={20} className="text-primary" />
-                                <h3 className="text-lg font-semibold text-gray-800">Clientes Recentes</h3>
+                        {dashboard.priorities.length > 0 && (
+                            <div className="border-t border-gray-100 bg-gray-50/70 px-5 py-3 text-right">
+                                <Link to="/clients" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Ver todos os clientes <ArrowRight size={14} /></Link>
                             </div>
-                            <div className="space-y-3">
-                                {recentClients.length > 0 ? recentClients.map(client => (
-                                    <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-medium text-gray-900 truncate text-sm">{client.nome}</p>
-                                                {isNewClient(client.createdAt) && (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-500 text-white">
-                                                        NOVO
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-0.5">{formatDate(client.createdAt)}</p>
-                                        </div>
-                                        <StatusBadge status={client.status} size="xs" />
-                                    </div>
-                                )) : (
-                                    <p className="text-gray-400 text-sm text-center py-8">Nenhum cliente recente</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Gráfico de Pizza - Distribuição por Status */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold text-gray-800">Distribuição por Status</h3>
-                                <p className="text-sm text-gray-500 mt-1">Visão geral</p>
-                            </div>
-                            <div className="h-80 flex items-center justify-center">
-                                {doughnutData.labels.length > 0 && statusCounts.totalActive > 0 ? (
-                                    <Doughnut 
-                                        data={doughnutData} 
-                                        options={{ 
-                                            responsive: true, 
-                                            maintainAspectRatio: true,
-                                            plugins: {
-                                                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
-                                            }
-                                        }} 
-                                    />
-                                ) : (
-                                    <p className="text-gray-400">Sem clientes ativos</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Coluna 3: Últimas Alterações (altura dupla - row-span-2) */}
-                <div className="lg:row-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Clock size={20} className="text-purple-500" />
-                        <h3 className="text-lg font-semibold text-gray-800">Últimas Alterações</h3>
-                    </div>
-                    <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100% - 3rem)' }}>
-                        {recentActivities.map((activity, index) => {
-                            const activityDate = new Date(activity.createdAt);
-                            const timeAgo = Math.floor((new Date() - activityDate) / (1000 * 60));
-                            const timeText = timeAgo < 60 ? `${timeAgo}min atrás` : 
-                                           timeAgo < 1440 ? `${Math.floor(timeAgo / 60)}h atrás` : 
-                                           `${Math.floor(timeAgo / 1440)}d atrás`;
-                            
-                            const actionText = activity.action === 'created' ? 'Criou' :
-                                             activity.action === 'status_changed' ? 'Mudou status' :
-                                             'Atualizou';
-                            
-                            const statusToShow = activity.action === 'status_changed' ? 
-                                               `${activity.statusAntes} → ${activity.statusDepois}` :
-                                               activity.statusDepois || activity.statusAntes || '-';
-                            
-                            return (
-                                <div key={`${activity.id}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                            <Calendar size={16} className="text-purple-600" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-gray-900 truncate text-sm">{activity.clientNome}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {actionText} por <span className="font-medium text-gray-700">{activity.userName}</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right flex-shrink-0 ml-4">
-                                        <StatusBadge status={activity.statusDepois} label={statusToShow} size="xs" />
-                                        <p className="text-xs text-gray-500 mt-1">{timeText}</p>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {recentActivities.length === 0 && (
-                            <p className="text-gray-400 text-sm text-center py-8">Nenhuma alteração recente</p>
                         )}
                     </div>
-                </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                            <div><h2 className="font-bold text-gray-900">Funil de atendimento</h2><p className="mt-1 text-xs text-gray-500">{dashboard.operational.length} processos em andamento</p></div>
+                            <Users size={19} className="text-primary" />
+                        </div>
+                        <div className="mt-5 space-y-4">
+                            {dashboard.funnel.map(stage => (
+                                <div key={stage.label}>
+                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="font-medium text-gray-600">{stage.label}</span><span className="font-bold text-gray-900">{stage.count}</span></div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-gray-100"><div className={`h-full rounded-full transition-all duration-700 ${stage.color}`} style={{ width: `${Math.max(stage.count ? 8 : 0, (stage.count / maxFunnelCount) * 100)}%` }} /></div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-5 rounded-xl border border-violet-100 bg-violet-50 px-3.5 py-3">
+                            <div className="flex items-center justify-between"><span className="text-xs font-medium text-violet-700">Imóveis a revisar</span><span className="text-lg font-bold text-violet-900">{dashboard.overdueProperties.length}</span></div>
+                            <Link to="/properties-map" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:underline">Abrir mapa <ArrowRight size={13} /></Link>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                        <div><h2 className="font-bold text-gray-900">Atividade recente</h2><p className="mt-1 text-xs text-gray-500">Últimas movimentações da equipe</p></div>
+                        <Clock3 size={18} className="text-gray-400" />
+                    </div>
+                    {activities.length > 0 ? (
+                        <div className="grid divide-y divide-gray-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-3">
+                            {activities.map((activity, index) => (
+                                <Link key={`${activity.id}-${index}`} to={`/clients?client=${activity.clientId}`} className="group flex min-w-0 items-start gap-3 px-5 py-4 transition hover:bg-gray-50">
+                                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Users size={15} /></span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm text-gray-700"><strong className="font-semibold text-gray-900">{activity.userName}</strong> {activityLabel(activity.action)} <strong className="font-semibold text-gray-900">{activity.clientNome}</strong></span>
+                                        <span className="mt-1 block truncate text-xs text-gray-400">{activity.action === 'status_changed' ? `${activity.statusAntes || 'Sem status'} → ${activity.statusDepois || 'Sem status'} · ` : ''}{formatRelativeTime(activity.createdAt)}</span>
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : <p className="px-5 py-8 text-center text-sm text-gray-400">Nenhuma atividade recente.</p>}
+                </section>
             </div>
         </div>
     );

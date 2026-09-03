@@ -1,41 +1,112 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, TriangleAlert } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingAnimation from '../components/LoadingAnimation';
 import LoadingSpinner from '../components/LoadingSpinner';
+import LoginPropertyScene from '../components/LoginPropertyScene';
+import { controlClass, formLabelClass } from '../components/ui/styles';
 import { usePerformanceMonitor } from '../hooks/usePerformance';
 import logoDark from '../assets/logo-dark.png';
 import { toast } from 'sonner';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(() => {
+        try {
+            return localStorage.getItem('motive:last-login-email') || '';
+        } catch {
+            return '';
+        }
+    });
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [emailFocused, setEmailFocused] = useState(false);
+    const [passwordFocused, setPasswordFocused] = useState(false);
+    const [capsLockOn, setCapsLockOn] = useState(false);
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loginSucceeded, setLoginSucceeded] = useState(false);
+    const [loginTransitionActive, setLoginTransitionActive] = useState(false);
+    const cardRef = useRef(null);
     const { login, isAuthenticated, isLoading } = useAuth();
     const navigate = useNavigate();
 
     // Monitora performance da página
     usePerformanceMonitor('LoginPage');
 
+    const animateLoginError = () => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        cardRef.current?.animate([
+            { transform: 'translateX(0)' },
+            { transform: 'translateX(-7px)' },
+            { transform: 'translateX(6px)' },
+            { transform: 'translateX(-4px)' },
+            { transform: 'translateX(3px)' },
+            { transform: 'translateX(0)' },
+        ], { duration: 360, easing: 'ease-out' });
+    };
+
+    const updateCapsLock = event => setCapsLockOn(event.getModifierState('CapsLock'));
+
+    const changeEmail = event => {
+        setEmail(event.target.value);
+        setEmailError('');
+        setError('');
+    };
+
+    const changePassword = event => {
+        setPassword(event.target.value);
+        setPasswordError('');
+        setError('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const normalizedEmail = email.trim();
+        const nextEmailError = !normalizedEmail
+            ? 'Informe seu e-mail.'
+            : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+                ? 'Digite um e-mail válido.'
+                : '';
+        const nextPasswordError = password ? '' : 'Informe sua senha.';
+
+        setEmailError(nextEmailError);
+        setPasswordError(nextPasswordError);
         setError('');
+        if (nextEmailError || nextPasswordError) {
+            animateLoginError();
+            return;
+        }
+
         setIsSubmitting(true);
+        setLoginTransitionActive(true);
 
         try {
-            const result = await login(email, password);
+            const result = await login(normalizedEmail, password);
             
             if (result.success) {
+                try {
+                    localStorage.setItem('motive:last-login-email', normalizedEmail);
+                } catch {
+                    // O acesso continua normalmente caso o navegador bloqueie o armazenamento local.
+                }
+                setLoginSucceeded(true);
+                await new Promise(resolve => setTimeout(resolve, 700));
                 navigate('/dashboard');
             } else {
-                setError(result.error || 'Credenciais inválidas. Tente novamente.');
+                setLoginTransitionActive(false);
+                const message = result.error || 'Credenciais inválidas. Tente novamente.';
+                if (/servidor|conectar|conex[aã]o/i.test(message)) setError(message);
+                else setPasswordError('E-mail ou senha incorretos. Confira os dados e tente novamente.');
+                animateLoginError();
             }
         } catch (err) {
+            setLoginTransitionActive(false);
             setError('Ocorreu um erro ao tentar fazer login.');
+            animateLoginError();
             console.error('Erro no login:', err);
         } finally {
             setIsSubmitting(false);
@@ -43,7 +114,7 @@ const Login = () => {
     };
     
     // Se já estiver autenticado, redireciona
-    if (isAuthenticated) {
+    if (isAuthenticated && !loginTransitionActive) {
         return <Navigate to="/dashboard" replace />;
     }
 
@@ -53,71 +124,97 @@ const Login = () => {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5 p-4">
-            <div className="w-full max-w-md animate-fade-in">
-                <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+        <main id="login-page" className="min-h-screen bg-[#f3f6f8] lg:grid lg:grid-cols-[minmax(520px,0.96fr)_minmax(480px,1.04fr)]">
+            <LoginPropertyScene emailFocused={emailFocused} passwordFocused={passwordFocused} showPassword={showPassword} isSubmitting={isSubmitting} loginSucceeded={loginSucceeded} />
+            <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-8 lg:min-h-0">
+                <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+                <div className="absolute -bottom-36 -left-36 h-80 w-80 rounded-full bg-secondary/5 blur-3xl" />
+                <div className="relative w-full max-w-md animate-fade-in">
+                  <div ref={cardRef} className="rounded-[28px] border border-white bg-white/95 p-6 shadow-[0_24px_70px_rgba(52,62,72,0.12)] backdrop-blur sm:p-8">
                     {/* Logo e Header */}
-                    <div className="text-center mb-8">
-                        <div className="inline-block p-3 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl mb-4">
+                    <div className="mb-8 text-center">
+                        <div className="mb-5 inline-block rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 p-3 lg:hidden">
                             <img 
                                 src={logoDark} 
                                 alt="Logo Motive" 
                                 className="w-32 h-auto"
                             />
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                            Sistema Motive
+                        <p className="mb-2 hidden text-xs font-bold uppercase tracking-[0.18em] text-primary lg:block">Área segura</p>
+                        <h1 className="mb-2 text-3xl font-bold tracking-tight text-gray-900">
+                            Bem-vindo de volta
                         </h1>
-                        <p className="text-gray-500">
-                            Entre com suas credenciais
+                        <p className="text-sm leading-6 text-gray-500">
+                            Acesse sua área de gestão imobiliária.
                         </p>
                     </div>
 
                     {/* Formulário */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} noValidate className="space-y-5">
                         {/* Email */}
-                        <ModernInput
-                            label="Email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="seu@email.com"
-                            icon={Mail}
-                            required
-                            autoComplete="email"
-                        />
+                        <div>
+                            <ModernInput
+                                label="Email"
+                                type="email"
+                                value={email}
+                                onChange={changeEmail}
+                                onFocus={() => setEmailFocused(true)}
+                                onBlur={() => setEmailFocused(false)}
+                                placeholder="seu@email.com"
+                                Icon={Mail}
+                                required
+                                disabled={isSubmitting}
+                                autoComplete="email"
+                                aria-invalid={Boolean(emailError)}
+                                aria-describedby={emailError ? 'login-email-error' : undefined}
+                                inputClassName={emailError ? '!border-red-300 focus:!border-red-400 focus:!ring-red-100' : ''}
+                            />
+                            {emailError && <p id="login-email-error" className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-red-600"><AlertCircle size={13} />{emailError}</p>}
+                        </div>
 
                         {/* Senha */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className={formLabelClass}>
                                 Senha
                             </label>
-                            <div className="relative group rounded-xl border border-gray-200 bg-gray-50/70 hover:border-gray-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all duration-200">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-primary">
-                                    <Lock size={18} />
+                            <div className="group relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-gray-400 transition-colors group-focus-within:text-primary">
+                                    <Lock size={16} />
                                 </div>
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={changePassword}
                                     required
+                                    disabled={isSubmitting}
                                     autoComplete="current-password"
-                                    className="w-full pl-10 pr-12 py-3 rounded-xl bg-transparent border-none focus:ring-0 outline-none"
+                                    onFocus={() => setPasswordFocused(true)}
+                                    onBlur={() => { setPasswordFocused(false); setCapsLockOn(false); }}
+                                    onKeyDown={updateCapsLock}
+                                    onKeyUp={updateCapsLock}
+                                    aria-invalid={Boolean(passwordError)}
+                                    aria-describedby={passwordError ? 'login-password-error' : capsLockOn ? 'login-caps-lock' : undefined}
+                                    className={`${controlClass} pl-10 pr-12 ${passwordError ? '!border-red-300 focus:!border-red-400 focus:!ring-red-100' : ''}`}
                                     placeholder="Digite sua senha"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 group-focus-within:text-primary transition-colors px-2 py-2 rounded-lg hover:bg-gray-100 active:scale-95"
+                                    disabled={isSubmitting}
+                                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 active:scale-95 group-focus-within:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
+                            {passwordError && <p id="login-password-error" className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-red-600"><AlertCircle size={13} className="mt-0.5 shrink-0" />{passwordError}</p>}
+                            {capsLockOn && !passwordError && <p id="login-caps-lock" className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-600"><TriangleAlert size={13} />Caps Lock está ativado.</p>}
                             <div className="mt-2 text-right">
                                 <button
                                     type="button"
+                                    disabled={isSubmitting}
                                     onClick={() => toast.info('Contate o administrador do sistema para redefinir sua senha.')}
-                                    className="text-xs font-medium text-primary hover:text-secondary transition-colors underline-offset-4 hover:underline"
+                                    className="text-xs font-medium text-primary transition-colors underline-offset-4 hover:text-secondary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     Esqueci minha senha
                                 </button>
@@ -145,25 +242,32 @@ const Login = () => {
                                      transition-[transform,box-shadow] duration-200 flex items-center justify-center"
                         >
                             <span className="inline-flex items-center justify-center gap-2 min-w-[170px] transition-opacity duration-200">
-                                {isSubmitting ? (
+                                {loginSucceeded ? (
+                                    <>
+                                        <CheckCircle2 size={18} />
+                                        <span>Acesso autorizado</span>
+                                    </>
+                                ) : isSubmitting ? (
                                     <>
                                         <LoadingSpinner size={18} />
                                         <span>Entrando...</span>
                                     </>
                                 ) : (
-                                    'Entrar no Sistema'
+                                    'Entrar no sistema'
                                 )}
                             </span>
                         </button>
                     </form>
 
                     {/* Footer */}
-                    <div className="mt-6 text-center text-xs text-gray-500">
-                        Sistema de Gestão Imobiliária
+                    <div className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-gray-400">
+                        <Lock size={12} /> Ambiente protegido
                     </div>
+                  </div>
+                  <p className="mt-5 text-center text-xs text-gray-400">Motive Consultoria Imobiliária</p>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 };
 

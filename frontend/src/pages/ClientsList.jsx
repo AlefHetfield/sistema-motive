@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
@@ -338,6 +339,7 @@ const ClientActionsMenu = ({ client, activeTab, onDelete, onRestore, onPause, on
 
 const ClientsList = () => {
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [allClients, setAllClients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [toasts, setToasts] = useState([]);
@@ -433,6 +435,29 @@ const ClientsList = () => {
     useEffect(() => {
         loadClients();
     }, []);
+
+    useEffect(() => {
+        if (isLoading) return;
+        const shouldCreate = searchParams.get('new') === '1';
+        const requestedClientId = Number(searchParams.get('client'));
+        let handled = false;
+
+        if (shouldCreate) {
+            setEditingClient(null);
+            setIsModalOpen(true);
+            handled = true;
+        } else if (requestedClientId && allClients.some(client => client.id === requestedClientId)) {
+            setDetailsClientId(requestedClientId);
+            handled = true;
+        }
+
+        if (handled) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('new');
+            nextParams.delete('client');
+            setSearchParams(nextParams, { replace: true });
+        }
+    }, [allClients, isLoading, searchParams, setSearchParams]);
 
     const handleOpenModal = (client = null) => {
         setEditingClient(client);
