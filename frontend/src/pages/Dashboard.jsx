@@ -149,7 +149,7 @@ const Dashboard = () => {
             return signedAt && signedAt.getMonth() === today.getMonth() && signedAt.getFullYear() === today.getFullYear();
         });
         const overdueProperties = properties.filter(property => {
-            if (property.status === 'Confirmar disponibilidade') return true;
+            if (property.status === 'Confirmando disponibilidade') return true;
             if (property.status !== 'Disponível') return false;
             const age = daysSince(property.lastAvailabilityCheck);
             return age === null || age >= 15;
@@ -175,7 +175,7 @@ const Dashboard = () => {
         const priorityProperties = overdueProperties.slice(0, 4).map(property => ({
             id: `property-${property.id}`,
             title: property.title || property.code || 'Imóvel sem título',
-            description: property.status === 'Confirmar disponibilidade'
+            description: property.status === 'Confirmando disponibilidade'
                 ? 'Disponibilidade precisa ser confirmada'
                 : property.lastAvailabilityCheck
                     ? `Disponibilidade sem revisão há ${daysSince(property.lastAvailabilityCheck)} dias`
@@ -183,7 +183,7 @@ const Dashboard = () => {
             status: 'Mapa',
             kind: 'property',
             to: `/properties-map?property=${property.id}`,
-            score: property.status === 'Confirmar disponibilidade' ? 2 : 1,
+            score: property.status === 'Confirmando disponibilidade' ? 2 : 1,
         }));
 
         const priorities = [...priorityClients, ...priorityProperties]

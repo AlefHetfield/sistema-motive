@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Copy, MapPin, MapPinned, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { googleMapsIsConfigured, loadGoogleMaps } from '../../lib/googleMaps';
-import { propertyCityColor } from './propertyConstants';
+import { propertyMarkerColor } from './propertyConstants';
 
 const markerIcons = new Map();
 const priceFormatter = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
@@ -32,14 +32,22 @@ const MY_MAPS_CITY_ICONS = {
 };
 
 const MY_MAPS_FALLBACK_ICONS = { building: 18, house: 17, land: 16 };
+const MY_MAPS_STATUS_ICONS = {
+  'Com engenharia': 'engineering',
+  'Em negociação': 'negotiation',
+  'Indisponível': 'unavailable',
+  'Confirmando disponibilidade': 'confirming',
+};
 
 const myMapsMarkerAsset = property => {
+  const family = propertyTypeFamily(property.propertyType);
+  const statusDirectory = MY_MAPS_STATUS_ICONS[property.status];
+  if (statusDirectory) return `${MY_MAPS_ICON_ROOT}/status/${statusDirectory}/${family}.png`;
   const city = String(property.city || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLocaleLowerCase('pt-BR');
-  const family = propertyTypeFamily(property.propertyType);
   const iconNumber = (MY_MAPS_CITY_ICONS[city] || MY_MAPS_FALLBACK_ICONS)[family];
   return `${MY_MAPS_ICON_ROOT}/icon-${iconNumber}.png`;
 };
@@ -93,8 +101,22 @@ const locationMarkerIcon = () => {
   return icon;
 };
 
+const favoriteMarkerIcon = () => {
+  const cacheKey = 'favorite-badge';
+  if (markerIcons.has(cacheKey)) return markerIcons.get(cacheKey);
+  const size = 24;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24"><path fill="#f59e0b" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round" d="m12 2.2 2.9 5.88 6.49.94-4.7 4.58 1.11 6.47L12 17.02l-5.8 3.05 1.11-6.47-4.7-4.58 6.49-.94Z"/></svg>`;
+  const icon = {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new window.google.maps.Size(size, size),
+    anchor: new window.google.maps.Point(-1, 42),
+  };
+  markerIcons.set(cacheKey, icon);
+  return icon;
+};
+
 const priceMarkerIcon = (property, selected, hovered) => {
-  const color = propertyCityColor(property.city);
+  const color = propertyMarkerColor(property);
   const price = Number(property.price);
   if (!Number.isFinite(price) || price <= 0) return markerIcon(property, selected || hovered);
   const label = `R$ ${priceFormatter.format(price)}`;
@@ -189,7 +211,10 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google?.maps) return;
-    markersRef.current.forEach(({ marker }) => marker.setMap(null));
+    markersRef.current.forEach(({ marker, favoriteMarker }) => {
+      marker.setMap(null);
+      favoriteMarker?.setMap(null);
+    });
 
     const mapped = properties.filter(property => Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude)));
     const bounds = new window.google.maps.LatLngBounds();
@@ -206,15 +231,25 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
       marker.addListener('click', () => onSelectRef.current(property));
       marker.addListener('mouseover', () => onHoverRef.current?.(property.id));
       marker.addListener('mouseout', () => onHoverRef.current?.(null));
+      const favoriteMarker = property.isFavorite ? new window.google.maps.Marker({
+        map,
+        position,
+        title: `${property.title} — favorito`,
+        icon: favoriteMarkerIcon(),
+        zIndex: property.id === selectedPropertyIdRef.current ? 2100 : 1100,
+        optimized: true,
+      }) : null;
+      favoriteMarker?.addListener('click', () => onSelectRef.current(property));
+      favoriteMarker?.addListener('mouseover', () => onHoverRef.current?.(property.id));
+      favoriteMarker?.addListener('mouseout', () => onHoverRef.current?.(null));
       bounds.extend(position);
-      return { marker, property };
+      return { marker, favoriteMarker, property };
     });
     markersRef.current = markers;
 
     const selected = mapped.find(property => property.id === selectedPropertyIdRef.current);
     if (selected) {
       map.panTo({ lat: Number(selected.latitude), lng: Number(selected.longitude) });
-      if ((map.getZoom() || 0) < 17) map.setZoom(17);
     } else if (mapped.length === 1) {
       map.setCenter({ lat: Number(mapped[0].latitude), lng: Number(mapped[0].longitude) });
       map.setZoom(16);
@@ -225,11 +260,12 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
 
   useEffect(() => {
     if (!mapReady) return;
-    markersRef.current.forEach(({ marker, property }) => {
+    markersRef.current.forEach(({ marker, favoriteMarker, property }) => {
       const selected = property.id === selectedPropertyId;
       const hovered = property.id === hoveredPropertyId;
       marker.setIcon(selected || hovered ? priceMarkerIcon(property, selected, hovered) : markerIcon(property, false));
       marker.setZIndex(selected ? 2000 : hovered ? 1500 : undefined);
+      favoriteMarker?.setVisible(!selected && !hovered);
     });
   }, [hoveredPropertyId, mapReady, selectedPropertyId]);
 
@@ -239,7 +275,6 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
     if (!selected) return;
     const map = mapRef.current;
     map.panTo({ lat: Number(selected.latitude), lng: Number(selected.longitude) });
-    if ((map.getZoom() || 0) < 17) map.setZoom(17);
   }, [mapReady, selectedPropertyId]);
 
   useEffect(() => {

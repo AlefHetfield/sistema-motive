@@ -82,8 +82,10 @@ const inferStatus = (record, description) => {
   const explicit = clean(valueFrom(record, ['status', 'situação', 'situacao', 'disponibilidade']), 60);
   if (explicit) return explicit;
   const text = description.toLocaleLowerCase('pt-BR');
-  if (text.includes('vendido')) return 'Vendido';
-  if (text.includes('reservado')) return 'Reservado';
+  if (text.includes('com engenharia') || text.includes('engenharia')) return 'Com engenharia';
+  if (text.includes('em negociação') || text.includes('em negociacao') || text.includes('reservado')) return 'Em negociação';
+  if (text.includes('confirmando disponibilidade') || text.includes('confirmar disponibilidade')) return 'Confirmando disponibilidade';
+  if (text.includes('vendido')) return 'Indisponível';
   if (text.includes('indisponível') || text.includes('indisponivel')) return 'Indisponível';
   return 'Disponível';
 };

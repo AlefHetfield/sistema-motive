@@ -19,6 +19,7 @@ const toneClasses = {
   red: 'border-red-200 bg-red-50 text-red-700',
   gray: 'border-gray-200 bg-gray-100 text-gray-600',
   purple: 'border-purple-200 bg-purple-50 text-purple-700',
+  brown: 'border-amber-800 bg-amber-100 text-amber-900',
 };
 
 const solidToneClasses = {
@@ -28,6 +29,7 @@ const solidToneClasses = {
   red: 'border-red-600 bg-red-600 text-white',
   gray: 'border-gray-500 bg-gray-500 text-white',
   purple: 'border-purple-600 bg-purple-600 text-white',
+  brown: 'border-amber-800 bg-amber-800 text-white',
 };
 
 const sizes = {
@@ -56,10 +58,10 @@ const exactDefinitions = {
   Arquivado: { tone: 'gray', icon: Archive },
   'Em espera': { tone: 'amber', icon: PauseCircle },
   Disponível: { tone: 'blue', icon: CircleDot },
-  Reservado: { tone: 'amber', icon: Clock3 },
-  Vendido: { tone: 'green', icon: CheckCircle2 },
+  'Com engenharia': { tone: 'brown', icon: Clock3 },
+  'Em negociação': { tone: 'amber', icon: Clock3 },
   Indisponível: { tone: 'gray', icon: XCircle },
-  'Confirmar disponibilidade': { tone: 'red', icon: AlertTriangle },
+  'Confirmando disponibilidade': { tone: 'purple', icon: AlertTriangle },
   Ativo: { tone: 'green', icon: CheckCircle2 },
   Inativo: { tone: 'gray', icon: XCircle },
   Administrador: { tone: 'purple', icon: ShieldCheck },

@@ -2,7 +2,7 @@ import express from 'express';
 import { parsePropertyImport } from './propertyImporter.js';
 import { fetchDriveImage, listDriveFolderImages, normalizeDriveFolderUrl } from './googleDrive.js';
 
-const PROPERTY_STATUSES = ['Disponível', 'Reservado', 'Vendido', 'Indisponível', 'Confirmar disponibilidade'];
+const PROPERTY_STATUSES = ['Disponível', 'Com engenharia', 'Em negociação', 'Indisponível', 'Confirmando disponibilidade'];
 const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 const PROPERTY_REFERENCE_PREFIXES = {
   Casa: 'CA',
@@ -210,6 +210,12 @@ const listingPreview = async (sourceUrl) => {
 
 const normalizeStatus = (value) => {
   const text = cleanText(value, 80).toLocaleLowerCase('pt-BR');
+  const legacyStatuses = {
+    reservado: 'Em negociação',
+    vendido: 'Indisponível',
+    'confirmar disponibilidade': 'Confirmando disponibilidade',
+  };
+  if (legacyStatuses[text]) return legacyStatuses[text];
   return PROPERTY_STATUSES.find(status => status.toLocaleLowerCase('pt-BR') === text) || 'Disponível';
 };
 

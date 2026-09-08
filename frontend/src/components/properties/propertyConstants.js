@@ -1,11 +1,10 @@
-export const PROPERTY_STATUSES = ['Disponível', 'Reservado', 'Vendido', 'Indisponível', 'Confirmar disponibilidade'];
+export const PROPERTY_STATUSES = ['Disponível', 'Com engenharia', 'Em negociação', 'Indisponível', 'Confirmando disponibilidade'];
 
 export const PROPERTY_STATUS_COLORS = {
-  'Disponível': '#0ea5e9',
-  'Reservado': '#f59e0b',
-  'Vendido': '#16a34a',
-  'Indisponível': '#64748b',
-  'Confirmar disponibilidade': '#e11d48',
+  'Com engenharia': '#8b5a2b',
+  'Em negociação': '#f57c00',
+  'Indisponível': '#757575',
+  'Confirmando disponibilidade': '#9c27b0',
 };
 
 const normalizeCity = value => String(value || '')
@@ -27,3 +26,4 @@ const PROPERTY_CITY_COLORS = {
 export const PROPERTY_CITY_PRIORITY = ['Sumaré', 'Nova Odessa', 'Hortolândia', 'Americana', 'Paulínia', 'Campinas', 'Monte Mor'];
 export const DEFAULT_PROPERTY_CITY_COLOR = '#757575';
 export const propertyCityColor = city => PROPERTY_CITY_COLORS[normalizeCity(city)] || DEFAULT_PROPERTY_CITY_COLOR;
+export const propertyMarkerColor = property => PROPERTY_STATUS_COLORS[property?.status] || propertyCityColor(property?.city);
