@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import XLSX from 'xlsx';
+import { encodeMatriculaData } from '../api/matriculaData.js';
 
 const source = process.argv[2];
 if (!source) throw new Error('Uso: node scripts/import-matriculas.mjs caminho/planilha.xlsx');
@@ -26,7 +27,7 @@ const dataset = {
 };
 const destination = fileURLToPath(new URL('../api/data/matriculas.json.gz', import.meta.url));
 fs.mkdirSync(path.dirname(destination), { recursive: true });
-const compressed = gzipSync(JSON.stringify(dataset));
+const compressed = gzipSync(JSON.stringify(encodeMatriculaData(dataset)));
 fs.writeFileSync(`${destination}.tmp`, compressed);
 fs.renameSync(`${destination}.tmp`, destination);
 console.log(`Importados ${records.length} registros (${compressed.length} bytes). SHA-256: ${dataset.sha256}`);

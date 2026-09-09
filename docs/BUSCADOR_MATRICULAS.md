@@ -14,6 +14,8 @@ Matrículas preenchidas com zero são apresentadas como não informadas. Campos 
 
 A primeira importação contém 171.239 linhas de dados de `matriculas_urbanas_sumare.xlsx`, primeira aba, mantendo as dez colunas originais. A base compactada fica em `api/data/matriculas.json.gz`, sem ser enviada integralmente ao navegador. O índice é carregado uma vez por processo, sob demanda. Não há migração do banco transacional nem consulta automática ao cartório.
 
+O formato interno v2 armazena os valores distintos de cada coluna em dicionários e as referências de cada linha em inteiros de 32 bits little-endian, codificados em base64 no JSON. O servidor normaliza cada valor distinto uma vez e materializa somente os registros da página solicitada. Isso evita manter cópias dos endereços e um texto completo de busca para cada linha. A conversão preserva valores, ordem, linhas de origem e metadados da importação.
+
 Para substituir a base, execute na raiz com Node disponível:
 
 ```powershell
@@ -26,3 +28,5 @@ O importador valida o formato e armazena nome da fonte, aba, horário de importa
 ## Validação
 
 `node --test scripts/verify-matriculas.mjs` verifica normalização, filtros exatos, dados ausentes, múltiplos resultados, paginação, registros reais e proteção das rotas com middleware de autenticação. O teste HTTP usa uma sessão simulada, sem acessar usuários ou banco de produção.
+
+`npm run test:matriculas:memory` carrega a base real e executa 101 consultas em um processo isolado com heap limitado a 128 MiB, incluindo pesquisas amplas e uma entrada de tamanho máximo. O teste também exige RSS amostrado inferior a 320 MiB. Esse limite verifica o buscador isoladamente; o consumo total da API depende dos demais módulos e das requisições simultâneas.

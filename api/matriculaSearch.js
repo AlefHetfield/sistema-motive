@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { gunzipSync } from 'node:zlib';
+import { decodeMatriculaData, encodeMatriculaData } from './matriculaData.js';
 
 export function normalize(value) {
   return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -15,17 +16,24 @@ function identifier(value) {
 }
 
 export function createMatriculaSearch(dataset) {
-  const indexed = dataset.records.map((row, index) => ({
-    row, id: index + 2, street: streetKey(row[3]), city: normalize(row[8]),
-    neighborhood: normalize(row[7]), number: identifier(row[4]), lot: identifier(row[5]), block: identifier(row[6]),
-    text: normalize(row.join(' ')), registration: identifier(row[0]), fiscal: identifier(row[1]),
-  }));
-  const cities = [...new Set(indexed.map(item => item.city).filter(city => city && city !== '0'))]
-    .map(key => ({ value: key, label: indexed.find(item => item.city === key).row[8] }))
-    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  const { rows, dictionaries, columns, rowCount } = decodeMatriculaData(dataset.version === 2 ? dataset : encodeMatriculaData(dataset));
+  const normalized = dictionaries.map(values => values.map(normalize));
+  const keys = dictionaries.map((values, column) =>
+    [0, 1, 4, 5, 6].includes(column) ? values.map(identifier) : column === 3 ? values.map(streetKey) : normalized[column]);
+  const cityLabels = new Map();
+  let unavailable = 0;
+  for (let row = 0; row < rowCount; row++) {
+    const offset = row * 10;
+    const cityId = rows[offset + 8];
+    const city = keys[8][cityId];
+    if (city && city !== '0' && !cityLabels.has(city)) cityLabels.set(city, dictionaries[8][cityId]);
+    const registration = keys[0][rows[offset]];
+    if (!registration || registration === '0') unavailable++;
+  }
+  const cities = [...cityLabels].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   const metadata = {
-    total: indexed.length, source: dataset.source, sheet: dataset.sheet, importedAt: dataset.importedAt,
-    cities, unavailable: indexed.filter(item => !item.registration || item.registration === '0').length,
+    total: rowCount, source: dataset.source, sheet: dataset.sheet, importedAt: dataset.importedAt,
+    cities, unavailable,
   };
 
   return {
@@ -45,26 +53,49 @@ export function createMatriculaSearch(dataset) {
       const pageSize = 24;
       const active = Boolean(q || street || neighborhood || number || lot || block || registration || fiscal);
       if (!active) return { results: [], total: 0, page: 1, pages: 0, pageSize, suggestions: [], needsQuery: true };
-      const tokens = q.split(' ').filter(Boolean);
+      const tokens = [...new Set(q.split(' ').filter(Boolean))];
       const streetTokens = street.split(' ').filter(Boolean);
-      const matches = indexed.filter(item =>
-        (!city || item.city === city) &&
-        (!street || streetTokens.every(token => item.street.includes(token))) &&
-        (!neighborhood || item.neighborhood.includes(neighborhood)) &&
-        (!number || item.number === number) && (!lot || item.lot === lot) && (!block || item.block === block) &&
-        (!registration || item.registration === registration) && (!fiscal || item.fiscal === fiscal) &&
-        (!q || tokens.every(token => item.text.includes(token)))
-      );
+      // Evaluate filters once per distinct field, then scan integer references.
+      // Free-text tokens may match different columns, just as in the original search.
+      const filters = [[8, city], [4, number], [5, lot], [6, block], [0, registration], [1, fiscal]]
+        .filter(([, value]) => value)
+        .map(([column, value]) => [column, Uint8Array.from(keys[column], key => key === value)]);
+      if (street) filters.push([3, Uint8Array.from(keys[3], key => streetTokens.every(token => key.includes(token)))]);
+      if (neighborhood) filters.push([7, Uint8Array.from(keys[7], key => key.includes(neighborhood))]);
+      const textMatches = tokens.map(token => normalized.map(values => Uint8Array.from(values, value => value.includes(token))));
+      const matches = [];
+      const suggestedStreets = new Set();
+      scan: for (let row = 0; row < rowCount; row++) {
+        const offset = row * 10;
+        for (let filter = 0; filter < filters.length; filter++) {
+          const [column, accepted] = filters[filter];
+          if (!accepted[rows[offset + column]]) continue scan;
+        }
+        for (let token = 0; token < textMatches.length; token++) {
+          let found = false;
+          for (let column = 0; column < 10; column++) {
+            if (textMatches[token][column][rows[offset + column]]) { found = true; break; }
+          }
+          if (!found) continue scan;
+        }
+        matches.push(row);
+        const address = dictionaries[3][rows[offset + 3]];
+        if (suggestedStreets.size < 6 && address) suggestedStreets.add(address);
+      }
       const pages = Math.ceil(matches.length / pageSize);
       const currentPage = Math.min(page, pages || 1);
-      const suggestions = [...new Set(matches.map(item => item.row[3]).filter(Boolean))].slice(0, 6);
+      const suggestions = [...suggestedStreets];
       return {
         total: matches.length, page: currentPage, pages, pageSize, suggestions, needsQuery: false,
-        results: matches.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(item => ({
-          id: item.id, sourceRow: item.id,
-          ...Object.fromEntries(dataset.columns.map((column, index) => [column, item.row[index]])),
-          matriculaDisponivel: Boolean(item.registration && item.registration !== '0'),
-        })),
+        results: matches.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(row => {
+          const offset = row * 10;
+          const registration = keys[0][rows[offset]];
+          return {
+            id: row + 2, sourceRow: row + 2,
+            ...Object.fromEntries(columns.map((column, index) => [column, dictionaries[index][rows[offset + index]]])),
+            matriculaDisponivel: Boolean(registration && registration !== '0'),
+          };
+        }),
       };
     },
   };

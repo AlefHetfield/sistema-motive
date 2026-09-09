@@ -3,8 +3,22 @@ import { test } from 'node:test';
 import express from 'express';
 import { createMatriculaSearch, getMatriculaSearch } from '../api/matriculaSearch.js';
 import { createMatriculaRouter } from '../api/matriculaRoutes.js';
+import { encodeMatriculaData, decodeMatriculaData } from '../api/matriculaData.js';
 
 const columns = ['matricula', 'indicadorFiscal', 'tipoImovel', 'endereco', 'numero', 'lote', 'quadra', 'bairro', 'cidade', 'imovel'];
+
+test('formato compacto preserva todos os campos, vazios, zeros e ordem', () => {
+  const records = [
+    ['00123', '1.02', '', 'Rua São João', 's/nº', '04-A', '01', '', 'SUMARÉ', 'Lote'],
+    ['0', '', '', 'Rua São João', '', '', '', '', 'Sumaré', 'Lote'],
+  ];
+  const encoded = encodeMatriculaData({ columns, records });
+  const decoded = decodeMatriculaData(JSON.parse(JSON.stringify(encoded)));
+  assert.deepEqual(records.map((_, row) => columns.map((_, column) => decoded.dictionaries[column][decoded.rows[row * 10 + column]])), records);
+  assert.equal(encoded.dictionaries[3].length, 1);
+  assert.throws(() => decodeMatriculaData({ ...encoded, rowCount: 3 }), /incompleta/);
+  assert.throws(() => decodeMatriculaData({ ...encoded, version: 3 }), /Formato inválido/);
+});
 const fixture = createMatriculaSearch({ columns, records: [
   ['00123', '1.002.003', 'Urbano', 'Avenida São João', '012', '04-A', '01', 'Jardim Azul', 'SUMARÉ', 'Casa'],
   ['456', '', 'Urbano', 'Avenida São João', '120', '04-B', '01', 'Jardim Azul', 'Sumaré', 'Casa'],
@@ -29,6 +43,8 @@ test('ausência de dados, entrada inválida e busca sem critérios', () => {
   assert.equal(fixture.search({ city: 'sumare' }).needsQuery, true);
   assert.equal(fixture.search({ street: ['a', 'b'] }).needsQuery, true);
   assert.equal(fixture.search({ q: 'JARDIM AZUL', page: '-4' }).page, 1);
+  assert.equal(fixture.search({ q: 'JOAO AZUL SUMARE 00123' }).total, 1);
+  assert.equal(fixture.search({ q: 'JOAO JOAO' }).total, 3);
 });
 
 test('paginação não perde registros nem repete linhas', () => {
