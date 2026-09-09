@@ -4,7 +4,7 @@ A ferramenta está em `/matriculas`, no grupo Documentos do menu, para todos os 
 
 ## Uso
 
-Digite rua, número ou bairro. Os filtros adicionais permitem combinar lote, quadra, matrícula, indicador fiscal e palavras presentes em qualquer campo. A cidade inicial é Sumaré; selecione outra cidade ou todas para ampliar a busca. Os resultados atualizam após uma pausa de 350 ms na digitação, em páginas de 24 registros.
+Digite rua, número ou bairro. Os filtros adicionais permitem combinar lote, quadra, matrícula, indicador fiscal e palavras presentes em qualquer campo. A cidade inicial é Sumaré; selecione outra cidade ou todas para ampliar a busca. Clique em **Buscar** ou pressione **Enter** para consultar, em páginas de 24 registros. Digitar, selecionar uma sugestão ou alterar filtros não dispara consultas. Os resultados anteriores permanecem visíveis até enviar a nova busca, com um aviso quando os filtros foram alterados. A paginação e a repetição de uma consulta com erro usam os filtros da última busca enviada. Limpar cancela uma busca em andamento e retorna à tela inicial.
 
 A busca ignora acentos e maiúsculas. A rua aceita partes do nome e abreviações iniciais como R. e Av. Número, lote, quadra, matrícula e indicador fiscal usam igualdade após normalização de pontuação e zeros iniciais. Os valores exibidos e copiados preservam os identificadores da fonte. Todos os filtros são combinados. Vários registros compatíveis são exibidos para escolha, sem inferir que um endereço incompleto identifica uma matrícula única.
 

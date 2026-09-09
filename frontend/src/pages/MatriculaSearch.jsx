@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, FileSearch, Copy, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMatriculaMetadata, searchMatriculas } from '../services/api';
@@ -18,7 +18,8 @@ function Field({ name, label, placeholder, filters, onChange }) {
 export default function MatriculaSearch() {
   const [filters, setFilters] = useState(initialFilters);
   const [advanced, setAdvanced] = useState(false);
-  const [page, setPage] = useState(1);
+  const [submittedSearch, setSubmittedSearch] = useState(null);
+  const searchController = useRef(null);
   const [metadata, setMetadata] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,7 @@ export default function MatriculaSearch() {
   const [metadataError, setMetadataError] = useState('');
   const [retry, setRetry] = useState(0);
   const hasQuery = Object.entries(filters).some(([key, value]) => key !== 'city' && value.trim());
+  const filtersChanged = submittedSearch && Object.keys(filters).some(key => filters[key] !== submittedSearch.filters[key]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,34 +38,44 @@ export default function MatriculaSearch() {
     return () => controller.abort();
   }, [retry]);
 
-  useEffect(() => {
-    if (!hasQuery) return;
+  useEffect(() => () => searchController.current?.abort(), []);
+
+  const runSearch = async (selectedFilters, selectedPage = 1) => {
+    searchController.current?.abort();
     const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const data = await searchMatriculas({ ...filters, page }, controller.signal);
-        if (!controller.signal.aborted) setResult(data);
-      } catch (err) {
-        if (!controller.signal.aborted) setError(err.message);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, 350);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [filters, page, hasQuery, retry]);
+    searchController.current = controller;
+    const snapshot = { ...selectedFilters };
+    setSubmittedSearch({ filters: snapshot, page: selectedPage });
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const data = await searchMatriculas({ ...snapshot, page: selectedPage }, controller.signal);
+      if (!controller.signal.aborted) setResult(data);
+    } catch (err) {
+      if (!controller.signal.aborted) setError(err.message);
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  };
+
+  const submit = event => {
+    event.preventDefault();
+    if (hasQuery && !loading) runSearch(filters);
+  };
+
+  const retryFailedRequest = () => {
+    if (metadataError) setRetry(value => value + 1);
+    if (error && submittedSearch && !loading) runSearch(submittedSearch.filters, submittedSearch.page);
+  };
 
   const change = (name, value) => {
     setFilters(current => ({ ...current, [name]: value }));
-    setPage(1);
-    setResult(null);
-    setError('');
-    setLoading(false);
   };
   const reset = () => {
+    searchController.current?.abort();
     setFilters(initialFilters);
-    setPage(1);
+    setSubmittedSearch(null);
     setResult(null);
     setError('');
     setLoading(false);
@@ -72,7 +84,7 @@ export default function MatriculaSearch() {
     try { await navigator.clipboard.writeText(value); toast.success('Copiado para a área de transferência.'); }
     catch { toast.error('Não foi possível copiar. Selecione o texto e copie manualmente.'); }
   };
-  const movePage = next => { setResult(null); setPage(next); };
+  const movePage = next => runSearch(submittedSearch.filters, next);
   const fieldProps = { filters, onChange: change };
 
   return <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
@@ -89,7 +101,7 @@ export default function MatriculaSearch() {
       </div>
     </section>
 
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6" aria-label="Filtros de busca">
+    <form onSubmit={submit} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6" aria-label="Filtros de busca">
       <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
         <Field name="street" label="Rua ou avenida" placeholder="Ex.: Rua Jatobá" {...fieldProps} />
         <Field name="number" label="Número do imóvel" placeholder="Ex.: 120 ou s/n" {...fieldProps} />
@@ -120,15 +132,22 @@ export default function MatriculaSearch() {
         </div>
         <div className="mt-4"><Field name="q" label="Informações complementares" placeholder="Busque palavras em qualquer campo da base" {...fieldProps} /></div>
       </div>
-      <p className="mt-4 text-xs leading-5 text-gray-500">Os resultados atualizam enquanto você digita. Os filtros são combinados; número, lote e quadra buscam o valor completo.</p>
-    </section>
+      <div className="mt-5 flex flex-col gap-4 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-xl text-xs leading-5 text-gray-500">Preencha os filtros e clique em Buscar ou pressione Enter. Número, lote e quadra buscam o valor completo.</p>
+        <button type="submit" disabled={!hasQuery || loading} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+          {loading ? 'Buscando…' : 'Buscar'}
+        </button>
+      </div>
+    </form>
 
     {(error || metadataError) && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-      <span>{error || metadataError}</span><button type="button" onClick={() => setRetry(value => value + 1)} className="font-semibold underline">Tentar novamente</button>
+      <span>{error || metadataError}</span><button type="button" onClick={retryFailedRequest} disabled={loading} className="font-semibold underline disabled:opacity-50">Tentar novamente</button>
     </div>}
 
     <div aria-live="polite" aria-busy={loading}>
-      {!hasQuery ? <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center md:p-12">
+      {filtersChanged && <p className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">Filtros alterados. Clique em Buscar para aplicar. Os resultados correspondem à última busca enviada.</p>}
+      {!submittedSearch ? <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center md:p-12">
         <Search className="mx-auto mb-4 text-primary" size={32} />
         <h3 className="text-lg font-semibold text-gray-900">Qual imóvel você está procurando?</h3>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-500">Informe uma rua ou use os filtros adicionais. Para imóveis sem número, combine bairro, lote e quadra.</p>
@@ -138,7 +157,7 @@ export default function MatriculaSearch() {
           {result.pages > 0 && <span className="text-sm text-gray-500">Página {result.page} de {formatCount(result.pages)}</span>}
         </div>
         {result.total > 1 && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">Há mais de um registro compatível. Confira número, lote e quadra antes de escolher a matrícula.</p>}
-        {result.suggestions.length > 1 && !filters.street && <div className="mb-5 flex flex-wrap items-center gap-2">
+        {result.suggestions.length > 1 && !submittedSearch.filters.street && <div className="mb-5 flex flex-wrap items-center gap-2">
           <span className="text-xs text-gray-500">Refinar por rua:</span>
           {result.suggestions.map(street => <button type="button" key={street} onClick={() => change('street', street)} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-primary hover:text-primary">{street}</button>)}
         </div>}
