@@ -65,7 +65,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Após o primeiro deploy, você precisa rodar as migrações. Há duas opções:
 
 ### Opção A: Automático (já configurado no vercel-build)
-As migrações rodam automaticamente durante o build via `prisma migrate deploy`
+As migrações rodam automaticamente durante o build via `npm run db:migrate:deploy`, com novas tentativas limitadas apenas para timeout do advisory lock. O Prisma CLI usa a conexão direta configurada em `DIRECT_URL` ou `DATABASE_URL_UNPOOLED`; no Neon, deriva o endpoint direto da `DATABASE_URL` quando ambas estão ausentes. A conexão da API permanece inalterada.
 
 ### Opção B: Manual (se necessário)
 ```bash

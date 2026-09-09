@@ -5,6 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
+    "db:migrate:deploy": "node scripts/migrate-deploy.mjs",
+    "test:migrate-deploy": "node --test scripts/verify-migrate-deploy.mjs",
+    "build:api": "npm install --include=dev && prisma generate && npm run db:migrate:deploy",
     "test:matriculas": "node --test scripts/verify-matriculas.mjs",
     "test:matriculas:memory": "node scripts/verify-matriculas-memory.mjs",
     "import:matriculas": "node scripts/import-matriculas.mjs",
@@ -14,7 +17,7 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:frontend\" --names \"API,FRONTEND\" --prefix-colors \"cyan,magenta\"",
     "build": "cd frontend && npm install --include=dev && npm run build && cd ..",
-    "vercel-build": "prisma migrate deploy && prisma generate && cd frontend && npm install --include=dev && npm run build"
+    "vercel-build": "npm run db:migrate:deploy && prisma generate && cd frontend && npm install --include=dev && npm run build"
   },
   "repository": {
     "type": "git",
