@@ -21,11 +21,23 @@ export function createMatriculaSearch(dataset) {
   const keys = dictionaries.map((values, column) =>
     [0, 1, 4, 5, 6].includes(column) ? values.map(identifier) : column === 3 ? values.map(streetKey) : normalized[column]);
   const cityLabels = new Map();
+  const streetCatalog = new Map();
   let unavailable = 0;
   for (let row = 0; row < rowCount; row++) {
     const offset = row * 10;
     const cityId = rows[offset + 8];
     const city = keys[8][cityId];
+    const streetId = rows[offset + 3];
+    const streetName = dictionaries[3][streetId];
+    const streetIdentity = normalized[3][streetId];
+    if (streetIdentity) {
+      let street = streetCatalog.get(streetIdentity);
+      if (!street) {
+        street = { name: streetName, cities: new Set() };
+        streetCatalog.set(streetIdentity, street);
+      }
+      street.cities.add(city);
+    }
     if (city && city !== '0' && !cityLabels.has(city)) cityLabels.set(city, dictionaries[8][cityId]);
     const registration = keys[0][rows[offset]];
     if (!registration || registration === '0') unavailable++;
@@ -34,6 +46,8 @@ export function createMatriculaSearch(dataset) {
   const metadata = {
     total: rowCount, source: dataset.source, sheet: dataset.sheet, importedAt: dataset.importedAt,
     cities, unavailable,
+    streets: [...streetCatalog.values()].map(street => ({ name: street.name, cities: [...street.cities] }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
   };
 
   return {

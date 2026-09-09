@@ -12,6 +12,8 @@ Matrículas preenchidas com zero são apresentadas como não informadas. Campos 
 
 ## Base e atualização
 
+O campo de rua sugere até oito nomes a partir de dois caracteres, respeitando a cidade selecionada. As sugestões ignoram acentos, aceitam abreviações como R. e Av. e priorizam o início do nome. O catálogo de nomes e cidades vem nos metadados autenticados ao abrir a tela; a digitação é filtrada no navegador e não gera chamadas adicionais à API. Clique em uma opção ou use as setas e Enter para preencher. Após a seleção, Buscar ou um novo Enter envia a consulta. Escape fecha a lista. A entrada livre continua disponível mesmo sem sugestões ou se os metadados não carregarem.
+
 A primeira importação contém 171.239 linhas de dados de `matriculas_urbanas_sumare.xlsx`, primeira aba, mantendo as dez colunas originais. A base compactada fica em `api/data/matriculas.json.gz`, sem ser enviada integralmente ao navegador. O índice é carregado uma vez por processo, sob demanda. Não há migração do banco transacional nem consulta automática ao cartório.
 
 O formato interno v2 armazena os valores distintos de cada coluna em dicionários e as referências de cada linha em inteiros de 32 bits little-endian, codificados em base64 no JSON. O servidor normaliza cada valor distinto uma vez e materializa somente os registros da página solicitada. Isso evita manter cópias dos endereços e um texto completo de busca para cada linha. A conversão preserva valores, ordem, linhas de origem e metadados da importação.

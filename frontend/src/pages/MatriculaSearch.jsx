@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, MapPin, FileSearch, Copy, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMatriculaMetadata, searchMatriculas } from '../services/api';
+import MatriculaStreetInput from '../components/MatriculaStreetInput';
 
 const initialFilters = { street: '', number: '', neighborhood: '', city: 'sumare', lot: '', block: '', registration: '', fiscal: '', q: '' };
 const inputClass = 'mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15';
 const formatCount = value => Number(value).toLocaleString('pt-BR');
+const emptyStreets = [];
 
 function Field({ name, label, placeholder, filters, onChange }) {
   return <label className="block text-sm font-medium text-gray-700" htmlFor={`matricula-${name}`}>
@@ -103,7 +105,8 @@ export default function MatriculaSearch() {
 
     <form onSubmit={submit} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6" aria-label="Filtros de busca">
       <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
-        <Field name="street" label="Rua ou avenida" placeholder="Ex.: Rua Jatobá" {...fieldProps} />
+        <MatriculaStreetInput key={filters.city} value={filters.street} city={filters.city} streets={metadata?.streets || emptyStreets}
+          onChange={value => change('street', value)} inputClass={inputClass} />
         <Field name="number" label="Número do imóvel" placeholder="Ex.: 120 ou s/n" {...fieldProps} />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">

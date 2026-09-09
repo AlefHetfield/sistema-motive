@@ -4,6 +4,7 @@ import express from 'express';
 import { createMatriculaSearch, getMatriculaSearch } from '../api/matriculaSearch.js';
 import { createMatriculaRouter } from '../api/matriculaRoutes.js';
 import { encodeMatriculaData, decodeMatriculaData } from '../api/matriculaData.js';
+import { matchStreetSuggestions, normalizeStreetQuery } from '../frontend/src/utils/matriculaStreets.js';
 
 const columns = ['matricula', 'indicadorFiscal', 'tipoImovel', 'endereco', 'numero', 'lote', 'quadra', 'bairro', 'cidade', 'imovel'];
 
@@ -34,6 +35,26 @@ test('acentos, abreviações, cidades e filtros combinados preservam identificad
   assert.equal(fixture.search({ street: 'sao joao', number: '12' }).total, 2);
   assert.equal(fixture.search({ registration: '123' }).results[0].matricula, '00123');
   assert.equal(fixture.search({ fiscal: '1002003' }).total, 1);
+});
+
+test('autocomplete deduplica ruas e filtra localmente por cidade, acentos e abreviações', () => {
+  assert.equal(fixture.metadata.streets.length, 2);
+  const catalog = fixture.metadata.streets.map(street => ({ ...street, key: normalizeStreetQuery(street.name) }));
+  assert.deepEqual(matchStreetSuggestions(catalog, 'av. sao', 'sumare').map(street => street.name), ['Avenida São João']);
+  assert.equal(matchStreetSuggestions(catalog, 'sao', 'hortolandia').length, 1);
+  assert.equal(matchStreetSuggestions(catalog, 'flores', 'hortolandia').length, 0);
+  assert.equal(matchStreetSuggestions(catalog, 'flores', '').length, 1);
+  assert.equal(matchStreetSuggestions(catalog, 's', '').length, 0);
+  assert.equal(matchStreetSuggestions(catalog, 'inexistente', '').length, 0);
+  assert.equal(matchStreetSuggestions(catalog, 'rua flores', 'sumare')[0].name, 'Rua das Flores');
+});
+
+test('autocomplete prioriza início do nome e limita a oito sugestões', () => {
+  const catalog = Array.from({ length: 12 }, (_, i) => ({ name: `Rua João ${i}`, key: `joao ${i}`, cities: ['sumare'] }));
+  catalog.unshift({ name: 'Rua Doutor João', key: 'doutor joao', cities: ['sumare'] });
+  const results = matchStreetSuggestions(catalog, 'joao', 'sumare');
+  assert.equal(results.length, 8);
+  assert.ok(results.every(street => street.key.startsWith('joao')));
 });
 
 test('ausência de dados, entrada inválida e busca sem critérios', () => {
@@ -80,6 +101,8 @@ test('API exige autenticação e retorna metadados e páginas', async () => {
     const headers = { Authorization: 'test-session' };
     const metadata = await (await fetch(`${base}/metadata`, { headers })).json();
     assert.equal(metadata.total, 171239);
+    assert.ok(metadata.streets.some(street => street.name === 'Rua Jatobá' && street.cities.includes('sumare')));
+    assert.ok(metadata.streets.every(street => Object.keys(street).sort().join(',') === 'cities,name'));
     const response = await fetch(`${base}?registration=226740`, { headers });
     assert.equal(response.headers.get('cache-control'), 'private, no-store');
     const data = await response.json();
