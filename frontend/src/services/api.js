@@ -5,6 +5,19 @@
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
 
+export async function fetchMatriculaMetadata(signal) {
+    const response = await fetch(`${API_BASE_URL}/api/matriculas/metadata`, { credentials: 'include', signal });
+    if (!response.ok) throw await apiError(response, 'Não foi possível carregar a base de matrículas.');
+    return response.json();
+}
+
+export async function searchMatriculas(filters, signal) {
+    const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => String(value).trim()));
+    const response = await fetch(`${API_BASE_URL}/api/matriculas?${params}`, { credentials: 'include', signal });
+    if (!response.ok) throw await apiError(response, 'Não foi possível buscar as matrículas.');
+    return response.json();
+}
+
 const apiError = async (response, fallback) => {
     const data = await response.json().catch(() => ({}));
     return new Error(data.error || fallback);

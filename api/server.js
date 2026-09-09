@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import { contractDownloadName, generateContractDocx, normalizeAndValidateContractData } from './contractGenerator.js';
 import { createPropertyRouter } from './propertyRoutes.js';
+import { createMatriculaRouter } from './matriculaRoutes.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -96,6 +97,7 @@ function requireRole(...allowedRoles) {
 }
 
 app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
+app.use('/api/matriculas', createMatriculaRouter(requireAuth));
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`

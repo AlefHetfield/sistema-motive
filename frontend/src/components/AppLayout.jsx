@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 
@@ -11,6 +11,7 @@ const corretorNavItems = [
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
+    { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
 ];
@@ -22,6 +23,7 @@ const assistenteNavItems = [
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
+    { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
 ];
@@ -34,6 +36,7 @@ const adminNavItems = [
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
+    { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
     { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
     { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, group: 'Administração' },
@@ -47,6 +50,7 @@ const pageDescriptions = {
     '/receipt-generator': 'Calcule valores e gere recibos de pró-labore em PDF.',
     '/contract-generator': 'Preencha, revise e gere contratos de compra e venda em Word.',
     '/pdf-editor': 'Edite e prepare documentos em PDF para os seus processos.',
+    '/matriculas': 'Encontre matrículas por rua, número, bairro, lote e quadra.',
     '/cep-search': 'Consulte endereços completos a partir do CEP.',
     '/settings': 'Ajuste as preferências e configurações do sistema.',
     '/users': 'Cadastre usuários e controle os acessos da equipe.',

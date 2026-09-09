@@ -10,6 +10,7 @@ import ClientsList from './pages/ClientsList';
 import PdfEditor from './pages/PdfEditor';
 import ReceiptGenerator from './pages/ReceiptGenerator';
 import CepSearch from './pages/CepSearch';
+import MatriculaSearch from './pages/MatriculaSearch';
 import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import HousingSimulator from './pages/HousingSimulator';
@@ -64,6 +65,7 @@ function App() {
             <Route path="properties-map" element={<PropertiesMap />} />
             <Route path="simulador" element={<HousingSimulator />} />
             <Route path="cep-search" element={<CepSearch />} />
+            <Route path="matriculas" element={<MatriculaSearch />} />
             <Route path="settings" element={<Settings />} />
             
             {/* Rota exclusiva para Administradores */}
