@@ -5,6 +5,15 @@
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
 
+export async function taskApi(path = '', { method = 'GET', body, signal } = {}) {
+    const response = await fetch(`${API_BASE_URL}/api/tasks${path}`, {
+        method, credentials: 'include', signal,
+        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) throw await apiError(response, 'Não foi possível acessar as tarefas.');
+    return response.status === 204 ? null : response.json();
+}
+
 export async function fetchMatriculaMetadata(signal) {
     const response = await fetch(`${API_BASE_URL}/api/matriculas/metadata`, { credentials: 'include', signal });
     if (!response.ok) throw await apiError(response, 'Não foi possível carregar a base de matrículas.');

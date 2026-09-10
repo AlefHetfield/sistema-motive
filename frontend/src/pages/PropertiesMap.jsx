@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Bath,
   BedDouble,
@@ -212,6 +212,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
         <div className="mt-5 border-t border-gray-100 pt-5"><p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Informações complementares</p><div className={`whitespace-pre-wrap break-words text-sm leading-6 ${property.additionalInformation ? 'text-gray-600' : 'italic text-gray-400'}`}>{property.additionalInformation || 'Nenhuma informação complementar cadastrada.'}</div></div>
       </div>
       <footer className="grid grid-cols-2 gap-2 border-t border-gray-100 bg-gray-50 p-3">
+        <Link to={`/tasks?view=social&newProperty=${property.id}`} className="col-span-2 rounded-xl bg-primary px-3 py-2.5 text-center text-sm font-bold text-white">Criar publicação</Link>
         <a href={routeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><Route className="h-4 w-4" />Abrir rota</a>
         {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><ExternalLink className="h-4 w-4" />Abrir ficha</a>}
         <button type="button" onClick={onEdit} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white hover:bg-[#4a637a]"><Pencil className="h-4 w-4" />Editar</button>

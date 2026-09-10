@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, ListTodo, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
+import TaskNotifications from './TaskNotifications';
 
 const corretorNavItems = [
+    { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -18,6 +20,7 @@ const corretorNavItems = [
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
+    { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -31,6 +34,7 @@ const assistenteNavItems = [
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operação' },
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
+    { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -45,6 +49,7 @@ const adminNavItems = [
 const pageDescriptions = {
     '/dashboard': 'Acompanhe os principais indicadores e atividades da operação.',
     '/clients': 'Visualize e gerencie o progresso dos financiamentos em tempo real.',
+    '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
     '/properties-map': 'Localize, organize e atualize os imóveis disponíveis no mapa.',
     '/simulador': 'Compare condições de financiamento e gere propostas para seus clientes.',
     '/receipt-generator': 'Calcule valores e gere recibos de pró-labore em PDF.',
@@ -251,6 +256,7 @@ const AppLayout = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        {isAuthenticated && user?.id && <TaskNotifications key={user.id} />}
                         <div className="text-right">
                             <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>
                             <p className="text-xs text-gray-500">

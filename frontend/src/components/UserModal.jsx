@@ -155,6 +155,7 @@ const UserModal = ({ user, onClose, onSave }) => {
                         />
                     </div>
 
+                    <p className="rounded-xl bg-primary/5 p-3 text-sm text-gray-700">{formData.role === 'ADM' ? 'Acesso completo às tarefas de toda a equipe.' : 'Acesso apenas às próprias tarefas e às recebidas, com permissão para editar, alterar prazo, concluir e excluir.'}</p>
                     {/* Status (apenas na edição) */}
                     {user && (
                         <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">

@@ -11,6 +11,8 @@ import bcrypt from 'bcryptjs';
 import { contractDownloadName, generateContractDocx, normalizeAndValidateContractData } from './contractGenerator.js';
 import { createPropertyRouter } from './propertyRoutes.js';
 import { createMatriculaRouter } from './matriculaRoutes.js';
+import { createTaskRouter } from './taskRoutes.js';
+import { encodeSession, decodeSession } from './session.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -41,7 +43,7 @@ app.use(cookieParser());
 const SESSION_COOKIE = 'motive_session';
 
 function createSession(res, payload) {
-  const value = Buffer.from(JSON.stringify(payload)).toString('base64');
+  const value = encodeSession(payload);
   res.cookie(SESSION_COOKIE, value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -63,7 +65,7 @@ function readSession(req) {
   const raw = req.cookies?.[SESSION_COOKIE];
   if (!raw) return null;
   try {
-    return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    return decodeSession(raw);
   } catch {
     return null;
   }
@@ -81,23 +83,28 @@ function requireAuth(req, res, next) {
 }
 
 function requireRole(...allowedRoles) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const session = readSession(req);
     if (!session) {
       console.log('[AUTH] Sessão não encontrada - cookies recebidos:', Object.keys(req.cookies || {}));
       return res.status(401).json({ error: 'Não autenticado' });
     }
-    if (!allowedRoles.includes(session.role)) {
+    let currentUser;
+    try {
+      currentUser = await prisma.user.findUnique({ where: { id: session.id }, select: { id: true, nome: true, role: true, isActive: true } });
+    } catch { return res.status(503).json({ error: 'Não foi possível verificar seu acesso.' }); }
+    if (!currentUser?.isActive || !allowedRoles.includes(currentUser.role)) {
       console.log('[AUTH] Acesso negado - role:', session.role, 'permitidos:', allowedRoles);
       return res.status(403).json({ error: 'Acesso negado' });
     }
-    req.user = session;
+    req.user = currentUser;
     next();
   };
 }
 
 app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
 app.use('/api/matriculas', createMatriculaRouter(requireAuth));
+app.use('/api/tasks', createTaskRouter(prisma, requireAuth));
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`
@@ -1127,7 +1134,6 @@ app.post('/api/users', requireRole('ADM'), async (req, res) => {
     }
 
     // Hash da senha
-    console.log('Gerando hash para senha:', password);
     const passwordHash = await bcrypt.hash(password, 10);
     console.log('Hash gerado com sucesso');
 
@@ -1138,7 +1144,7 @@ app.post('/api/users', requireRole('ADM'), async (req, res) => {
         passwordHash,
         role,
         isActive,
-        mustChangePassword: true // Força troca de senha no primeiro login
+        mustChangePassword: true, // Força troca de senha no primeiro login
       },
       select: {
         id: true,
@@ -1208,6 +1214,10 @@ app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
     // Impede que o usuário delete a si mesmo
     if (userId === req.user.id) {
       return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
+    }
+
+    if (await prisma.task.count({ where: { assigneeId: userId } })) {
+      return res.status(409).json({ error: 'Este usuário possui tarefas. Desative o usuário para preservar o histórico ou transfira suas tarefas antes de excluí-lo.' });
     }
 
     await prisma.user.delete({

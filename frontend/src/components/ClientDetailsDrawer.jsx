@@ -28,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { deleteClientSimulation, downloadContractDocx, fetchClientActivities, fetchClientContracts, fetchClientSimulations } from '../services/api';
 import DeleteSimulationModal from './DeleteSimulationModal';
 import StatusBadge from './ui/StatusBadge';
+import ClientTasks from './ClientTasks';
 
 const SIGNED_STATUSES = ['Assinado', 'Assinado-Movido'];
 
@@ -329,7 +330,8 @@ export default function ClientDetailsDrawer({
                     </section>
 
                     <section>
-                        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900"><History size={17} className="text-primary" />Histórico recente</h3>
+                        <ClientTasks key={client.id} clientId={client.id} clientName={client.nome} />
+                        <h3 className="mb-3 mt-5 flex items-center gap-2 text-sm font-bold text-gray-900"><History size={17} className="text-primary" />Histórico recente</h3>
                         {isLoadingHistory ? (
                             <div className="space-y-3">{[1, 2, 3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-gray-100" />)}</div>
                         ) : activities.length ? (

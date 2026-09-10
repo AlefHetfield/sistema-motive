@@ -5,6 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
+    "test:tasks": "node --test scripts/verify-tasks.mjs scripts/verify-task-dates.mjs",
     "db:migrate:deploy": "node scripts/migrate-deploy.mjs",
     "test:migrate-deploy": "node --test scripts/verify-migrate-deploy.mjs",
     "build:api": "npm install --include=dev && prisma generate && npm run db:migrate:deploy",

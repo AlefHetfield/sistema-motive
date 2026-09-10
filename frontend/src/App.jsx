@@ -16,6 +16,7 @@ import UserManagement from './pages/UserManagement';
 import HousingSimulator from './pages/HousingSimulator';
 import ContractGenerator from './pages/ContractGenerator';
 import PropertiesMap from './pages/PropertiesMap';
+import Tasks from './pages/Tasks';
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
             <Route path="simulador" element={<HousingSimulator />} />
             <Route path="cep-search" element={<CepSearch />} />
             <Route path="matriculas" element={<MatriculaSearch />} />
+            <Route path="tasks" element={<Tasks />} />
             <Route path="settings" element={<Settings />} />
             
             {/* Rota exclusiva para Administradores */}
