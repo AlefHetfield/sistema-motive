@@ -1,3 +1,4 @@
+import useMobileLayout from '../hooks/useMobileLayout';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -179,7 +180,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
     }
   };
   return (
-    <aside className="absolute inset-y-3 right-3 z-20 flex w-[min(390px,calc(100%-24px))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+    <aside className="fixed inset-0 z-[60] flex w-full lg:absolute lg:inset-y-3 lg:left-auto lg:right-3 lg:z-20 lg:w-[min(390px,calc(100%-24px))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
       <div className="relative h-48 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100">
         {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setFailedPhotoIds(current => new Set(current).add(displayedPhoto.id))} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
         {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
@@ -299,6 +300,9 @@ function RefreshListingsModal({ total, state, onClose, onConfirm }) {
 
 export default function PropertiesMap() {
   const { isAdmin } = useAuth();
+  const mobile = useMobileLayout();
+  const [mobileView, setMobileView] = useState('map');
+  const [mobileFilters, setMobileFilters] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyListRef = useRef(null);
   const sidebarResizeRef = useRef(null);
@@ -704,15 +708,16 @@ export default function PropertiesMap() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] min-h-[650px] flex-col overflow-hidden bg-gray-100">
-      <header className="shrink-0 border-b border-gray-200 bg-white px-4 py-3 sm:px-5">
+    <div className="flex h-[calc(100dvh-4rem)] min-h-[400px] flex-col lg:h-[calc(100dvh-72px)] overflow-hidden bg-gray-100">
+            <header className="max-h-[45dvh] shrink-0 overflow-y-auto border-b border-gray-200 bg-white px-3 py-2 lg:max-h-none lg:overflow-visible lg:px-5 lg:py-3">
+        {mobile && <div className="mb-2 flex items-center gap-2"><div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1" aria-label="Visualização dos imóveis">{[['map', 'Mapa'], ['list', 'Lista']].map(([value, label]) => <button key={value} type="button" aria-pressed={mobileView === value} onClick={() => setMobileView(value)} className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold ${mobileView === value ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div><button type="button" aria-expanded={mobileFilters} onClick={() => setMobileFilters(value => !value)} className="min-h-11 rounded-xl border px-3 text-sm font-semibold text-gray-600">{mobileFilters ? 'Fechar filtros' : 'Filtros e ações'}</button></div>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-gray-500"><strong className="text-gray-800">{filtered.length}</strong> imóvel(is) · <strong className="text-gray-800">{mappedCount}</strong> visível(is) no mapa</p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={`${mobile && !mobileFilters ? 'hidden' : 'flex'} flex-wrap items-center gap-2`}>
             {isAdmin() && (
               <details className="group relative z-40">
                 <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"><Download className="h-4 w-4" />Backup<ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
-                <div className="absolute right-0 top-[calc(100%+6px)] w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                <div className="relative mt-2 w-full lg:absolute lg:right-0 lg:top-[calc(100%+6px)] lg:mt-0 lg:w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
                   <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); downloadBackup(); }} disabled={isBackingUp} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Download className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold text-gray-700">Baixar backup</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">Salva todos os dados em um arquivo JSON</span></span></button>
                   <div className="my-1 border-t border-gray-100" />
                   <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); openClearMap(); }} disabled={!properties.length || !backupDownloaded} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-500" /><span><span className="block text-sm font-bold text-red-600">Limpar mapa</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">{backupDownloaded ? `Excluir os ${properties.length} imóveis cadastrados` : 'Disponível após baixar o backup'}</span></span></button>
@@ -721,7 +726,7 @@ export default function PropertiesMap() {
             )}
             <details className="group relative z-40">
               <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"><RefreshCw className={`h-4 w-4 ${isRefreshingDrivePhotos ? 'animate-spin' : ''}`} />Sincronizar<ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
-              <div className="absolute right-0 top-[calc(100%+6px)] w-64 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
+              <div className="relative mt-2 w-full lg:absolute lg:right-0 lg:top-[calc(100%+6px)] lg:mt-0 lg:w-64 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
                 <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); runDrivePhotosRefresh(); }} disabled={!drivePhotosTotal || isRefreshingDrivePhotos} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><Images className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold text-gray-700">Fotos do Google Drive</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">Atualiza capas e pastas vinculadas</span></span></button>
                 <button type="button" onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); openListingRefresh(); }} disabled={!listingRefreshTotal} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"><RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold text-gray-700">Dados dos anúncios</span><span className="mt-0.5 block text-xs leading-4 text-gray-400">Consulta novamente o site da Motive</span></span></button>
               </div>
@@ -730,7 +735,7 @@ export default function PropertiesMap() {
             <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
           </div>
         </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]">
+        <div className={`${mobile && !mobileFilters ? 'hidden' : 'grid'} mt-2 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]`}>
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <select value={filters.status} onChange={event => updateFilter('status', event.target.value)} className={compactControlClass}><option value="">Todos os status</option>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.city} onChange={event => updateFilter('city', event.target.value)} className={compactControlClass}><option value="">Todas as cidades</option>{cities.map(item => <option key={item}>{item}</option>)}</select>
@@ -738,7 +743,7 @@ export default function PropertiesMap() {
           <select value={filters.bedrooms} onChange={event => updateFilter('bedrooms', event.target.value)} className={compactControlClass}><option value="">Dormitórios</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select>
           <details className="group relative z-30">
             <summary className={`${compactControlClass} flex cursor-pointer list-none items-center justify-between gap-2 font-bold text-gray-600 [&::-webkit-details-marker]:hidden`}><span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Mais filtros</span><ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
-            <div className="absolute right-0 top-[calc(100%+6px)] w-72 space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+            <div className="relative mt-2 w-full lg:absolute lg:right-0 lg:top-[calc(100%+6px)] lg:mt-0 lg:w-72 space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
               <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Suíte</span><select value={filters.suite} onChange={event => updateFilter('suite', event.target.value)} className={compactControlClass}><option value="">Todas</option><option value="yes">Sim</option><option value="no">Não</option></select></label>
               {(!filters.propertyType || filters.propertyType === 'Apartamento') && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Andar</span><select value={filters.floorGroup} onChange={event => updateFilter('floorGroup', event.target.value)} className={compactControlClass}><option value="">Todos</option><option value="ground">Térreo</option><option value="upper">1º andar ou superior</option><option value="unknown">Não informado</option></select></label>}
               {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Configuração do terreno</span><select value={filters.landConfiguration} onChange={event => updateFilter('landConfiguration', event.target.value)} className={compactControlClass}><option value="">Todas</option>{LAND_CONFIGURATIONS.map(item => <option key={item}>{item}</option>)}<option value="unknown">Não informado</option></select></label>}
@@ -749,14 +754,14 @@ export default function PropertiesMap() {
       </header>
 
       <div style={{ '--property-sidebar-width': isSidebarCollapsed ? '0px' : `${sidebarWidth}px` }} className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-200 lg:grid-cols-[var(--property-sidebar-width)_minmax(0,1fr)]">
-        <aside ref={propertyListRef} className={`order-2 overflow-y-auto border-r border-gray-200 bg-gray-50 p-3 lg:order-1 ${isSidebarCollapsed ? 'lg:overflow-hidden lg:border-r-0 lg:p-0' : ''}`}>
+        <aside ref={propertyListRef} className={`${mobile && mobileView !== 'list' ? 'hidden' : ''} order-2 overflow-y-auto border-r border-gray-200 bg-gray-50 p-3 lg:order-1 ${isSidebarCollapsed ? 'lg:overflow-hidden lg:border-r-0 lg:p-0' : ''}`}>
           {isLoading ? <LoadingState label="Carregando imóveis..." description="Organizando a lista por cidade e disponibilidade." /> : filtered.length ? <div className="space-y-3">{cityGroups.map(group => { const collapsed = collapsedCities.has(group.city); return <section key={group.city}><button type="button" onClick={() => toggleCity(group.city)} aria-expanded={!collapsed} className={`sticky -top-3 z-10 -mx-1 flex w-[calc(100%+8px)] items-center justify-between border-b border-gray-200 bg-gray-50/95 px-2 py-2.5 text-left backdrop-blur transition hover:bg-gray-100 ${collapsed ? 'mb-0' : 'mb-2'}`}><span className="flex min-w-0 items-center gap-2 text-xs font-extrabold uppercase tracking-[0.08em] text-gray-700"><ChevronDown className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`} /><span className="h-3 w-3 shrink-0 rounded-full ring-4 ring-white" style={{ backgroundColor: group.color }} />{group.city}</span><span className="flex items-center gap-1.5"><span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600"><Star className="h-3 w-3" fill="currentColor" />{group.items.filter(item => item.isFavorite).length}</span><span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500 ring-1 ring-gray-200">{group.items.length}</span></span></button>{!collapsed && <div className="space-y-2">{group.items.map(property => <PropertyListCard key={property.id} property={property} selected={selectedProperty?.id === property.id} highlighted={hoveredPropertyId === property.id} onClick={() => setSelectedProperty(property)} onHover={setHoveredPropertyId} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(property.id)} />)}</div>}</section>; })}</div> : <EmptyState icon={Building2} title="Nenhum imóvel encontrado" description="Ajuste os filtros ou cadastre um novo imóvel para começar." />}
         </aside>
-        <main className="relative order-1 min-h-[520px] overflow-hidden lg:order-2">
+        <main className={`${mobile && mobileView !== 'map' ? 'hidden' : ''} relative order-1 min-h-0 overflow-hidden lg:order-2`}>
           {!isSidebarCollapsed && <div role="separator" aria-label="Ajustar largura da lista" aria-orientation="vertical" onPointerDown={startSidebarResize} onPointerMove={resizeSidebar} onPointerUp={finishSidebarResize} onPointerCancel={finishSidebarResize} className="absolute inset-y-0 -left-1 z-30 hidden w-2 touch-none cursor-col-resize lg:block"><span className="absolute inset-y-0 left-1/2 w-px bg-transparent transition hover:bg-primary/40" /></div>}
           <button type="button" onClick={() => setIsSidebarCollapsed(current => !current)} title={isSidebarCollapsed ? 'Expandir lista de imóveis' : 'Recolher lista de imóveis'} aria-label={isSidebarCollapsed ? 'Expandir lista de imóveis' : 'Recolher lista de imóveis'} className="absolute left-3 top-4 z-30 hidden h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-primary shadow-xl transition hover:border-primary/30 hover:bg-primary/5 lg:flex">{isSidebarCollapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}</button>
           <PropertyMap properties={filtered} selectedPropertyId={selectedProperty?.id} hoveredPropertyId={hoveredPropertyId} locatedAddress={locatedAddress} onSelect={selectProperty} onHover={setHoveredPropertyId} onCreateAtLocation={createAtLocation} />
-          <div className="absolute left-16 top-4 z-20 w-[min(470px,calc(100%-80px))]">
+          <div className="absolute left-3 right-3 top-3 z-20 lg:left-16 lg:right-auto lg:top-4 lg:w-[min(470px,calc(100%-80px))]">
             <PropertyAddressSearch value={addressQuery} onChange={setAddressQuery} properties={properties} onSelectProperty={selectSearchProperty} onSelectAddress={selectAddressResult} placeholder="Localizar endereço ou condomínio no mapa..." />
             {isLocatingAddress && <div className="mt-2 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 shadow-lg"><Loader2 className="h-4 w-4 animate-spin text-primary" />Localizando endereço no mapa...</div>}
             {locatedAddress && !isLocatingAddress && (
@@ -768,10 +773,11 @@ export default function PropertiesMap() {
             )}
           </div>
           <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100%-32px)] flex-wrap gap-x-3 gap-y-2 rounded-xl border border-gray-200 bg-white/95 p-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur sm:flex">{cityGroups.map(group => <span key={group.city} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />{group.city}</span>)}</div>
-          {selectedProperty && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} />}
+          {selectedProperty && !mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} />}
         </main>
       </div>
 
+          {selectedProperty && mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} />}
       {editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
       {showImport && <PropertyImportModal onClose={() => setShowImport(false)} onImport={handleImport} isImporting={isImporting} />}
       {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}

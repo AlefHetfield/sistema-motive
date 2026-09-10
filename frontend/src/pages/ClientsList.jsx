@@ -1069,9 +1069,9 @@ const ClientsList = () => {
     }
 
     return (
-        <div id="active-clients-content" className="fade-in min-h-screen bg-gray-50 sm:p-6 sm:bg-transparent">
-            <div className="sticky top-0 z-40 border-b border-gray-200 bg-white sm:relative sm:mb-4 sm:rounded-xl sm:border sm:shadow-sm">
-                <div className="flex" role="tablist" aria-label="Situação dos clientes">
+        <div id="active-clients-content" className="fade-in min-h-full min-w-0 bg-gray-50 sm:p-6 sm:bg-transparent">
+            <div className="relative z-40 border-b border-gray-200 bg-white sm:relative sm:mb-4 sm:rounded-xl sm:border sm:shadow-sm">
+                <div className="flex overflow-x-auto" role="tablist" aria-label="Situação dos clientes">
                     {[
                         { id: 'active', label: 'Ativos' },
                         { id: 'signed', label: 'Assinados' },
@@ -1086,7 +1086,7 @@ const ClientsList = () => {
                                 setActiveTab(tab.id);
                                 if (tab.id !== 'active') setWaitingOnly(false);
                             }}
-                            className={`relative flex-1 px-4 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-7 ${
+                            className={`relative shrink-0 flex-1 whitespace-nowrap px-3 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-7 ${
                                 activeTab === tab.id
                                     ? 'text-primary'
                                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
@@ -1124,7 +1124,7 @@ const ClientsList = () => {
                         )}
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 lg:justify-end">
+                    <div className="flex flex-wrap items-center justify-between gap-2 lg:justify-end">
                         {activeTab === 'active' && (
                             <button
                                 type="button"

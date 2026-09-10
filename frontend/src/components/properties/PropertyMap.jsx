@@ -209,6 +209,19 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
   }, []);
 
   useEffect(() => {
+    if (!mapReady || !containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      if (!entries[0]?.contentRect.width || !entries[0]?.contentRect.height) return;
+      const map = mapRef.current;
+      const center = map?.getCenter();
+      window.google?.maps?.event.trigger(map, 'resize');
+      if (center) map.setCenter(center);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [mapReady]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google?.maps) return;
     markersRef.current.forEach(({ marker, favoriteMarker }) => {
@@ -316,7 +329,7 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
 
   if (!googleMapsIsConfigured || mapError) {
     return (
-      <div className="flex h-full min-h-[520px] items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50 p-6">
+      <div className="flex h-full min-h-0 lg:min-h-[520px] items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50 p-6">
         <div className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><MapPinned className="h-7 w-7" /></span>
           <h2 className="mt-4 text-lg font-bold text-gray-900">Mapa aguardando configuração</h2>
@@ -328,7 +341,7 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
   }
 
   return (
-    <div ref={wrapperRef} className="relative h-full min-h-[520px] w-full" onContextMenu={event => event.preventDefault()}>
+    <div ref={wrapperRef} className="relative h-full min-h-0 lg:min-h-[520px] w-full" onContextMenu={event => event.preventDefault()}>
       <div ref={containerRef} className="absolute inset-0" aria-label="Mapa dos imóveis" />
       {contextMenu && (
         <div className="absolute z-30 w-[230px] overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-2xl" style={{ left: contextMenu.x, top: contextMenu.y }} role="menu">

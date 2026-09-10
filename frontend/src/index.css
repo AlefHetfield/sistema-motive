@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep form controls readable without triggering zoom on mobile Safari. */
+@media (max-width: 1023px) {
+    #app-structure input:not([type="checkbox"]):not([type="radio"]),
+    #app-structure select,
+    #app-structure textarea { font-size: 16px; }
+    .task-page button { min-height: 44px; }
+    .task-page article button { min-width: 44px; }
+    #active-clients-content article button { min-height: 44px; }
+    #sidebar nav a { min-height: 44px; }
+    #sidebar { padding-bottom: env(safe-area-inset-bottom); }
+}
+
 /* Estilos personalizados e paleta de cores do logo */
 :root {
     --color-primary: #5B7C99; /* Azul Motive */

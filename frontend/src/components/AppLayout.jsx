@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X } from 'lucide-react';
+import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, ListTodo, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
@@ -61,7 +63,7 @@ const pageDescriptions = {
     '/users': 'Cadastre usuários e controle os acessos da equipe.',
 };
 
-const NavLink = ({ to, icon, label, expanded }) => {
+const NavLink = ({ to, icon, label, expanded, onNavigate }) => {
     const location = useLocation();
     const isActive = location.pathname === to;
     const IconComponent = icon;
@@ -69,6 +71,7 @@ const NavLink = ({ to, icon, label, expanded }) => {
     return (
         <Link 
             to={to} 
+            onClick={onNavigate}
             className={`group relative flex items-center overflow-hidden rounded-xl px-3 py-2.5 transition-colors duration-200 ${
                 isActive 
                     ? 'bg-primary text-white shadow-sm'
@@ -104,6 +107,36 @@ const NavLink = ({ to, icon, label, expanded }) => {
 const AppLayout = () => {
     const { logout, user, checkAuth, isAuthenticated } = useAuth();
     const location = useLocation();
+    const mobile = useMobileLayout();
+    const [mobileMenu, setMobileMenu] = useState(false);
+    const sidebarRef = useRef(null);
+    const menuButtonRef = useRef(null);
+    const mobileOpen = mobile && mobileMenu === location.key;
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 1023px)');
+        const close = () => setMobileMenu(false);
+        media.addEventListener('change', close);
+        return () => media.removeEventListener('change', close);
+    }, []);
+    useEffect(() => {
+        if (!mobileOpen) return;
+        const trigger = menuButtonRef.current;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        sidebarRef.current?.querySelector('button')?.focus();
+        const keyboard = event => {
+            if (event.key === 'Escape') { event.preventDefault(); setMobileMenu(false); }
+            if (event.key === 'Tab') {
+                const nodes = sidebarRef.current?.querySelectorAll('a[href], button:not([disabled])');
+                if (!nodes?.length) return;
+                const first = nodes[0], last = nodes[nodes.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+            }
+        };
+        document.addEventListener('keydown', keyboard);
+        return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', keyboard); trigger?.focus(); };
+    }, [mobileOpen]);
     const [sidebarHovered, setSidebarHovered] = useState(false);
     const [sidebarPinned, setSidebarPinned] = useState(() => {
         try {
@@ -112,7 +145,7 @@ const AppLayout = () => {
             return false;
         }
     });
-    const sidebarExpanded = sidebarPinned || sidebarHovered;
+    const sidebarExpanded = mobile || sidebarPinned || sidebarHovered;
     const showPasswordModal = Boolean(user?.mustChangePassword);
     
     // Redireciona para login se deslogou
@@ -158,14 +191,20 @@ const AppLayout = () => {
     };
 
     return (
-        <div id="app-structure" className="h-screen w-full flex">
+        <div id="app-structure" className="flex h-dvh w-full min-w-0 overflow-hidden">
+            {mobileOpen && <button type="button" tabIndex={-1} aria-label="Fechar menu" onClick={() => setMobileMenu(false)} className="fixed inset-0 z-[79] bg-slate-950/50" />}
             {/* Sidebar (Menu Lateral) - Overlay com expansão ao hover */}
             <aside 
                 id="sidebar" 
-                className={`fixed left-0 top-0 h-full bg-secondary text-white flex flex-col shadow-2xl z-50 transition-all duration-300 ${
-                    sidebarExpanded ? 'w-64' : 'w-20'
+                ref={sidebarRef}
+                inert={mobile && !mobileOpen}
+                aria-label="Menu principal"
+                role={mobileOpen ? 'dialog' : undefined}
+                aria-modal={mobileOpen || undefined}
+                className={`fixed left-0 top-0 h-dvh bg-secondary text-white flex flex-col shadow-2xl transition-all duration-200 ${
+                    mobile ? `z-[80] w-[min(20rem,85vw)] ${mobileOpen ? 'translate-x-0' : '-translate-x-full invisible'}` : `z-50 ${sidebarExpanded ? 'w-64' : 'w-20'}`
                 }`}
-                onMouseEnter={() => setSidebarHovered(true)}
+                onMouseEnter={() => { if (!mobile) setSidebarHovered(true); }}
                 onMouseLeave={() => setSidebarHovered(false)}
             >
                 {/* Gradiente decorativo no topo */}
@@ -176,8 +215,8 @@ const AppLayout = () => {
                     {sidebarExpanded ? (
                         <>
                             <img src={logoLight} alt="Logo Motive" className="h-9 max-w-[164px] object-contain transition-all duration-200" />
-                            <button type="button" onClick={toggleSidebarPinned} className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${sidebarPinned ? 'bg-primary text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`} title={sidebarPinned ? 'Soltar menu lateral' : 'Manter menu aberto'} aria-label={sidebarPinned ? 'Soltar menu lateral' : 'Manter menu aberto'}>
-                                {sidebarPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                            <button type="button" onClick={mobile ? () => setMobileMenu(false) : toggleSidebarPinned} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors ${sidebarPinned && !mobile ? 'bg-primary text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`} title={mobile ? 'Fechar menu' : sidebarPinned ? 'Soltar menu lateral' : 'Manter menu aberto'} aria-label={mobile ? 'Fechar menu' : sidebarPinned ? 'Soltar menu lateral' : 'Manter menu aberto'}>
+                                {mobile ? <X size={22} /> : sidebarPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                             </button>
                         </>
                     ) : (
@@ -204,6 +243,7 @@ const AppLayout = () => {
                                         icon={item.icon}
                                         label={item.label}
                                         expanded={sidebarExpanded}
+                                        onNavigate={() => setMobileMenu(false)}
                                     />
                                 ))}
                             </div>
@@ -213,6 +253,7 @@ const AppLayout = () => {
                 
                 {/* Botão de Logout */}
                 <div className="p-3 border-t border-gray-700/50 relative z-10">
+                    {mobile && <div className="mb-2 px-3 text-sm"><p className="truncate font-semibold text-white">{user?.nome}</p><p className="break-all text-xs text-gray-400">{user?.email}</p></div>}
                     <button 
                         onClick={logout} 
                         className={`group w-full flex items-center px-3 py-3 rounded-xl transition-all duration-300 text-gray-300 hover:text-white hover:bg-red-600/90 hover:shadow-lg`}
@@ -238,11 +279,12 @@ const AppLayout = () => {
             </aside>
             
             {/* Conteúdo Principal - Agora com padding-left para compensar a sidebar */}
-            <main className={`flex h-full flex-1 flex-col overflow-hidden bg-gray-50 transition-[padding] duration-300 ${sidebarPinned ? 'pl-64' : 'pl-20'}`}>
-                <header className="h-[72px] bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
+            <main inert={mobileOpen} className={`flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-gray-50 transition-[padding] duration-200 ${mobile ? 'pl-0' : sidebarPinned ? 'pl-64' : 'pl-20'}`}>
+                <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 lg:h-[72px] lg:px-6">
+                    {mobile && <button ref={menuButtonRef} type="button" onClick={() => setMobileMenu(location.key)} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="sidebar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-primary hover:bg-gray-100"><Menu size={23} /></button>}
                     <div className="flex min-w-0 items-center gap-3">
                         {currentPage?.icon && (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/5">
+                            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/5 lg:flex">
                                 <currentPage.icon className="h-5 w-5 text-primary" />
                             </div>
                         )}
@@ -250,14 +292,14 @@ const AppLayout = () => {
                             <h1 id="page-title" className="truncate text-lg font-bold leading-tight text-gray-900">
                                 {currentPage?.label || 'Sistema Motive'}
                             </h1>
-                            <p className="mt-1 truncate text-xs text-gray-500">
+                            <p className="mt-1 hidden truncate text-xs text-gray-500 lg:block">
                                 {pageDescriptions[location.pathname] || 'Ferramentas para a operação da Motive.'}
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex shrink-0 items-center gap-2 lg:gap-4">
                         {isAuthenticated && user?.id && <TaskNotifications key={user.id} />}
-                        <div className="text-right">
+                        <div className="hidden text-right lg:block">
                             <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>
                             <p className="text-xs text-gray-500">
                                 {user?.email || ''} 
@@ -268,7 +310,7 @@ const AppLayout = () => {
                                 )}
                             </p>
                         </div>
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
+                        <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary lg:flex">
                             <span className="text-sm font-bold text-white">
                                 {user?.nome?.charAt(0)?.toUpperCase() || 'U'}
                             </span>
@@ -276,7 +318,7 @@ const AppLayout = () => {
                     </div>
                 </header>
                 
-                <div className="flex-1 overflow-y-auto no-scrollbar">
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar">
                     {/* O conteúdo da página será renderizado aqui */}
                     <Outlet />
                 </div>
