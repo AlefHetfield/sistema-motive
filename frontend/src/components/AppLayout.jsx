@@ -192,7 +192,7 @@ const AppLayout = () => {
 
     return (
         <div id="app-structure" className="flex h-dvh w-full min-w-0 overflow-hidden">
-            {mobileOpen && <button type="button" tabIndex={-1} aria-label="Fechar menu" onClick={() => setMobileMenu(false)} className="fixed inset-0 z-[79] bg-slate-950/50" />}
+            {mobile && <button type="button" tabIndex={-1} aria-hidden={!mobileOpen} aria-label="Fechar menu" onClick={() => setMobileMenu(false)} className={`fixed inset-0 z-[79] bg-slate-950/50 transition-opacity duration-200 motion-reduce:transition-none ${mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`} />}
             {/* Sidebar (Menu Lateral) - Overlay com expansão ao hover */}
             <aside 
                 id="sidebar" 
@@ -201,8 +201,8 @@ const AppLayout = () => {
                 aria-label="Menu principal"
                 role={mobileOpen ? 'dialog' : undefined}
                 aria-modal={mobileOpen || undefined}
-                className={`fixed left-0 top-0 h-dvh bg-secondary text-white flex flex-col shadow-2xl transition-all duration-200 ${
-                    mobile ? `z-[80] w-[min(20rem,85vw)] ${mobileOpen ? 'translate-x-0' : '-translate-x-full invisible'}` : `z-50 ${sidebarExpanded ? 'w-64' : 'w-20'}`
+                className={`fixed left-0 top-0 flex h-dvh flex-col bg-secondary text-white shadow-2xl ${
+                    mobile ? `z-[80] w-[min(20rem,85vw)] transform-gpu [backface-visibility:hidden] will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none ${mobileOpen ? 'translate-x-0' : '-translate-x-[105%]'}` : `z-50 transition-[width] duration-200 ${sidebarExpanded ? 'w-64' : 'w-20'}`
                 }`}
                 onMouseEnter={() => { if (!mobile) setSidebarHovered(true); }}
                 onMouseLeave={() => setSidebarHovered(false)}
