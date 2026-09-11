@@ -8,7 +8,7 @@ import LoadingAnimation from '../components/LoadingAnimation';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/ui/StatusBadge';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL } from '../config/api';
 
 const UserManagement = () => {
     const { user: currentUser, isAdmin } = useAuth();
@@ -30,7 +30,7 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(`${API_URL}/api/users`, {
+            const response = await fetch(`${API_BASE_URL}/api/users`, {
                 credentials: 'include',
             });
 
@@ -100,7 +100,7 @@ const UserManagement = () => {
     const deleteUser = async (userId) => {
         try {
             console.log('Tentando deletar usuário:', userId);
-            const response = await fetch(`${API_URL}/api/users/${userId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -128,7 +128,7 @@ const UserManagement = () => {
 
     const toggleUserActive = async (userId, isActive) => {
         try {
-            const response = await fetch(`${API_URL}/api/users/${userId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -153,8 +153,8 @@ const UserManagement = () => {
     const handleSaveUser = async (userData) => {
         try {
             const url = selectedUser
-                ? `${API_URL}/api/users/${selectedUser.id}`
-                : `${API_URL}/api/users`;
+                ? `${API_BASE_URL}/api/users/${selectedUser.id}`
+                : `${API_BASE_URL}/api/users`;
             
             const method = selectedUser ? 'PUT' : 'POST';
 

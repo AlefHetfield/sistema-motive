@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL } from '../config/api';
 
 const ChangePasswordModal = ({ user, onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -30,7 +30,7 @@ const ChangePasswordModal = ({ user, onSuccess }) => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/api/auth/change-password`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

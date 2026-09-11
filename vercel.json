@@ -1,5 +1,11 @@
 {
   "buildCommand": "npm run vercel-build",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://sistema-motive-api.onrender.com/api/:path*"
+    }
+  ],
   "functions": {
     "api/**/*.js": {
       "includeFiles": "api/data/matriculas.json.gz",

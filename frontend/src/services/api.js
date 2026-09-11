@@ -3,7 +3,7 @@
  * Em produção, usa o mesmo domínio (origin).
  * Em desenvolvimento, usa localhost:3000.
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
+import { API_BASE_URL } from '../config/api';
 
 export async function taskApi(path = '', { method = 'GET', body, signal } = {}) {
     const response = await fetch(`${API_BASE_URL}/api/tasks${path}`, {
@@ -28,6 +28,9 @@ export async function searchMatriculas(filters, signal) {
 }
 
 const apiError = async (response, fallback) => {
+    if (response.status === 401 && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('motive:unauthorized'));
+    }
     const data = await response.json().catch(() => ({}));
     return new Error(data.error || fallback);
 };
@@ -49,7 +52,7 @@ export async function fetchClients() {
     const response = await fetch(`${API_BASE_URL}/api/clients`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar clientes.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar clientes.');
     return response.json();
 }
 
@@ -62,7 +65,7 @@ export async function fetchClient(clientId) {
     const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar dados do cliente.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar dados do cliente.');
     return response.json();
 }
 
@@ -70,7 +73,7 @@ export async function fetchClientActivities(clientId) {
     const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/activities`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar o histórico do cliente.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar o histórico do cliente.');
     return response.json();
 }
 
@@ -78,7 +81,7 @@ export async function fetchClientSimulations(clientId) {
     const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/simulations`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar as simulações do cliente.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar as simulações do cliente.');
     return response.json();
 }
 
@@ -111,7 +114,7 @@ export async function fetchClientContracts(clientId) {
     const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/contracts`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar os contratos do cliente.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar os contratos do cliente.');
     return response.json();
 }
 
@@ -133,7 +136,7 @@ export async function fetchStandaloneContracts() {
     const response = await fetch(`${API_BASE_URL}/api/contracts/standalone`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar os contratos avulsos.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar os contratos avulsos.');
     return response.json();
 }
 
@@ -420,7 +423,7 @@ export async function deleteClient(clientId) {
         method: 'DELETE',
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao excluir cliente.');
+    if (!response.ok) throw await apiError(response, 'Falha ao excluir cliente.');
 }
 
 /**
@@ -431,7 +434,7 @@ export async function fetchUsers() {
     const response = await fetch(`${API_BASE_URL}/api/users`, {
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao buscar usuários.');
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar usuários.');
     return response.json();
 }
 
@@ -481,7 +484,7 @@ export async function saveUser(userData) {
         credentials: 'include',
         body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Falha ao salvar usuário.');
+    if (!response.ok) throw await apiError(response, 'Falha ao salvar usuário.');
     return response.json();
 }
 
@@ -494,5 +497,5 @@ export async function deleteUser(userId) {
         method: 'DELETE',
         credentials: 'include',
     });
-    if (!response.ok) throw new Error('Falha ao excluir usuário.');
+    if (!response.ok) throw await apiError(response, 'Falha ao excluir usuário.');
 }

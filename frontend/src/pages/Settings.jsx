@@ -4,7 +4,7 @@ import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, Loader
 import ModernInput from '../components/ModernInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL } from '../config/api';
 
 const Settings = () => {
     const { user } = useAuth();
@@ -43,7 +43,7 @@ const Settings = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/api/auth/profile`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -69,7 +69,7 @@ const Settings = () => {
     const handleSendBackup = async () => {
         setSendingBackup(true);
         try {
-            const response = await fetch(`${API_URL}/api/reports/weekly/run`, {
+            const response = await fetch(`${API_BASE_URL}/api/reports/weekly/run`, {
                 method: 'GET',
                 credentials: 'include',
             });
@@ -105,7 +105,7 @@ const Settings = () => {
 
         try {
             // Usa rota dedicada que não exige ADM
-            const response = await fetch(`${API_URL}/api/auth/change-password`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

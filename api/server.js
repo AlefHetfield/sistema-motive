@@ -34,6 +34,10 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['Content-Disposition'],
 }));
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  next();
+});
 app.use(express.json({ limit: '6mb' }));
 app.use(cookieParser());
 

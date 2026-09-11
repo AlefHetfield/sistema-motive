@@ -20,6 +20,7 @@ import {
 import HealthCheck from '../components/HealthCheck';
 import StatusBadge from '../components/ui/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import { fetchClients, fetchProperties } from '../services/api';
 
 const FINAL_STATUSES = ['Assinado-Movido', 'Assinado', 'Arquivado'];
@@ -113,7 +114,6 @@ const Dashboard = () => {
         setIsLoading(true);
         setError('');
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3000');
             const [clientData, propertyData, activityResponse] = await Promise.all([
                 fetchClients(),
                 fetchProperties(),
