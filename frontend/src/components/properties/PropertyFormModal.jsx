@@ -272,7 +272,7 @@ export default function PropertyFormModal({ property, initialLocation, propertie
   };
 
   return (
-    <div className="fixed inset-0 z-[9500] flex items-center justify-center bg-gray-950/40 p-3 backdrop-blur-[2px] sm:p-6">
+    <div className="mobile-safe-overlay fixed inset-0 z-[9500] flex items-center justify-center bg-gray-950/40 p-3 backdrop-blur-[2px] sm:p-6">
       <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Fechar cadastro" />
       <form onSubmit={submit} className="relative flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
@@ -348,8 +348,8 @@ export default function PropertyFormModal({ property, initialLocation, propertie
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50 sm:col-span-2">
                 {form.photoUrl && !photoPreviewError ? (
-                  <div className="flex items-center gap-4 p-3">
-                    <img src={form.photoUrl} alt="Prévia da foto principal" className="h-24 w-36 shrink-0 rounded-lg object-cover" onError={() => setPhotoPreviewError('Não foi possível exibir a foto encontrada no anúncio.')} />
+                  <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-4">
+                    <img src={form.photoUrl} alt="Prévia da foto principal" className="h-40 w-full shrink-0 rounded-lg object-cover sm:h-24 sm:w-36" onError={() => setPhotoPreviewError('Não foi possível exibir a foto encontrada no anúncio.')} />
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-800">Foto e informações encontradas</p>
                       <p className="mt-1 text-xs leading-5 text-gray-500">A imagem será usada como capa do imóvel.</p>

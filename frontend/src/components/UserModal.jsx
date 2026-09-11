@@ -68,10 +68,10 @@ const UserModal = ({ user, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-fade-in">
+        <div className="mobile-safe-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+            <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl animate-fade-in">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 p-4 sm:p-6">
                     <h3 className="text-xl font-bold text-gray-900">
                         {user ? 'Editar Usuário' : 'Novo Usuário'}
                     </h3>
@@ -84,7 +84,7 @@ const UserModal = ({ user, onClose, onSave }) => {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-4 sm:p-6">
                     {/* Nome */}
                     <ModernInput
                         label="Nome Completo"

@@ -45,9 +45,9 @@ export default function SaveSimulationModal({ simulationData, onClose, onSaved }
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
+        <div className="mobile-safe-overlay fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
             <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Fechar" />
-            <div role="dialog" aria-modal="true" aria-labelledby="save-simulation-title" className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div role="dialog" aria-modal="true" aria-labelledby="save-simulation-title" className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-5 sm:px-6">
                     <div>
                         <h2 id="save-simulation-title" className="text-lg font-bold text-gray-900">Salvar no cadastro do cliente</h2>
@@ -56,7 +56,7 @@ export default function SaveSimulationModal({ simulationData, onClose, onSaved }
                     <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X className="h-5 w-5" /></button>
                 </header>
 
-                <div className="space-y-4 p-5 sm:p-6">
+                <div className="space-y-4 overflow-y-auto p-4 sm:p-6">
                     <div className="relative">
                         <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                         <input autoFocus value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por nome ou CPF" className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" />
@@ -78,7 +78,7 @@ export default function SaveSimulationModal({ simulationData, onClose, onSaved }
                     {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">{error}</p>}
                 </div>
 
-                <footer className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6">
+                <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
                     <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancelar</button>
                     <button type="button" disabled={!selectedClient || isSaving} onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#4a637a] disabled:cursor-not-allowed disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />} Salvar simulação</button>
                 </footer>

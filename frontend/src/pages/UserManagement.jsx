@@ -205,11 +205,11 @@ const UserManagement = () => {
     }
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-5 p-3 sm:space-y-6 sm:p-6">
             {/* Notificação */}
             {notification && (
                 <div
-                    className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-fade-in ${
+                    className={`fixed left-3 right-3 top-3 z-50 flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg animate-fade-in sm:left-auto sm:right-4 sm:top-4 sm:max-w-md ${
                         notification.type === 'success'
                             ? 'bg-green-50 border border-green-200 text-green-700'
                             : 'bg-red-50 border border-red-200 text-red-700'
@@ -225,14 +225,14 @@ const UserManagement = () => {
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
                     <p className="text-gray-500 mt-1">Gerencie usuários e permissões do sistema</p>
                 </div>
                 <button
                     onClick={handleCreateUser}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-secondary text-white rounded-xl hover:shadow-lg transition-all duration-200"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-2.5 text-white transition-all duration-200 hover:shadow-lg sm:w-auto"
                 >
                     <Plus size={18} />
                     Novo Usuário
@@ -250,12 +250,12 @@ const UserManagement = () => {
                             icon={Users}
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 md:pb-0">
                         {['ALL', 'ADM', 'CORRETOR', 'ASSISTENTE'].map((role) => (
                             <button
                                 key={role}
                                 onClick={() => setFilterRole(role)}
-                                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                                className={`shrink-0 rounded-xl px-4 py-2 font-medium transition-all duration-200 ${
                                     filterRole === role
                                         ? 'bg-primary text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -284,7 +284,49 @@ const UserManagement = () => {
                     </p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <>
+                    <div className="space-y-3 lg:hidden" aria-label="Lista de usuários">
+                        {filteredUsers.map((user) => (
+                            <article key={user.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary font-medium text-white">
+                                        {user.nome?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="truncate font-semibold text-gray-900">{user.nome}</h2>
+                                        <p className="break-all text-sm text-gray-500">{user.email}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid grid-cols-2 gap-3 border-y border-gray-100 py-3">
+                                    <div>
+                                        <p className="mb-1 text-xs font-medium text-gray-400">Função</p>
+                                        {getRoleBadge(user.role)}
+                                    </div>
+                                    <div>
+                                        <p className="mb-1 text-xs font-medium text-gray-400">Status</p>
+                                        {getStatusBadge(user.isActive)}
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-xs font-medium text-gray-400">Último login</p>
+                                        <p className="mt-1 text-sm text-gray-700">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('pt-BR') : 'Nunca'}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-3 grid grid-cols-3 gap-2">
+                                    <button type="button" aria-label={user.isActive ? `Desativar ${user.nome}` : `Ativar ${user.nome}`} onClick={() => handleToggleActive(user)} disabled={user.id === currentUser.id} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium ${user.id === currentUser.id ? 'cursor-not-allowed border-gray-100 text-gray-300' : user.isActive ? 'border-orange-100 text-orange-700 hover:bg-orange-50' : 'border-green-100 text-green-700 hover:bg-green-50'}`}>
+                                        {user.isActive ? <ShieldOff size={17} /> : <Shield size={17} />}<span className="sr-only sm:not-sr-only">{user.isActive ? 'Desativar' : 'Ativar'}</span>
+                                    </button>
+                                    <button type="button" aria-label={`Editar ${user.nome}`} onClick={() => handleEditUser(user)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                                        <Edit2 size={17} /><span>Editar</span>
+                                    </button>
+                                    <button type="button" aria-label={`Excluir ${user.nome}`} onClick={() => handleDeleteUser(user)} disabled={user.id === currentUser.id} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium ${user.id === currentUser.id ? 'cursor-not-allowed border-gray-100 text-gray-300' : 'border-red-100 text-red-700 hover:bg-red-50'}`}>
+                                        <Trash2 size={17} /><span>Excluir</span>
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:block">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">
@@ -373,7 +415,8 @@ const UserManagement = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                    </div>
+                </>
             )}
 
             {/* Modal de Usuário */}

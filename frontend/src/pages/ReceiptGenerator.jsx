@@ -318,7 +318,7 @@ const ReceiptGenerator = () => {
     const progressPercentage = (filledFields / totalFields) * 100;
 
     return (
-        <div id="receipt-view" className="fade-in p-6">
+        <div id="receipt-view" className="fade-in p-3 sm:p-6">
             <div className="max-w-screen-2xl mx-auto">
                 <header className="mb-6">
                     {/* Indicador de Progresso */}
@@ -338,12 +338,12 @@ const ReceiptGenerator = () => {
                     )}
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Main layout: form (2) + preview (1) */}
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-8"> {/* Main layout: form (2) + preview (1) */}
                     {/* Coluna Principal - Inputs e Resultados */}
                     <main className="lg:col-span-2 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Input Card */}
-                            <div className={`${surfaceClass} animate-fade-in p-6 transition-shadow duration-200 hover:shadow-md`}>
+                            <div className={`${surfaceClass} animate-fade-in p-4 transition-shadow duration-200 hover:shadow-md sm:p-6`}>
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-primary/10 rounded-lg">
@@ -411,7 +411,7 @@ const ReceiptGenerator = () => {
                             </div>
 
                             {/* Results Card */}
-                            <div className={`${surfaceClass} flex flex-col justify-between p-6 transition-shadow duration-200 hover:shadow-md animate-fade-in`} style={{ animationDelay: '100ms' }}>
+                            <div className={`${surfaceClass} flex flex-col justify-between p-4 transition-shadow duration-200 hover:shadow-md animate-fade-in sm:p-6`} style={{ animationDelay: '100ms' }}>
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-green-50 rounded-lg">
@@ -423,9 +423,9 @@ const ReceiptGenerator = () => {
                                         </div>
                                     </div>
 
-                                    <div className="text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+                                    <div className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-emerald-50 p-4 text-center sm:p-6">
                                         <p className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Líquido a Receber</p>
-                                        <p className="text-4xl font-bold text-green-600 tracking-tight">R$ {formatarMoeda(liquidoValue)}</p>
+                                        <p className="break-words text-3xl font-bold tracking-tight text-green-600 sm:text-4xl">R$ {formatarMoeda(liquidoValue)}</p>
 
                                         {/* Barra de Progresso: Impostos vs Líquido */}
                                         <div className="mx-auto w-full max-w-md mt-4">

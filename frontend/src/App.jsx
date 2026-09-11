@@ -17,13 +17,16 @@ import HousingSimulator from './pages/HousingSimulator';
 import ContractGenerator from './pages/ContractGenerator';
 import PropertiesMap from './pages/PropertiesMap';
 import Tasks from './pages/Tasks';
+import useMobileLayout from './hooks/useMobileLayout';
 
 function App() {
+  const mobile = useMobileLayout();
+
   return (
     <AuthProvider>
       <BrowserRouter>
         <Toaster 
-          position="top-right"
+          position={mobile ? 'top-center' : 'top-right'}
           theme="light"
           richColors
           expand={true}

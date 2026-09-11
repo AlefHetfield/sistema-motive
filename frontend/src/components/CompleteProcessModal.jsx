@@ -64,10 +64,10 @@ const CompleteProcessModal = ({ client, onClose, onConfirm }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        <div className="mobile-safe-overlay fixed inset-0 z-[10000] flex items-center justify-center p-4">
             <button type="button" className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Fechar" />
-            <form onSubmit={handleSubmit} className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-                <div className="flex items-start justify-between border-b border-gray-100 p-6">
+            <form onSubmit={handleSubmit} className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-6">
                     <div className="flex gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                             <CheckCircle2 size={22} />
@@ -82,7 +82,7 @@ const CompleteProcessModal = ({ client, onClose, onConfirm }) => {
                     </button>
                 </div>
 
-                <div className="space-y-5 p-6">
+                <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                         <p className="font-semibold text-gray-900">{client.nome}</p>
                         <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
@@ -131,7 +131,7 @@ const CompleteProcessModal = ({ client, onClose, onConfirm }) => {
                     {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
                 </div>
 
-                <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+                <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:px-6">
                     <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-200 disabled:opacity-50">Cancelar</button>
                     <button type="submit" disabled={isSaving || !signatureDate} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
                         <CheckCircle2 size={17} />

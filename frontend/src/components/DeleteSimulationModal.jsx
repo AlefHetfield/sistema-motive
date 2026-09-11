@@ -20,7 +20,7 @@ export default function DeleteSimulationModal({ simulation, clientName, isDeleti
         : simulation.program;
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
+        <div className="mobile-safe-overlay fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-sm">
             <button type="button" className="absolute inset-0" disabled={isDeleting} onClick={onCancel} aria-label="Cancelar exclusão" />
             <div role="alertdialog" aria-modal="true" aria-labelledby="delete-simulation-title" aria-describedby="delete-simulation-description" className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-5 sm:px-6">

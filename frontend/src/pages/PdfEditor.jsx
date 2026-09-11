@@ -320,7 +320,7 @@ const PdfEditor = () => {
     const activePage = activeId ? pages.find(p => p.id === activeId) : null;
 
     return (
-        <div id="pdf-editor-view" className="fade-in p-6">
+        <div id="pdf-editor-view" className="fade-in p-3 sm:p-6">
             {/* Header */}
             <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-2">Editor de PDF</h2>
@@ -404,9 +404,9 @@ const PdfEditor = () => {
             )}
 
             {/* Grid de páginas com drag and drop */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 min-h-[400px] animate-fade-in" style={{ animationDelay: '100ms' }}>
+            <div className="min-h-[320px] rounded-2xl border border-gray-100 bg-white p-3 shadow-sm animate-fade-in sm:min-h-[400px] sm:p-6" style={{ animationDelay: '100ms' }}>
                 {pages.length === 0 && !isLoadingPages ? (
-                    <div className="flex flex-col items-center justify-center text-center text-gray-400 h-[400px]">
+                    <div className="flex h-[320px] flex-col items-center justify-center text-center text-gray-400 sm:h-[400px]">
                         <div className="p-6 bg-gray-50 rounded-full mb-4">
                             <FileText size={64} className="text-gray-300" />
                         </div>

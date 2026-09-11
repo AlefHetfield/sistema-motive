@@ -33,6 +33,7 @@ import { downloadHousingSimulationPdf } from '../utils/housingSimulationPdf';
 import SaveSimulationModal from '../components/SaveSimulationModal';
 import Button from '../components/ui/Button';
 import { controlClass, surfaceClass } from '../components/ui/styles';
+import useMobileLayout from '../hooks/useMobileLayout';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -331,6 +332,7 @@ function ScenarioAdjustments({ form, result, entryAvailability, onAdjust, onEntr
 }
 
 function HousingSimulator() {
+  const mobile = useMobileLayout();
   const location = useLocation();
   const restoredSimulation = location.state?.housingSimulation;
   const restoredForm = restoredSimulation?.inputSnapshot
@@ -342,6 +344,8 @@ function HousingSimulator() {
   const [originalScenario, setOriginalScenario] = useState(restoredSimulation?.inputSnapshot ? restoredForm : null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [validation, setValidation] = useState('');
+  const [mobilePane, setMobilePane] = useState(restoredSimulation?.resultSnapshot ? 'result' : 'data');
+  const [mobileFormStep, setMobileFormStep] = useState(0);
 
   const municipalities = useMemo(() => MUNICIPAL_LIMITS[form.uf] || [], [form.uf]);
   const selectedMunicipality = useMemo(() => {
@@ -385,8 +389,14 @@ function HousingSimulator() {
   const calculate = (event) => {
     event.preventDefault();
     const birthDate = dateBRToISO(form.birthDate);
-    if (!birthDate || !parseCurrency(form.income) || !parseCurrency(form.propertyValue)) {
-      setValidation('Preencha uma data de nascimento válida, a renda e o valor do imóvel.');
+    if (!birthDate || !parseCurrency(form.income)) {
+      setValidation('Preencha uma data de nascimento válida e a renda familiar.');
+      if (mobile) setMobileFormStep(0);
+      return;
+    }
+    if (!parseCurrency(form.propertyValue)) {
+      setValidation('Preencha o valor do imóvel.');
+      if (mobile) setMobileFormStep(1);
       return;
     }
     if (parseCurrency(form.downPayment) > parseCurrency(form.propertyValue)) {
@@ -395,11 +405,13 @@ function HousingSimulator() {
     }
     if (form.bank === 'CAIXA' && form.modality === 'MCMV' && !selectedMunicipality) {
       setValidation('Selecione o estado e o município para calcular o enquadramento no MCMV.');
+      if (mobile) setMobileFormStep(1);
       return;
     }
     setResult(simulate(form));
     setComparison(null);
     setOriginalScenario({ ...form });
+    if (mobile) setMobilePane('result');
   };
 
   const compareBanks = () => {
@@ -464,6 +476,32 @@ function HousingSimulator() {
     setComparison(null);
     setOriginalScenario(null);
     setValidation('');
+    setMobilePane('data');
+    setMobileFormStep(0);
+  };
+
+  const advanceMobileStep = () => {
+    if (mobileFormStep === 0 && (!dateBRToISO(form.birthDate) || !parseCurrency(form.income))) {
+      setValidation('Preencha uma data de nascimento válida e a renda familiar para continuar.');
+      return;
+    }
+    if (mobileFormStep === 1 && !parseCurrency(form.propertyValue)) {
+      setValidation('Preencha o valor do imóvel para continuar.');
+      return;
+    }
+    if (mobileFormStep === 1 && isMcmv && !selectedMunicipality) {
+      setValidation('Selecione o estado e o município para continuar.');
+      return;
+    }
+    setValidation('');
+    setMobileFormStep(current => Math.min(2, current + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const returnMobileStep = () => {
+    setValidation('');
+    setMobileFormStep(current => Math.max(0, current - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const isCaixa = form.bank === 'CAIXA';
@@ -487,17 +525,19 @@ function HousingSimulator() {
   })() : { decrease: false, increase: false };
 
   return (
-    <div className="min-h-full bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div className={`min-h-full bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 ${mobilePane === 'data' ? 'pb-24 sm:pb-6' : ''}`}>
       <div className="mx-auto max-w-7xl">
-        <div className="mb-4 flex justify-end">
+        {mobile && <div className="mb-4 grid grid-cols-2 rounded-xl bg-gray-200/70 p-1" aria-label="Etapa da simulação"><button type="button" aria-pressed={mobilePane === 'data'} onClick={() => setMobilePane('data')} className={`min-h-11 rounded-lg text-sm font-bold transition ${mobilePane === 'data' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>1. Dados</button><button type="button" disabled={!result} aria-pressed={mobilePane === 'result'} onClick={() => result && setMobilePane('result')} className={`min-h-11 rounded-lg text-sm font-bold transition disabled:opacity-40 ${mobilePane === 'result' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>2. Resultado</button></div>}
+        <div className={`${mobile && mobilePane !== 'data' ? 'hidden' : 'flex'} mb-4 justify-end`}>
           <Button onClick={reset} variant="secondary">
             <RotateCcw className="h-4 w-4" /> Limpar simulação
           </Button>
         </div>
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(390px,.8fr)]">
-          <form onSubmit={calculate} className={`overflow-hidden ${surfaceClass}`}>
-            <div className="border-b border-gray-100 p-5 sm:p-6">
+          <form id="housing-simulator-form" onSubmit={calculate} className={`${mobile && mobilePane !== 'data' ? 'hidden' : ''} overflow-hidden ${surfaceClass}`}>
+            {mobile && <div className="border-b border-gray-100 px-4 py-4"><div className="grid grid-cols-3 gap-2">{['Cliente', 'Imóvel', 'Financiamento'].map((label, index) => <button key={label} type="button" onClick={() => { if (index < mobileFormStep) { setMobileFormStep(index); setValidation(''); } }} className={`relative flex min-w-0 flex-col items-center gap-1.5 text-[11px] font-bold ${index <= mobileFormStep ? 'text-primary' : 'text-gray-400'}`}><span className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-white ${index < mobileFormStep ? 'bg-emerald-500 text-white' : index === mobileFormStep ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>{index < mobileFormStep ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</span><span className="relative z-10 truncate">{label}</span>{index < 2 && <span className={`absolute left-[calc(50%+18px)] right-[calc(-50%+18px)] top-3.5 z-0 h-0.5 ${index < mobileFormStep ? 'bg-emerald-400' : 'bg-gray-200'}`} />}</button>)}</div></div>}
+            <div className={`${mobile && mobileFormStep !== 0 ? 'hidden' : ''} border-b border-gray-100 p-5 sm:p-6`}>
               <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Instituição financeira</p>
               <div className="flex gap-3">
                 <Choice selected={isCaixa} onClick={() => switchBank('CAIXA')}><span className="flex items-center justify-center gap-2"><Landmark className="h-4 w-4" /> CAIXA</span></Choice>
@@ -506,8 +546,9 @@ function HousingSimulator() {
             </div>
 
             <div className="space-y-7 p-5 sm:p-6">
+              {validation && <Alert type="error" message={validation} />}
               {isCaixa && (
-                <section>
+                <section className={mobile && mobileFormStep !== 0 ? 'hidden' : ''}>
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><ShieldCheck className="h-5 w-5 text-primary" /> Modalidade</h2>
                   <div className="flex gap-3">
                     <Choice selected={form.modality === 'SBPE'} onClick={() => set('modality', 'SBPE')}>SBPE</Choice>
@@ -516,7 +557,7 @@ function HousingSimulator() {
                 </section>
               )}
 
-              <section>
+              <section className={mobile && mobileFormStep !== 0 ? 'hidden' : ''}>
                 <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><WalletCards className="h-5 w-5 text-primary" /> Dados do proponente</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Data de nascimento" hint="Use o formato dia/mês/ano.">
@@ -537,7 +578,7 @@ function HousingSimulator() {
               </section>
 
               {isMcmv && (
-                <section>
+                <section className={mobile && mobileFormStep !== 1 ? 'hidden' : ''}>
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><MapPin className="h-5 w-5 text-primary" /> Localização do imóvel</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Estado">
@@ -550,14 +591,20 @@ function HousingSimulator() {
                 </section>
               )}
 
-              <section>
-                <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><Home className="h-5 w-5 text-primary" /> Imóvel e financiamento</h2>
+              <section className={mobile && mobileFormStep !== 1 ? 'hidden' : ''}>
+                <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><Home className="h-5 w-5 text-primary" /> {mobile ? 'Dados do imóvel' : 'Imóvel e financiamento'}</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Valor do imóvel"><CurrencyField value={form.propertyValue} onChange={(value) => set('propertyValue', value)} placeholder="350.000,00" /></Field>
-                  <Field label="Valor da entrada"><CurrencyField value={form.downPayment} onChange={(value) => set('downPayment', value)} placeholder="70.000,00" /></Field>
                   <Field label="Condição do imóvel">
                     <select className={fieldClass} value={form.propertyCondition} onChange={(event) => set('propertyCondition', event.target.value)}><option>Novo</option><option>Usado</option></select>
                   </Field>
+                </div>
+              </section>
+
+              <section className={mobile && mobileFormStep !== 2 ? 'hidden' : ''}>
+                {mobile && <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><Calculator className="h-5 w-5 text-primary" /> Condições do financiamento</h2>}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Valor da entrada"><CurrencyField value={form.downPayment} onChange={(value) => set('downPayment', value)} placeholder="70.000,00" /></Field>
                   <Field label="Sistema de amortização">
                     <select className={fieldClass} value={form.system} onChange={(event) => set('system', event.target.value)}><option value="SAC">SAC</option><option value="PRICE">PRICE</option></select>
                   </Field>
@@ -570,14 +617,13 @@ function HousingSimulator() {
                 <SimulationPreview {...preview} />
               </section>
 
-              {validation && <Alert type="error" message={validation} />}
-              <Button type="submit" size="lg" variant={isCaixa ? 'primary' : 'danger'} className="w-full">
+              <Button type="submit" size="lg" variant={isCaixa ? 'primary' : 'danger'} className={`${mobile ? 'hidden' : 'inline-flex'} w-full`}>
                 <Calculator className="h-5 w-5" /> Calcular financiamento <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </form>
 
-          <aside className="xl:sticky xl:top-6">
+          <aside className={`${mobile && mobilePane !== 'result' ? 'hidden' : ''} xl:sticky xl:top-6`}>
             {!result ? (
               <div className="flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
                 <div className="mb-5 rounded-2xl bg-primary/10 p-4 text-primary"><CircleDollarSign className="h-9 w-9" /></div>
@@ -586,12 +632,12 @@ function HousingSimulator() {
               </div>
             ) : (
               <div className={`overflow-hidden ${surfaceClass}`}>
-                <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-[#4b6d8b] to-[#344b60]' : 'bg-gradient-to-br from-red-600 to-red-800'} p-6 text-white`}>
+                <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-[#4b6d8b] to-[#344b60]' : 'bg-gradient-to-br from-red-600 to-red-800'} p-5 text-white sm:p-6`}>
                   <div className="flex items-start justify-between gap-4">
                     <div><p className="text-xs font-semibold uppercase tracking-wider text-white/70">Enquadramento</p><h2 className="mt-1 text-xl font-bold">{result.program}</h2></div>
                     <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">{result.system}</span>
                   </div>
-                  <div className="mt-6"><p className="text-sm text-white/75">Valor estimado do financiamento</p><p className="mt-1 text-3xl font-bold tracking-tight">{currency.format(result.financed)}</p></div>
+                  <div className="mt-5 sm:mt-6"><p className="text-sm text-white/75">Valor estimado do financiamento</p><p className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{currency.format(result.financed)}</p></div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
                   <ResultDiagnosis result={result} />
@@ -631,6 +677,7 @@ function HousingSimulator() {
           </aside>
         </div>
       </div>
+      {mobile && mobilePane === 'data' && <div className="mobile-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur"><div className="mx-auto flex max-w-2xl gap-3">{mobileFormStep > 0 && <Button onClick={returnMobileStep} size="lg" variant="secondary" className="min-w-[108px]"><ChevronRight className="h-4 w-4 rotate-180" />Voltar</Button>}{mobileFormStep < 2 ? <Button onClick={advanceMobileStep} size="lg" className="flex-1">Continuar<ChevronRight className="h-4 w-4" /></Button> : <Button form="housing-simulator-form" type="submit" size="lg" variant={isCaixa ? 'primary' : 'danger'} className="flex-1"><Calculator className="h-5 w-5" />Calcular<ChevronRight className="h-4 w-4" /></Button>}</div></div>}
       {showSaveModal && result && (
         <SaveSimulationModal
           simulationData={{ inputSnapshot: form, resultSnapshot: result }}

@@ -134,11 +134,11 @@ const Settings = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6 animate-fade-in">
+        <div className="space-y-5 p-3 animate-fade-in sm:space-y-6 sm:p-6">
             {/* Notificação */}
             {notification && (
                 <div
-                    className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-fade-in ${
+                    className={`fixed left-3 right-3 top-3 z-50 flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg animate-fade-in sm:left-auto sm:right-4 sm:top-4 sm:max-w-md ${
                         notification.type === 'success'
                             ? 'bg-green-50 border border-green-200 text-green-700'
                             : 'bg-red-50 border border-red-200 text-red-700'
@@ -160,14 +160,14 @@ const Settings = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b border-gray-200">
+            <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-gray-200 sm:gap-2">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-3 font-medium transition-all duration-200 border-b-2 ${
+                            className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-all duration-200 sm:px-4 sm:text-base ${
                                 activeTab === tab.id
                                     ? 'border-primary text-primary'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -181,7 +181,7 @@ const Settings = () => {
             </div>
 
             {/* Conteúdo */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
                 {activeTab === 'profile' && (
                     <div className="max-w-2xl">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações do Perfil</h2>

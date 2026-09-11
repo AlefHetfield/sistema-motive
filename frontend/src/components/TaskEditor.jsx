@@ -107,7 +107,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
     } catch (err) { setError(err.message); } finally { setSaving(false); }
   };
   return <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/40" role="presentation">
-    <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="task-editor-title" className="flex h-full w-full max-w-md flex-col bg-slate-50 shadow-2xl">
+    <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="task-editor-title" className="mobile-safe-bottom flex h-full w-full max-w-md flex-col bg-slate-50 shadow-2xl">
       <header className="flex items-center justify-between px-5 py-4"><h2 id="task-editor-title" className="text-sm font-semibold text-gray-600">{social ? (task ? 'Publicação' : 'Nova publicação') : task ? 'Sua tarefa' : 'Nova tarefa'}</h2><button type="button" onClick={onClose} disabled={saving} aria-label="Fechar detalhes" className="rounded-lg p-2 text-gray-400 hover:bg-gray-200"><X size={19} /></button></header>
       <form onSubmit={save} className="flex min-h-0 flex-1 flex-col">
         <fieldset disabled={saving} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-5">

@@ -149,10 +149,13 @@ function DetailMetric({ icon, label, value }) {
 }
 
 function PropertyDetail({ property, onClose, onEdit, onDelete }) {
+  const mobile = useMobileLayout();
   const [drivePhotos, setDrivePhotos] = useState([]);
   const [activePhoto, setActivePhoto] = useState(0);
   const [failedPhotoIds, setFailedPhotoIds] = useState(() => new Set());
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(Boolean(property.driveFolderUrl));
+  const [sheetLevel, setSheetLevel] = useState(0);
+  const sheetDragStart = useRef(null);
   useEffect(() => {
     let active = true;
     if (!property.driveFolderUrl) return undefined;
@@ -179,28 +182,43 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
       toast.error('Não foi possível copiar o contato.');
     }
   };
+  const sheetHeights = ['42dvh', '65dvh', '88dvh'];
+  const finishSheetDrag = (event) => {
+    if (!mobile || sheetDragStart.current === null) return;
+    const movement = event.clientY - sheetDragStart.current;
+    sheetDragStart.current = null;
+    if (movement < -36) setSheetLevel(current => Math.min(2, current + 1));
+    if (movement > 36) {
+      if (sheetLevel === 0) onClose();
+      else setSheetLevel(current => Math.max(0, current - 1));
+    }
+  };
   return (
-    <aside className="fixed inset-0 z-[60] flex w-full lg:absolute lg:inset-y-3 lg:left-auto lg:right-3 lg:z-20 lg:w-[min(390px,calc(100%-24px))] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
-      <div className="relative h-48 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100">
+    <aside
+      style={mobile ? { height: sheetHeights[sheetLevel] } : undefined}
+      className="fixed inset-x-0 bottom-0 z-[60] flex w-full flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl transition-[height] duration-200 lg:absolute lg:inset-y-3 lg:left-auto lg:right-3 lg:h-auto lg:max-h-none lg:w-[min(390px,calc(100%-24px))] lg:rounded-2xl"
+    >
+      {mobile && <button type="button" aria-label={sheetLevel === 2 ? 'Recolher detalhes do imóvel' : 'Expandir detalhes do imóvel'} onClick={() => setSheetLevel(current => current === 2 ? 0 : current + 1)} onPointerDown={event => { sheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishSheetDrag} onPointerCancel={() => { sheetDragStart.current = null; }} className="flex h-7 shrink-0 touch-none items-center justify-center bg-white"><span className="h-1.5 w-12 rounded-full bg-gray-300" /></button>}
+      <div className="relative h-36 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100 sm:h-48">
         {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setFailedPhotoIds(current => new Set(current).add(displayedPhoto.id))} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
         {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
         <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
         <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
       </div>
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5">
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{property.code ? `Imóvel ${property.code}` : property.propertyType || 'Imóvel'}</p>
         <h2 className="mt-1 text-xl font-bold leading-7 text-gray-900">{cleanPropertyTitle(property.title)}</h2>
         <p className="mt-2 flex gap-2 text-sm leading-5 text-gray-500"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{property.address}{property.neighborhood ? ` · ${property.neighborhood}` : ''}{property.city ? `, ${property.city}` : ''}</p>
         <p className="mt-4 text-2xl font-bold text-gray-900">{property.price ? currency.format(property.price) : 'Valor sob consulta'}</p>
 
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <div className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mt-5 grid-cols-4 gap-2`}>
           <DetailMetric icon={<BedDouble className="h-4 w-4 text-primary" />} label="Dorm." value={property.bedrooms} />
           <DetailMetric icon={<Bath className="h-4 w-4 text-primary" />} label="Suítes" value={property.suites} />
           <DetailMetric icon={<Car className="h-4 w-4 text-primary" />} label="Vagas" value={property.parkingSpaces} />
           <DetailMetric icon={<Maximize2 className="h-4 w-4 text-primary" />} label="Área" value={property.area ? `${number.format(property.area)} m²` : null} />
         </div>
 
-        <div className="mt-5 space-y-3 border-t border-gray-100 pt-5 text-sm">
+        <div className={`${mobile && sheetLevel < 2 ? 'hidden' : 'block'} mt-5 space-y-3 border-t border-gray-100 pt-5 text-sm`}>
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Condição</span><strong className="text-gray-800">{property.condition || 'Não informada'}</strong></div>
           <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Tipo</span><strong className="text-gray-800">{property.propertyType || 'Não informado'}</strong></div>
           {property.propertyType === 'Apartamento' && <div className="flex items-center justify-between gap-3"><span className="text-gray-500">Andar</span><strong className="text-gray-800">{property.floor === null || property.floor === undefined ? 'Não informado' : Number(property.floor) === 0 ? 'Térreo' : `${property.floor}º andar`}</strong></div>}
@@ -210,9 +228,9 @@ function PropertyDetail({ property, onClose, onEdit, onDelete }) {
           {property.ownerWhatsapp && <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><MessageCircle className="h-4 w-4" />WhatsApp</span><button type="button" onClick={copyOwnerWhatsapp} title="Copiar contato" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold text-emerald-700 transition hover:bg-emerald-100"><span>{formatWhatsapp(property.ownerWhatsapp)}</span><Copy className="h-3.5 w-3.5" /></button></div>}
           <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-1.5 text-gray-500"><CalendarCheck className="h-4 w-4" />Disponibilidade</span><strong className="text-gray-800">{formatDate(property.lastAvailabilityCheck)}</strong></div>
         </div>
-        <div className="mt-5 border-t border-gray-100 pt-5"><p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Informações complementares</p><div className={`whitespace-pre-wrap break-words text-sm leading-6 ${property.additionalInformation ? 'text-gray-600' : 'italic text-gray-400'}`}>{property.additionalInformation || 'Nenhuma informação complementar cadastrada.'}</div></div>
+        <div className={`${mobile && sheetLevel < 2 ? 'hidden' : 'block'} mt-5 border-t border-gray-100 pt-5`}><p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Informações complementares</p><div className={`whitespace-pre-wrap break-words text-sm leading-6 ${property.additionalInformation ? 'text-gray-600' : 'italic text-gray-400'}`}>{property.additionalInformation || 'Nenhuma informação complementar cadastrada.'}</div></div>
       </div>
-      <footer className="grid grid-cols-2 gap-2 border-t border-gray-100 bg-gray-50 p-3">
+      <footer className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mobile-safe-bottom grid-cols-2 gap-2 border-t border-gray-100 bg-gray-50 p-3`}>
         <Link to={`/tasks?view=social&newProperty=${property.id}`} className="col-span-2 rounded-xl bg-primary px-3 py-2.5 text-center text-sm font-bold text-white">Criar publicação</Link>
         <a href={routeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><Route className="h-4 w-4" />Abrir rota</a>
         {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><ExternalLink className="h-4 w-4" />Abrir ficha</a>}
@@ -708,12 +726,12 @@ export default function PropertiesMap() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] min-h-[400px] flex-col lg:h-[calc(100dvh-72px)] overflow-hidden bg-gray-100">
-            <header className="max-h-[45dvh] shrink-0 overflow-y-auto border-b border-gray-200 bg-white px-3 py-2 lg:max-h-none lg:overflow-visible lg:px-5 lg:py-3">
-        {mobile && <div className="mb-2 flex items-center gap-2"><div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1" aria-label="Visualização dos imóveis">{[['map', 'Mapa'], ['list', 'Lista']].map(([value, label]) => <button key={value} type="button" aria-pressed={mobileView === value} onClick={() => setMobileView(value)} className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold ${mobileView === value ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div><button type="button" aria-expanded={mobileFilters} onClick={() => setMobileFilters(value => !value)} className="min-h-11 rounded-xl border px-3 text-sm font-semibold text-gray-600">{mobileFilters ? 'Fechar filtros' : 'Filtros e ações'}</button></div>}
+    <div className="flex h-full min-h-[400px] flex-col overflow-hidden bg-gray-100">
+            <header className="max-h-[38dvh] shrink-0 overflow-y-auto border-b border-gray-200 bg-white px-3 py-2 lg:max-h-none lg:overflow-visible lg:px-5 lg:py-3">
+        {mobile && <div className="mb-2 flex items-center gap-2"><div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1" aria-label="Visualização dos imóveis">{[['map', 'Mapa'], ['list', 'Lista']].map(([value, label]) => <button key={value} type="button" aria-pressed={mobileView === value} onClick={() => setMobileView(value)} className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold ${mobileView === value ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div><button type="button" aria-expanded={mobileFilters} onClick={() => setMobileFilters(true)} className="relative min-h-11 rounded-xl border px-3 text-sm font-semibold text-gray-600"><SlidersHorizontal className="mr-1.5 inline h-4 w-4" />Filtros{activeFilterChips.length > 0 && <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-white">{activeFilterChips.length}</span>}</button></div>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-gray-500"><strong className="text-gray-800">{filtered.length}</strong> imóvel(is) · <strong className="text-gray-800">{mappedCount}</strong> visível(is) no mapa</p>
-          <div className={`${mobile && !mobileFilters ? 'hidden' : 'flex'} flex-wrap items-center gap-2`}>
+          <div className="hidden flex-wrap items-center gap-2 lg:flex">
             {isAdmin() && (
               <details className="group relative z-40">
                 <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 [&::-webkit-details-marker]:hidden"><Download className="h-4 w-4" />Backup<ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
@@ -735,7 +753,7 @@ export default function PropertiesMap() {
             <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
           </div>
         </div>
-        <div className={`${mobile && !mobileFilters ? 'hidden' : 'grid'} mt-2 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]`}>
+        <div className="mt-2 hidden gap-2 lg:grid xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]">
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <select value={filters.status} onChange={event => updateFilter('status', event.target.value)} className={compactControlClass}><option value="">Todos os status</option>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</select>
           <select value={filters.city} onChange={event => updateFilter('city', event.target.value)} className={compactControlClass}><option value="">Todas as cidades</option>{cities.map(item => <option key={item}>{item}</option>)}</select>
@@ -750,8 +768,29 @@ export default function PropertiesMap() {
             </div>
           </details>
         </div>
-        {activeFilterChips.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-2.5 py-2"><span className="mr-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">Filtros ativos</span>{activeFilterChips.map(chip => <button key={chip.field} type="button" onClick={() => updateFilter(chip.field, '')} aria-label={`Remover filtro ${chip.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary/5">{chip.label}<X className="h-3 w-3" /></button>)}<span className="ml-auto text-xs font-semibold text-gray-500">{filtered.length} resultado(s)</span><button type="button" onClick={() => setFilters(initialFilters)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-700"><FilterX className="h-3.5 w-3.5" />Limpar todos</button></div>}
+        {activeFilterChips.length > 0 && <div className="mt-2 hidden flex-wrap items-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-2.5 py-2 lg:flex"><span className="mr-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">Filtros ativos</span>{activeFilterChips.map(chip => <button key={chip.field} type="button" onClick={() => updateFilter(chip.field, '')} aria-label={`Remover filtro ${chip.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary/5">{chip.label}<X className="h-3 w-3" /></button>)}<span className="ml-auto text-xs font-semibold text-gray-500">{filtered.length} resultado(s)</span><button type="button" onClick={() => setFilters(initialFilters)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-700"><FilterX className="h-3.5 w-3.5" />Limpar todos</button></div>}
       </header>
+
+      {mobile && mobileFilters && <div className="fixed inset-0 z-[80] bg-gray-950/35 backdrop-blur-[1px]" role="presentation" onClick={() => setMobileFilters(false)}>
+        <section role="dialog" aria-modal="true" aria-label="Filtros e ações do mapa" onClick={event => event.stopPropagation()} className="mobile-safe-bottom absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3"><div><h2 className="font-bold text-gray-900">Filtros e ações</h2><p className="text-xs text-gray-500">{filtered.length} imóvel(is) encontrado(s)</p></div><button type="button" onClick={() => setMobileFilters(false)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-600" aria-label="Fechar filtros"><X className="h-5 w-5" /></button></div>
+          <div className="space-y-4 p-4">
+            <label className="relative block"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <select value={filters.status} onChange={event => updateFilter('status', event.target.value)} className={compactControlClass}><option value="">Todos os status</option>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</select>
+              <select value={filters.city} onChange={event => updateFilter('city', event.target.value)} className={compactControlClass}><option value="">Todas as cidades</option>{cities.map(item => <option key={item}>{item}</option>)}</select>
+              <select value={filters.propertyType} onChange={event => updatePropertyTypeFilter(event.target.value)} className={compactControlClass}><option value="">Todos os tipos</option>{propertyTypes.map(item => <option key={item}>{item}</option>)}</select>
+              <select value={filters.bedrooms} onChange={event => updateFilter('bedrooms', event.target.value)} className={compactControlClass}><option value="">Dormitórios</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select>
+              <select value={filters.suite} onChange={event => updateFilter('suite', event.target.value)} className={compactControlClass}><option value="">Todas as suítes</option><option value="yes">Com suíte</option><option value="no">Sem suíte</option></select>
+              {(!filters.propertyType || filters.propertyType === 'Apartamento') && <select value={filters.floorGroup} onChange={event => updateFilter('floorGroup', event.target.value)} className={compactControlClass}><option value="">Todos os andares</option><option value="ground">Térreo</option><option value="upper">1º andar ou superior</option><option value="unknown">Andar não informado</option></select>}
+              {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <select value={filters.landConfiguration} onChange={event => updateFilter('landConfiguration', event.target.value)} className={`${compactControlClass} col-span-2`}><option value="">Todos os terrenos</option>{LAND_CONFIGURATIONS.map(item => <option key={item}>{item}</option>)}<option value="unknown">Não informado</option></select>}
+            </div>
+            {activeFilterChips.length > 0 && <button type="button" onClick={() => setFilters(initialFilters)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gray-100 text-sm font-bold text-gray-600"><FilterX className="h-4 w-4" />Limpar todos os filtros</button>}
+            <div className="border-t border-gray-100 pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ações rápidas</p><div className="grid grid-cols-2 gap-3"><Button onClick={() => { setMobileFilters(false); setShowImport(true); }} variant="secondary"><FileUp className="h-4 w-4" />Importar</Button><Button onClick={() => { setMobileFilters(false); setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar</Button><Button onClick={() => { setMobileFilters(false); runDrivePhotosRefresh(); }} disabled={!drivePhotosTotal || isRefreshingDrivePhotos} variant="secondary"><Images className="h-4 w-4" />Fotos</Button><Button onClick={() => { setMobileFilters(false); openListingRefresh(); }} disabled={!listingRefreshTotal} variant="secondary"><RefreshCw className="h-4 w-4" />Anúncios</Button></div></div>
+            <Button onClick={() => setMobileFilters(false)} size="lg" className="w-full">Ver {filtered.length} imóvel(is)</Button>
+          </div>
+        </section>
+      </div>}
 
       <div style={{ '--property-sidebar-width': isSidebarCollapsed ? '0px' : `${sidebarWidth}px` }} className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-200 lg:grid-cols-[var(--property-sidebar-width)_minmax(0,1fr)]">
         <aside ref={propertyListRef} className={`${mobile && mobileView !== 'list' ? 'hidden' : ''} order-2 overflow-y-auto border-r border-gray-200 bg-gray-50 p-3 lg:order-1 ${isSidebarCollapsed ? 'lg:overflow-hidden lg:border-r-0 lg:p-0' : ''}`}>

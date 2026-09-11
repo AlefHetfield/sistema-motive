@@ -13,7 +13,7 @@ export default function PropertyImportModal({ onClose, onImport, isImporting }) 
   };
 
   return (
-    <div className="fixed inset-0 z-[9600] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]">
+    <div className="mobile-safe-overlay fixed inset-0 z-[9600] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]">
       <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Fechar importação" />
       <form onSubmit={submit} className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex items-start justify-between border-b border-gray-100 px-5 py-4">

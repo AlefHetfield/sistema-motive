@@ -195,9 +195,9 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const STATUS_OPTIONS = ["Documentação Recebida", "Aprovado", "Solicitando Engenharia", "Engenharia Solicitada", "Baixando FGTS", "Preenchendo Fichas", "Assinando Fichas", "Finalizando", "Aguardando Reserva", "Enviando para Conformidade", "Aguardando Conformidade", "Inconforme", "Conforme - Ag. Contrato", "Assinando Contrato"];
 
     return (
-        <div id="client-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-full flex flex-col overflow-hidden transform transition-all duration-200 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-                <div className="flex justify-between items-center p-6">
+        <div id="client-form-modal" className="mobile-safe-overlay fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className={`flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-200 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+                <div className="flex items-center justify-between gap-3 p-4 sm:p-6">
                     <h3 id="form-title" className="text-2xl font-bold text-secondary">
                         {clientToEdit ? 'Editar Cliente' : 'Dados do Emissor'}
                     </h3>
@@ -205,7 +205,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         <X size={24} />
                     </button>
                 </div>
-                <form id="client-form" className="p-6 space-y-4 overflow-y-auto" onSubmit={handleSubmit}>
+                <form id="client-form" className="space-y-4 overflow-y-auto p-4 sm:p-6 sm:pt-0" onSubmit={handleSubmit}>
                     <div className="md:col-span-3">
                         <ModernInput id="nome" label="Nome do Cliente" Icon={User} value={formData.nome} onChange={handleInputChange} required />
                     </div>
@@ -278,7 +278,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     <div>
                         <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={4} />
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                         {/* Botão de excluir à esquerda (só aparece ao editar) */}
                         {clientToEdit && onDelete && (
                             <button
@@ -287,7 +287,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                                     onDelete(clientToEdit);
                                     onClose();
                                 }}
-                                className="inline-flex items-center gap-2 py-2 px-4 text-white rounded-md bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 transform transition-all duration-200 hover:-translate-y-0.5"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 px-4 py-2.5 text-white shadow-lg shadow-red-500/30 transform transition-all duration-200 hover:-translate-y-0.5 hover:from-red-600 hover:to-red-700 sm:w-auto"
                             >
                                 <Trash2 size={16} />
                                 Excluir Cliente
@@ -295,18 +295,18 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         )}
                         
                         {/* Botões de ação à direita */}
-                        <div className="flex gap-3 ml-auto">
+                        <div className="flex w-full gap-2 sm:ml-auto sm:w-auto sm:gap-3">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="py-2 px-4 text-gray-800 font-semibold rounded-md bg-transparent hover:bg-gray-100 transition"
+                                className="flex-1 rounded-xl bg-transparent px-4 py-2.5 font-semibold text-gray-800 transition hover:bg-gray-100 sm:flex-none"
                             >
                                 Cancelar
                             </button>
 
                             <button
                                 type="submit"
-                                className={`inline-flex items-center gap-2 py-2 px-4 text-white rounded-md shadow-lg shadow-blue-500/30 transform transition-all duration-200 ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'} bg-gradient-to-r from-primary to-blue-600`}
+                                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-2.5 text-white shadow-lg shadow-blue-500/30 transform transition-all duration-200 sm:flex-none ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'}`}
                                 disabled={isSaving}
                             >
                                 <Check size={16} />

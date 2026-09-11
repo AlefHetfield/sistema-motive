@@ -197,7 +197,7 @@ export default function ClientDetailsDrawer({
     return (
         <div className="fixed inset-0 z-[9000]">
             <button type="button" className="absolute inset-0 bg-gray-950/35 backdrop-blur-[2px]" onClick={onClose} aria-label="Fechar detalhes" />
-            <aside role="dialog" aria-modal="true" aria-labelledby="client-details-title" className="absolute inset-y-0 right-0 flex w-full max-w-xl animate-in slide-in-from-right flex-col bg-white shadow-2xl duration-200">
+            <aside role="dialog" aria-modal="true" aria-labelledby="client-details-title" className="mobile-safe-bottom absolute inset-y-0 right-0 flex w-full max-w-xl animate-in slide-in-from-right flex-col bg-white shadow-2xl duration-200">
                 <header className="border-b border-gray-100 px-5 py-5 sm:px-6">
                     <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">

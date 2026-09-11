@@ -75,10 +75,10 @@ export default function PauseClientModal({ client, onClose, onConfirm }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        <div className="mobile-safe-overlay fixed inset-0 z-[10000] flex items-center justify-center p-4">
             <button type="button" className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Fechar" />
-            <form onSubmit={handleSubmit} className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-                <header className="flex items-start justify-between border-b border-gray-100 p-6">
+            <form onSubmit={handleSubmit} className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <header className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-6">
                     <div className="flex gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><PauseCircle size={22} /></div>
                         <div>
@@ -89,7 +89,7 @@ export default function PauseClientModal({ client, onClose, onConfirm }) {
                     <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50" aria-label="Fechar modal"><X size={20} /></button>
                 </header>
 
-                <div className="space-y-5 p-6">
+                <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
                     <div>
                         <label htmlFor="wait-reason" className="mb-2 block text-sm font-semibold text-gray-700">Motivo da espera</label>
                         <select id="wait-reason" value={reason} onChange={(event) => { setReason(event.target.value); setError(''); }} required className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
@@ -117,7 +117,7 @@ export default function PauseClientModal({ client, onClose, onConfirm }) {
                     {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
                 </div>
 
-                <footer className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+                <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:px-6">
                     <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-200 disabled:opacity-50">Cancelar</button>
                     <button type="submit" disabled={isSaving || !reason} className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"><PauseCircle size={17} />{isSaving ? 'Salvando...' : 'Colocar em espera'}</button>
                 </footer>

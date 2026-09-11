@@ -123,7 +123,9 @@ const CepSearch = () => {
         }
     };
     
-    const TabButton = ({ id, label, icon: Icon }) => (
+    const TabButton = ({ id, label, icon: Icon }) => {
+        const iconElement = Icon ? <Icon size={16} /> : null;
+        return (
         <button
             onClick={() => { setActiveTab(id); setResults([]); setError(''); setCepInput(''); setAddressInput({ state: '', city: '', street: '' }); }}
             className={`group relative whitespace-nowrap py-4 px-6 font-medium text-sm transition-all duration-300 rounded-t-2xl ${
@@ -133,14 +135,15 @@ const CepSearch = () => {
             }`}
         >
             <span className="flex items-center gap-2">
-                <Icon size={16} />
+                {iconElement}
                 {label}
             </span>
             {activeTab === id && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
             )}
         </button>
-    );
+        );
+    };
 
     const SkeletonCard = () => (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse">
@@ -159,7 +162,7 @@ const CepSearch = () => {
     );
 
     return (
-        <div id="cep-view" className="fade-in max-w-5xl mx-auto p-6">
+        <div id="cep-view" className="fade-in mx-auto max-w-5xl p-3 sm:p-6">
             {/* Header */}
             <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-2">Busca de CEP</h2>
@@ -174,7 +177,7 @@ const CepSearch = () => {
 
             {activeTab === 'byCep' && (
                 <div id="cep-content-by-cep" className="animate-fade-in">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-8">
                         <form onSubmit={handleSearchByCep} className="flex flex-col sm:flex-row items-end gap-4">
                             <div className="flex-grow w-full sm:w-auto">
                                 <ModernInput
@@ -212,7 +215,7 @@ const CepSearch = () => {
 
             {activeTab === 'byAddress' && (
                  <div id="cep-content-by-address" className="animate-fade-in">
-                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                     <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-8">
                         <form onSubmit={handleSearchByAddress}>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <ModernInput

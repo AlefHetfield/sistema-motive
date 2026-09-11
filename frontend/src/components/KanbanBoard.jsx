@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import KanbanCard from './KanbanCard';
 import KanbanColumn from './KanbanColumn';
 import { useToast } from '../hooks/useToast';
+import useMobileLayout from '../hooks/useMobileLayout';
 
 const STATUS_OPTIONS = [
   "Documentação Recebida",
@@ -115,6 +116,8 @@ const statusConfig = {
 };
 
 export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, onPauseClient, onResumeClient }) {
+  const mobile = useMobileLayout();
+  const [mobileStatus, setMobileStatus] = useState(STATUS_OPTIONS[0]);
   const notify = useToast();
   const { logActivity } = useActivityLog();
   const { user } = useAuth();
@@ -339,7 +342,7 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
   return (
     <div className="w-full h-full">
       {/* Header com estatísticas */}
-      <div className="mb-6 grid grid-cols-7 gap-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:mb-6 xl:grid-cols-7 xl:gap-4">
         <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -418,6 +421,19 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
         )}
       </div>
 
+      <label className="mb-3 block lg:hidden">
+        <span className="mb-1.5 block text-sm font-semibold text-gray-700">Etapa exibida</span>
+        <select
+          value={mobileStatus}
+          onChange={(event) => setMobileStatus(event.target.value)}
+          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base font-medium text-gray-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        >
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>{status} ({clientsByStatus[status]?.length || 0})</option>
+          ))}
+        </select>
+      </label>
+
       {/* Kanban Board */}
       <DndContext
         sensors={sensors}
@@ -426,9 +442,9 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 pb-4 overflow-x-auto w-full kanban-scroll">
-          {STATUS_OPTIONS.map((status) => (
-            <div key={status} className="flex-shrink-0 w-80">
+        <div className="flex w-full gap-4 overflow-x-auto pb-4 kanban-scroll lg:snap-x lg:snap-mandatory">
+          {STATUS_OPTIONS.filter((status) => !mobile || status === mobileStatus).map((status) => (
+            <div key={status} className="w-full flex-shrink-0 lg:w-80 lg:snap-start">
               <KanbanColumn
                 status={status}
                 config={statusConfig[status]}
