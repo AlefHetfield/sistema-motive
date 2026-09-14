@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 
 const variants = {
-  primary: 'bg-primary text-white shadow-sm hover:bg-[#4a637a] hover:shadow-md focus-visible:ring-primary/20',
+  primary: 'bg-primary text-white shadow-sm shadow-primary/10 hover:bg-[#274D68] hover:shadow-md focus-visible:ring-primary/20',
   secondary: 'border border-gray-200 bg-white text-gray-700 shadow-sm hover:border-gray-300 hover:bg-gray-50 focus-visible:ring-gray-300/40',
   primarySoft: 'border border-primary/20 bg-primary/5 text-primary hover:border-primary/30 hover:bg-primary/10 focus-visible:ring-primary/15',
   success: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:shadow-md focus-visible:ring-emerald-500/20',

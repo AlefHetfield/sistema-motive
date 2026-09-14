@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { fetchNextPropertyReference, fetchPropertyDrivePreview, fetchPropertySitePreview, geocodePropertyPlace, propertyDriveImageUrl, reverseGeocodePropertyCoordinates } from '../../services/api';
 import { PROPERTY_STATUSES } from './propertyConstants';
 import PropertyAddressSearch from './PropertyAddressSearch';
+import FancySelect from '../FancySelect';
 import { controlClass, formLabelClass, textAreaClass } from '../ui/styles';
 
 const PROPERTY_TYPES = ['Casa', 'Apartamento', 'Lote', 'Terreno', 'Sobrado', 'Chácara', 'Comercial', 'Outro'];
@@ -73,10 +74,10 @@ const Field = ({ label, className = '', inputClassName = '', ...props }) => (
   </label>
 );
 
-const Select = ({ label, children, ...props }) => (
+const Select = ({ label, options, ...props }) => (
   <label className="block">
     <span className={formLabelClass}>{label}</span>
-    <select {...props} className={controlClass}>{children}</select>
+    <FancySelect {...props} ariaLabel={label} options={options} />
   </label>
 );
 
@@ -296,13 +297,13 @@ export default function PropertyFormModal({ property, initialLocation, propertie
           <section className="border-t border-gray-100 pt-5">
             <h3 className="mb-3 text-sm font-bold text-gray-900">Características</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Select label="Tipo" value={form.propertyType || ''} onChange={event => updatePropertyType(event.target.value)}>{PROPERTY_TYPES.map(item => <option key={item}>{item}</option>)}</Select>
-              <Select label="Condição" value={form.condition || ''} onChange={event => update('condition', event.target.value)}>{CONDITIONS.map(item => <option key={item}>{item}</option>)}</Select>
-              <Select label="Status" value={form.status || 'Disponível'} onChange={event => update('status', event.target.value)}>{PROPERTY_STATUSES.map(item => <option key={item}>{item}</option>)}</Select>
+              <Select label="Tipo" value={form.propertyType || ''} onChange={updatePropertyType} options={PROPERTY_TYPES.map(item => ({ value: item, label: item }))} />
+              <Select label="Condição" value={form.condition || ''} onChange={value => update('condition', value)} options={CONDITIONS.map(item => ({ value: item, label: item }))} />
+              <Select label="Status" value={form.status || 'Disponível'} onChange={value => update('status', value)} options={PROPERTY_STATUSES.map(item => ({ value: item, label: item }))} />
               <Field label="Valor" inputMode="numeric" value={currency.format(Number(form.price) || 0)} onChange={event => update('price', Number(event.target.value.replace(/\D/g, '')) / 100)} />
               <Field label="Área construída (m²)" type="number" min="0" step="0.01" value={form.area ?? ''} onChange={event => update('area', event.target.value)} />
               <Field label="Terreno (m²)" type="number" min="0" step="0.01" value={form.landArea ?? ''} onChange={event => update('landArea', event.target.value)} />
-              {['Casa', 'Sobrado'].includes(form.propertyType) && <Select label="Configuração do terreno" value={form.landConfiguration || ''} onChange={event => update('landConfiguration', event.target.value)}><option value="">Não informado</option>{LAND_CONFIGURATIONS.map(item => <option key={item}>{item}</option>)}</Select>}
+              {['Casa', 'Sobrado'].includes(form.propertyType) && <Select label="Configuração do terreno" value={form.landConfiguration || ''} onChange={value => update('landConfiguration', value)} placeholder="Não informado" options={[{ value: '', label: 'Não informado' }, ...LAND_CONFIGURATIONS.map(item => ({ value: item, label: item }))]} />}
               {form.propertyType === 'Apartamento' && <Field label="Andar" type="number" min="0" value={form.floor ?? ''} onChange={event => update('floor', event.target.value)} placeholder="0 para térreo" />}
               <Field label="Dormitórios" type="number" min="0" value={form.bedrooms ?? ''} onChange={event => update('bedrooms', event.target.value)} />
               <Field label="Suítes" type="number" min="0" value={form.suites ?? ''} onChange={event => update('suites', event.target.value)} />

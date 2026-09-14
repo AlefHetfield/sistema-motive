@@ -38,9 +38,9 @@ const FUNNEL_STAGES = [
 
 const QUICK_ACTIONS = [
     { label: 'Novo cliente', description: 'Iniciar atendimento', to: '/clients?new=1', icon: UserPlus, tone: 'bg-primary text-white shadow-primary/20' },
-    { label: 'Simular crédito', description: 'Abrir simulador', to: '/simulador', icon: Building2, tone: 'bg-white text-gray-700' },
-    { label: 'Gerar contrato', description: 'Criar documento', to: '/contract-generator', icon: FileText, tone: 'bg-white text-gray-700' },
-    { label: 'Mapa de imóveis', description: 'Consultar opções', to: '/properties-map', icon: MapPinned, tone: 'bg-white text-gray-700' },
+    { label: 'Simular crédito', description: 'Abrir simulador', to: '/simulador', icon: Building2, tone: 'bg-emerald-50 text-emerald-800' },
+    { label: 'Gerar contrato', description: 'Criar documento', to: '/contract-generator', icon: FileText, tone: 'bg-violet-50 text-violet-800' },
+    { label: 'Mapa de imóveis', description: 'Consultar opções', to: '/properties-map', icon: MapPinned, tone: 'bg-sky-50 text-sky-800' },
 ];
 
 const safeDate = value => {
@@ -83,7 +83,7 @@ const MetricCard = props => {
     return (
     <Link
         to={props.to}
-        className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+        className="app-card app-card-interactive group rounded-2xl border bg-white p-5"
     >
         <div className="flex items-start justify-between gap-4">
             <div>
@@ -217,11 +217,11 @@ const Dashboard = () => {
     const maxFunnelCount = Math.max(...dashboard.funnel.map(stage => stage.count), 1);
 
     return (
-        <div className="min-h-full bg-gray-50/70 p-4 sm:p-6">
+        <div className="min-h-full bg-background/80 p-4 sm:p-6">
             <div className="mx-auto max-w-[1600px] space-y-5">
                 <HealthCheck />
 
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-800 via-slate-700 to-primary shadow-sm">
+                <section className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-secondary via-[#24465F] to-primary shadow-[0_16px_38px_rgba(23,47,67,0.18)]">
                     <div className="relative px-5 py-6 sm:px-7">
                         <div className="absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
                         <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
@@ -238,7 +238,7 @@ const Dashboard = () => {
                                         <QuickIcon size={19} className="shrink-0" />
                                         <span className="min-w-0">
                                             <span className="block truncate text-xs font-bold">{action.label}</span>
-                                            <span className={`hidden truncate text-[10px] sm:block ${action.tone.includes('text-white') ? 'text-white/65' : 'text-gray-400'}`}>{action.description}</span>
+                                            <span className={`hidden truncate text-[10px] sm:block ${action.tone.includes('text-white') ? 'text-white/65' : 'text-current opacity-60'}`}>{action.description}</span>
                                         </span>
                                     </Link>
                                     );
@@ -263,10 +263,10 @@ const Dashboard = () => {
                 </section>
 
                 <section className="grid gap-5 xl:grid-cols-3">
-                    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:col-span-2">
+                    <div className="app-card overflow-hidden rounded-2xl border bg-white xl:col-span-2">
                         <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4">
                             <div>
-                                <div className="flex items-center gap-2"><Sparkles size={19} className="text-amber-500" /><h2 className="font-bold text-gray-900">Prioridades de hoje</h2></div>
+                                <div className="flex items-center gap-2"><Sparkles size={19} className="text-accent" /><h2 className="font-bold text-gray-900">Prioridades de hoje</h2></div>
                                 <p className="mt-1 text-xs text-gray-500">Pendências organizadas por urgência</p>
                             </div>
                             <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{dashboard.priorities.length}</span>
@@ -310,7 +310,7 @@ const Dashboard = () => {
                         )}
                     </div>
 
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="app-card rounded-2xl border bg-white p-5">
                         <div className="flex items-start justify-between gap-3">
                             <div><h2 className="font-bold text-gray-900">Funil de atendimento</h2><p className="mt-1 text-xs text-gray-500">{dashboard.operational.length} processos em andamento</p></div>
                             <Users size={19} className="text-primary" />
@@ -330,7 +330,7 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <section className="app-card rounded-2xl border bg-white">
                     <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
                         <div><h2 className="font-bold text-gray-900">Atividade recente</h2><p className="mt-1 text-xs text-gray-500">Últimas movimentações da equipe</p></div>
                         <Clock3 size={18} className="text-gray-400" />

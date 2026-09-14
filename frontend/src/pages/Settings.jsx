@@ -155,8 +155,8 @@ const Settings = () => {
 
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-                <p className="text-gray-500 mt-1">Gerencie suas preferências e segurança</p>
+                <h1 className="app-page-title text-2xl">Configurações</h1>
+                <p className="app-page-description mt-1">Gerencie suas preferências e segurança</p>
             </div>
 
             {/* Tabs */}
@@ -181,7 +181,7 @@ const Settings = () => {
             </div>
 
             {/* Conteúdo */}
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
+            <div className="app-card rounded-2xl border bg-white p-4 sm:p-6">
                 {activeTab === 'profile' && (
                     <div className="max-w-2xl">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações do Perfil</h2>

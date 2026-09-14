@@ -158,23 +158,6 @@ function CurrencyField({ value, onChange, placeholder }) {
 }
 
 function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel }) {
-  const mobile = useMobileLayout();
-
-  if (mobile) {
-    return (
-      <select
-        className={fieldClass}
-        value={value}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {placeholder && !options.some((option) => option.value === '') && <option value="">{placeholder}</option>}
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    );
-  }
-
   return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} />;
 }
 
@@ -547,7 +530,7 @@ function HousingSimulator() {
   })() : { decrease: false, increase: false };
 
   return (
-    <div className={`min-h-full bg-gray-50 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 ${mobilePane === 'data' ? 'pb-24 sm:pb-6' : ''}`}>
+    <div className={`min-h-full bg-background/80 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 ${mobilePane === 'data' ? 'pb-24 sm:pb-6' : ''}`}>
       <div className="mx-auto max-w-7xl">
         {mobile && <div className="mb-4 grid grid-cols-2 rounded-xl bg-gray-200/70 p-1" aria-label="Etapa da simulação"><button type="button" aria-pressed={mobilePane === 'data'} onClick={() => setMobilePane('data')} className={`min-h-11 rounded-lg text-sm font-bold transition ${mobilePane === 'data' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>1. Dados</button><button type="button" disabled={!result} aria-pressed={mobilePane === 'result'} onClick={() => result && setMobilePane('result')} className={`min-h-11 rounded-lg text-sm font-bold transition disabled:opacity-40 ${mobilePane === 'result' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>2. Resultado</button></div>}
         <div className={`${mobile && mobilePane !== 'data' ? 'hidden' : 'flex'} mb-4 justify-end`}>
@@ -647,14 +630,14 @@ function HousingSimulator() {
 
           <aside className={`${mobile && mobilePane !== 'result' ? 'hidden' : ''} xl:sticky xl:top-6`}>
             {!result ? (
-              <div className="flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
+              <div className="app-card flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-8 text-center">
                 <div className="mb-5 rounded-2xl bg-primary/10 p-4 text-primary"><CircleDollarSign className="h-9 w-9" /></div>
                 <h2 className="text-lg font-bold text-gray-800">Resultado da simulação</h2>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">Preencha os dados ao lado para conferir financiamento estimado, entrada necessária, prazo, taxa e composição da primeira parcela.</p>
               </div>
             ) : (
               <div className={`overflow-hidden ${surfaceClass}`}>
-                <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-[#4b6d8b] to-[#344b60]' : 'bg-gradient-to-br from-red-600 to-red-800'} p-5 text-white sm:p-6`}>
+                <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-primary to-secondary' : 'bg-gradient-to-br from-red-600 to-red-800'} p-5 text-white sm:p-6`}>
                   <div className="flex items-start justify-between gap-4">
                     <div><p className="text-xs font-semibold uppercase tracking-wider text-white/70">Enquadramento</p><h2 className="mt-1 text-xl font-bold">{result.program}</h2></div>
                     <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">{result.system}</span>

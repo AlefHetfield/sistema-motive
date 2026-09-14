@@ -5,6 +5,7 @@ import TaskPropertyPicker from './TaskPropertyPicker';
 import { X, Plus, Circle, CheckCircle2, Star, Sun, CalendarDays, UserRound, Users, ListTodo, StickyNote, Clock, ChevronDown, Check } from 'lucide-react';
 import { taskApi } from '../services/api';
 import { taskToday, addTaskDays, taskDateLabel } from '../utils/taskDates';
+import FancySelect from './FancySelect';
 
 const field = 'w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10';
 const dateValue = value => value?.slice(0, 10) || '';
@@ -137,7 +138,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
             </div>
           </Action>
           <Action icon={UserRound} label={assignee?.nome ? `Responsável: ${assignee.nome}` : 'Atribuir responsável'} expanded={expanded === 'assignee'} onClick={() => toggle('assignee')}>
-            <select aria-label="Responsável" className={field} value={form.assigneeId} disabled={!options.canManageAll} onChange={e => { const nextId = Number(e.target.value); setForm(current => ({ ...current, assigneeId: nextId, listId: options.lists.some(item => item.id === Number(current.listId) && (item.shared || item.ownerId === nextId)) ? current.listId : '' })); setExpanded(''); }}><option value="" disabled>Selecione quem vai cumprir</option>{options.users.filter(user => !requireDelegation || user.id !== options.userId).map(user => <option key={user.id} value={user.id} disabled={!user.isActive}>{user.nome}{!user.isActive ? ' (inativo)' : ''}</option>)}</select>
+            <FancySelect ariaLabel="Responsável" value={String(form.assigneeId)} disabled={!options.canManageAll} placeholder="Selecione quem vai cumprir" options={options.users.filter(user => !requireDelegation || user.id !== options.userId).map(user => ({ value: String(user.id), label: `${user.nome}${!user.isActive ? ' (inativo)' : ''}`, disabled: !user.isActive }))} onChange={value => { const nextId = Number(value); setForm(current => ({ ...current, assigneeId: nextId, listId: options.lists.some(item => item.id === Number(current.listId) && (item.shared || item.ownerId === nextId)) ? current.listId : '' })); setExpanded(''); }} />
             {!options.canManageAll && <p className="text-xs text-gray-500">Você acompanha as tarefas atribuídas a você.</p>}
           </Action>
           {social && <Action icon={ListTodo} active={Boolean(property)} label={property ? 'Imóvel vinculado' : 'Vincular imóvel (opcional)'} expanded={expanded === 'property'} onClick={() => toggle('property')}>
@@ -147,7 +148,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
             <TaskClientPicker client={client} onSelect={item => { setClient(item); set('clientId', item?.id || ''); }} />
           </Action>}
           {!social && <Action icon={ListTodo} label={list ? `Lista: ${list.name}` : 'Adicionar a uma lista'} expanded={expanded === 'list'} onClick={() => toggle('list')}>
-            <select aria-label="Lista" className={field} value={form.listId} onChange={e => { set('listId', e.target.value); setExpanded(''); }}><option value="">Sem lista</option>{options.lists.filter(item => item.shared || item.ownerId === Number(form.assigneeId)).map(item => <option key={item.id} value={item.id}>{item.name}{item.shared ? ' · Equipe' : ' · Pessoal'}</option>)}</select>
+            <FancySelect ariaLabel="Lista" value={String(form.listId)} onChange={value => { set('listId', value); setExpanded(''); }} placeholder="Sem lista" options={[{ value: '', label: 'Sem lista' }, ...options.lists.filter(item => item.shared || item.ownerId === Number(form.assigneeId)).map(item => ({ value: String(item.id), label: `${item.name}${item.shared ? ' · Equipe' : ' · Pessoal'}` }))]} />
           </Action>}
           {!completed && !social && <Action icon={Clock} label="Aguardando retorno" active={form.status === 'WAITING'} onClick={() => set('status', form.status === 'WAITING' ? 'TODO' : 'WAITING')} />}
           {!social && <Action icon={StickyNote} active={Boolean(form.notes)} label={form.notes ? 'Anotação adicionada' : 'Adicionar anotação'} expanded={expanded === 'notes'} onClick={() => toggle('notes')}>

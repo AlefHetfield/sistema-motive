@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import ClientModal from './ClientModal';
 import ConfirmModal from './ConfirmModal';
+import FancySelect from './FancySelect';
 import { saveClient, deleteClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
 import { useAuth } from '../context/AuthContext';
@@ -464,15 +465,7 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
 
       <label className="mb-3 block lg:hidden">
         <span className="mb-1.5 block text-sm font-semibold text-gray-700">Etapa exibida</span>
-        <select
-          value={mobileStatus}
-          onChange={(event) => setMobileStatus(event.target.value)}
-          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base font-medium text-gray-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-        >
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status} value={status}>{status} ({clientsByStatus[status]?.length || 0})</option>
-          ))}
-        </select>
+        <FancySelect ariaLabel="Etapa exibida" value={mobileStatus} onChange={setMobileStatus} options={STATUS_OPTIONS.map(status => ({ value: status, label: `${status} (${clientsByStatus[status]?.length || 0})` }))} />
       </label>
 
       {/* Kanban Board */}

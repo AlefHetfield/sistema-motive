@@ -7,10 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#5B7C99',
-        secondary: '#343E48',
+        primary: '#315B78',
+        secondary: '#172F43',
+        accent: '#D99A35',
         surface: '#FFFFFF',
-        background: '#F4F6F8',
+        background: '#F4F6F7',
       },
       animation: {
         // Animações customizadas
@@ -71,8 +72,8 @@ export default {
           '100%': { backgroundPosition: '1000px 0' },
         },
         glow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(91, 124, 153, 0.5)' },
-          '50%': { boxShadow: '0 0 20px rgba(91, 124, 153, 0.8)' },
+          '0%, 100%': { boxShadow: '0 0 5px rgba(49, 91, 120, 0.45)' },
+          '50%': { boxShadow: '0 0 20px rgba(49, 91, 120, 0.75)' },
         },
         wiggle: {
           '0%, 100%': { transform: 'rotate(0deg)' },

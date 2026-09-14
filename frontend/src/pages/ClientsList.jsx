@@ -1108,7 +1108,7 @@ const ClientsList = () => {
     }
 
     return (
-        <div id="active-clients-content" className="fade-in min-h-full min-w-0 bg-gray-50 sm:p-6 sm:bg-transparent">
+        <div id="active-clients-content" className="fade-in min-h-full min-w-0 bg-background/80 sm:bg-transparent sm:p-6">
             <div className="relative z-40 border-b border-gray-200 bg-white sm:relative sm:mb-4 sm:rounded-xl sm:border sm:shadow-sm">
                 <div className="flex overflow-x-auto" role="tablist" aria-label="Situação dos clientes">
                     {[
@@ -1277,7 +1277,7 @@ const ClientsList = () => {
             )}
 
             {viewMode === 'table' && (
-                <section className="mx-3 mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:mx-0" aria-label="Resumo dos clientes">
+                <section className="app-card mx-3 mb-4 rounded-2xl border bg-white p-4 sm:mx-0" aria-label="Resumo dos clientes">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                             <h2 className="text-sm font-semibold text-gray-900">Resumo da seleção</h2>
@@ -1376,7 +1376,7 @@ const ClientsList = () => {
 
             {/* Visualização Desktop - Tabela */}
             {viewMode === 'table' && (
-                <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:block">
+                <div className="app-card hidden overflow-hidden rounded-2xl border bg-white lg:block">
                     <div className="max-h-[calc(100vh-250px)] overflow-auto">
                         <table className="w-full min-w-[1080px] text-left">
                             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/95 backdrop-blur">
@@ -1488,7 +1488,7 @@ const ClientsList = () => {
                             const isExpanded = !!expandedMobileCards[client.id];
                             
                             return (
-                                <article key={client.id} className={`overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-opacity ${client.emEspera ? 'bg-slate-50 opacity-70' : 'bg-white'}`}>
+                                <article key={client.id} className={`app-card overflow-hidden rounded-2xl border transition-opacity ${client.emEspera ? 'bg-slate-50 opacity-70' : 'bg-white'}`}>
                                     {/* Header do Card */}
                                     <div className="p-3 border-b border-gray-100">
                                         <div className="flex items-start justify-between gap-3">

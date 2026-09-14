@@ -227,8 +227,8 @@ const UserManagement = () => {
             {/* Header */}
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
-                    <p className="text-gray-500 mt-1">Gerencie usuários e permissões do sistema</p>
+                    <h1 className="app-page-title text-2xl">Gerenciamento de Usuários</h1>
+                    <p className="app-page-description mt-1">Gerencie usuários e permissões do sistema</p>
                 </div>
                 <button
                     onClick={handleCreateUser}
@@ -240,7 +240,7 @@ const UserManagement = () => {
             </div>
 
             {/* Filtros */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="app-card rounded-2xl border bg-white p-4">
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
                         <ModernInput
@@ -274,7 +274,7 @@ const UserManagement = () => {
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
                 </div>
             ) : filteredUsers.length === 0 ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="app-card rounded-2xl border bg-white p-12 text-center">
                     <Users size={48} className="mx-auto text-gray-300 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum usuário encontrado</h3>
                     <p className="text-gray-500">
@@ -287,7 +287,7 @@ const UserManagement = () => {
                 <>
                     <div className="space-y-3 lg:hidden" aria-label="Lista de usuários">
                         {filteredUsers.map((user) => (
-                            <article key={user.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <article key={user.id} className="app-card rounded-2xl border bg-white p-4">
                                 <div className="flex min-w-0 items-start gap-3">
                                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary font-medium text-white">
                                         {user.nome?.charAt(0)?.toUpperCase() || '?'}
@@ -326,7 +326,7 @@ const UserManagement = () => {
                         ))}
                     </div>
 
-                    <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:block">
+                    <div className="app-card hidden overflow-hidden rounded-2xl border bg-white lg:block">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">

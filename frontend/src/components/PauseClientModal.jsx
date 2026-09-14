@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Clock3, PauseCircle, X } from 'lucide-react';
+import FancySelect from './FancySelect';
 
 const REASONS = [
     'Aguardando cliente',
@@ -92,10 +93,7 @@ export default function PauseClientModal({ client, onClose, onConfirm }) {
                 <div className="space-y-5 overflow-y-auto p-4 sm:p-6">
                     <div>
                         <label htmlFor="wait-reason" className="mb-2 block text-sm font-semibold text-gray-700">Motivo da espera</label>
-                        <select id="wait-reason" value={reason} onChange={(event) => { setReason(event.target.value); setError(''); }} required className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
-                            <option value="">Selecione um motivo</option>
-                            {REASONS.map(option => <option key={option} value={option}>{option}</option>)}
-                        </select>
+                        <FancySelect ariaLabel="Motivo da espera" value={reason} onChange={(value) => { setReason(value); setError(''); }} placeholder="Selecione um motivo" options={REASONS.map(option => ({ value: option, label: option }))} />
                     </div>
 
                     <div>

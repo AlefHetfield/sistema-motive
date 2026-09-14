@@ -43,13 +43,16 @@ body { overflow-x: hidden; }
 
 /* Estilos personalizados e paleta de cores do logo */
 :root {
-    --color-primary: #5B7C99; /* Azul Motive */
-    --color-secondary: #343E48; /* Grafite Escuro */
-    --color-background: #F4F6F8;
+    --color-primary: #315B78; /* Azul petróleo Motive */
+    --color-primary-hover: #274D68;
+    --color-secondary: #172F43; /* Azul profundo */
+    --color-accent: #D99A35; /* Dourado de destaque */
+    --color-background: #F4F6F7;
     --color-surface: #FFFFFF;
-    --color-text-primary: #343E48;
-    --color-text-secondary: #6c757d;
-    --color-border: #dee2e6;
+    --color-text-primary: #17212B;
+    --color-text-secondary: #667583;
+    --color-border: #DDE4E8;
+    --shadow-surface: 0 1px 2px rgba(23, 47, 67, 0.04), 0 10px 28px rgba(23, 47, 67, 0.045);
 }
 
 body {
@@ -58,12 +61,45 @@ body {
     color: var(--color-text-primary);
 }
 
+/* Superfícies compartilhadas entre as ferramentas do sistema. */
+.app-card {
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-surface);
+}
+
+.app-card-interactive {
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.app-card-interactive:hover {
+    border-color: rgba(49, 91, 120, 0.28);
+    box-shadow: 0 14px 34px rgba(23, 47, 67, 0.09);
+    transform: translateY(-1px);
+}
+
+.app-page-title {
+    color: var(--color-text-primary);
+    font-weight: 750;
+    letter-spacing: -0.025em;
+}
+
+.app-page-description {
+    color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-card-interactive { transition: none; }
+    .app-card-interactive:hover { transform: none; }
+}
+
 /* Cores customizadas para o Tailwind */
 .bg-primary { background-color: var(--color-primary); }
 .text-primary { color: var(--color-primary); }
 .border-primary { border-color: var(--color-primary); }
 .bg-secondary { background-color: var(--color-secondary); }
 .text-secondary { color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.text-accent { color: var(--color-accent); }
 .bg-surface { background-color: var(--color-surface); }
 
 .btn-primary {
@@ -73,7 +109,7 @@ body {
     transition: all 0.2s ease-in-out;
 }
 .btn-primary:hover {
-    background-color: #4a637a;
+    background-color: var(--color-primary-hover);
     transform: translateY(-2px); /* Efeito sutil de elevação */
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
@@ -85,7 +121,7 @@ body {
 
 .form-input:focus, .form-select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(91, 124, 153, 0.25);
+    box-shadow: 0 0 0 2px rgba(49, 91, 120, 0.22);
     outline: none;
 }
 
@@ -226,7 +262,7 @@ aside nav a {
 
 /* Refinamento dos inputs de login */
 #login-page .form-input:focus {
-    box-shadow: 0 0 0 3px rgba(91, 124, 153, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    box-shadow: 0 0 0 3px rgba(49, 91, 120, 0.28), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Estilos para o Gerador de Recibos */
@@ -252,7 +288,7 @@ aside nav a {
     transition: all 0.3s ease-in-out;
 }
 #generate-pdf-btn:hover {
-    box-shadow: 0 7px 14px rgba(91, 124, 153, 0.2), 0 3px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 7px 14px rgba(49, 91, 120, 0.18), 0 3px 6px rgba(0, 0, 0, 0.08);
     transform: translateY(-3px);
 }
 
@@ -267,7 +303,7 @@ aside nav a {
 /* Scrollbar moderno para Kanban - Estilo Pílula */
 .kanban-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #5B7C99 transparent;
+  scrollbar-color: #315B78 transparent;
 }
 
 .kanban-scroll::-webkit-scrollbar {
@@ -275,26 +311,26 @@ aside nav a {
 }
 
 .kanban-scroll::-webkit-scrollbar-track {
-  background: rgba(91, 124, 153, 0.08);
+  background: rgba(49, 91, 120, 0.08);
   border-radius: 10px;
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb {
-  background: #5B7C99;
+  background: #315B78;
   border-radius: 10px;
   border: 3px solid transparent;
   background-clip: padding-box;
-  box-shadow: 0 2px 6px rgba(91, 124, 153, 0.25);
+  box-shadow: 0 2px 6px rgba(49, 91, 120, 0.22);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 40px;
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
-  background: #4a6a85;
-  box-shadow: 0 4px 12px rgba(91, 124, 153, 0.35);
+  background: #274D68;
+  box-shadow: 0 4px 12px rgba(49, 91, 120, 0.3);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:active {
-  background: #3d5670;
-  box-shadow: 0 2px 8px rgba(91, 124, 153, 0.4);
+  background: #203F56;
+  box-shadow: 0 2px 8px rgba(49, 91, 120, 0.35);
 }

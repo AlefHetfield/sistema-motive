@@ -63,7 +63,34 @@ const pageDescriptions = {
     '/users': 'Cadastre usuários e controle os acessos da equipe.',
 };
 
-const NavLink = ({ to, icon, label, expanded, onNavigate }) => {
+const GROUP_TONES = {
+    'Operação': {
+        dot: 'bg-sky-400',
+        navIcon: 'bg-sky-400/10 text-sky-300 group-hover:bg-sky-400/20 group-hover:text-sky-200',
+        headerIcon: 'bg-sky-50 text-sky-700 ring-sky-100',
+        headerLabel: 'bg-sky-50 text-sky-700 ring-sky-100',
+    },
+    'Ferramentas comerciais': {
+        dot: 'bg-emerald-400',
+        navIcon: 'bg-emerald-400/10 text-emerald-300 group-hover:bg-emerald-400/20 group-hover:text-emerald-200',
+        headerIcon: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+        headerLabel: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+    },
+    Documentos: {
+        dot: 'bg-violet-400',
+        navIcon: 'bg-violet-400/10 text-violet-300 group-hover:bg-violet-400/20 group-hover:text-violet-200',
+        headerIcon: 'bg-violet-50 text-violet-700 ring-violet-100',
+        headerLabel: 'bg-violet-50 text-violet-700 ring-violet-100',
+    },
+    Administração: {
+        dot: 'bg-slate-400',
+        navIcon: 'bg-slate-400/10 text-slate-300 group-hover:bg-slate-400/20 group-hover:text-slate-200',
+        headerIcon: 'bg-slate-100 text-slate-700 ring-slate-200',
+        headerLabel: 'bg-slate-100 text-slate-700 ring-slate-200',
+    },
+};
+
+const NavLink = ({ to, icon, label, expanded, onNavigate, tone }) => {
     const location = useLocation();
     const isActive = location.pathname === to;
     const IconComponent = icon;
@@ -74,22 +101,20 @@ const NavLink = ({ to, icon, label, expanded, onNavigate }) => {
             onClick={onNavigate}
             className={`group relative flex items-center overflow-hidden rounded-xl px-3 py-2.5 transition-colors duration-200 ${
                 isActive 
-                    ? 'bg-primary text-white shadow-sm'
+                    ? 'bg-primary text-white shadow-[0_8px_22px_rgba(49,91,120,0.24)]'
                     : 'text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
             title={!expanded ? label : ''}
         >
             {/* Indicador lateral para item ativo */}
             {isActive && (
-                <div className="absolute bottom-2 left-0 top-2 w-0.5 rounded-r-full bg-white/90" />
+                <div className="absolute bottom-2 left-0 top-2 w-0.5 rounded-r-full bg-accent" />
             )}
             
             {/* Ícone com animação */}
-            <IconComponent
-                className={`h-5 w-5 flex-shrink-0 transition-[margin] duration-200 ${
-                    expanded ? 'mr-3' : 'mx-auto'
-                }`} 
-            />
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 ${expanded ? 'mr-3' : 'mx-auto'} ${isActive ? 'bg-white/15 text-white' : tone.navIcon}`}>
+                <IconComponent className="h-[18px] w-[18px]" />
+            </span>
             
             {/* Label - aparece apenas quando expandido */}
             <span 
@@ -171,6 +196,7 @@ const AppLayout = () => {
     }
     
     const currentPage = navItems.find(item => item.to === location.pathname);
+    const currentTone = GROUP_TONES[currentPage?.group] || GROUP_TONES.Administração;
     const navGroups = navItems.reduce((groups, item) => {
         const group = groups.find(entry => entry.label === item.group);
         if (group) group.items.push(item);
@@ -208,7 +234,7 @@ const AppLayout = () => {
                 onMouseLeave={() => setSidebarHovered(false)}
             >
                 {/* Gradiente decorativo no topo */}
-                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/20 to-transparent pointer-events-none" />
+                <div className="pointer-events-none absolute left-0 right-0 top-0 h-40 bg-gradient-to-b from-primary/30 via-primary/10 to-transparent" />
                 
                 {/* Logo */}
                 <div className={`relative z-10 flex h-16 items-center border-b border-gray-700/50 px-4 ${sidebarExpanded ? 'justify-between' : 'justify-center'}`}>
@@ -231,7 +257,7 @@ const AppLayout = () => {
                     {navGroups.map((group, groupIndex) => (
                         <section key={group.label} className={groupIndex === 0 ? '' : 'mt-3'}>
                             {sidebarExpanded ? (
-                                <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">{group.label}</p>
+                                <p className="mb-1.5 flex items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400"><span className={`h-1.5 w-1.5 rounded-full ${GROUP_TONES[group.label]?.dot || 'bg-slate-400'}`} />{group.label}</p>
                             ) : groupIndex > 0 ? (
                                 <div className="mx-2 mb-2 border-t border-white/10" />
                             ) : null}
@@ -243,6 +269,7 @@ const AppLayout = () => {
                                         icon={item.icon}
                                         label={item.label}
                                         expanded={sidebarExpanded}
+                                        tone={GROUP_TONES[group.label] || GROUP_TONES.Administração}
                                         onNavigate={() => setMobileMenu(false)}
                                     />
                                 ))}
@@ -279,19 +306,26 @@ const AppLayout = () => {
             </aside>
             
             {/* Conteúdo Principal - Agora com padding-left para compensar a sidebar */}
-            <main inert={mobileOpen} className={`flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-gray-50 transition-[padding] duration-200 ${mobile ? 'pl-0' : sidebarPinned ? 'pl-64' : 'pl-20'}`}>
-                <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 lg:h-[72px] lg:px-6">
+            <main inert={mobileOpen} className={`flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background transition-[padding] duration-200 ${mobile ? 'pl-0' : sidebarPinned ? 'pl-64' : 'pl-20'}`}>
+                <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[#DDE4E8] bg-white/95 px-3 shadow-[0_1px_10px_rgba(23,47,67,0.025)] backdrop-blur lg:h-[72px] lg:px-6">
                     {mobile && <button ref={menuButtonRef} type="button" onClick={() => setMobileMenu(location.key)} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="sidebar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-primary hover:bg-gray-100"><Menu size={23} /></button>}
                     <div className="flex min-w-0 items-center gap-3">
                         {currentPage?.icon && (
-                            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/5 lg:flex">
-                                <currentPage.icon className="h-5 w-5 text-primary" />
+                            <div className={`hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 lg:flex ${currentTone.headerIcon}`}>
+                                <currentPage.icon className="h-5 w-5" />
                             </div>
                         )}
                         <div className="min-w-0">
-                            <h1 id="page-title" className="truncate text-lg font-bold leading-tight text-gray-900">
-                                {currentPage?.label || 'Sistema Motive'}
-                            </h1>
+                            <div className="flex min-w-0 items-center gap-2">
+                                <h1 id="page-title" className="app-page-title truncate text-lg leading-tight lg:text-xl">
+                                    {currentPage?.label || 'Sistema Motive'}
+                                </h1>
+                                {currentPage?.group && (
+                                    <span className={`hidden shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] ring-1 lg:inline-flex ${currentTone.headerLabel}`}>
+                                        {currentPage.group}
+                                    </span>
+                                )}
+                            </div>
                             <p className="mt-1 hidden truncate text-xs text-gray-500 lg:block">
                                 {pageDescriptions[location.pathname] || 'Ferramentas para a operação da Motive.'}
                             </p>
@@ -318,7 +352,7 @@ const AppLayout = () => {
                     </div>
                 </header>
                 
-                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar">
+                <div className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_100%_0%,rgba(49,91,120,0.055),transparent_30rem)]">
                     {/* O conteúdo da página será renderizado aqui */}
                     <Outlet />
                 </div>

@@ -124,13 +124,13 @@ const Login = () => {
     }
 
     return (
-        <main id="login-page" className="min-h-screen bg-[#f3f6f8] lg:grid lg:grid-cols-[minmax(520px,0.96fr)_minmax(480px,1.04fr)]">
+        <main id="login-page" className="min-h-screen bg-background lg:grid lg:grid-cols-[minmax(520px,0.96fr)_minmax(480px,1.04fr)]">
             <LoginPropertyScene emailFocused={emailFocused} passwordFocused={passwordFocused} showPassword={showPassword} isSubmitting={isSubmitting} loginSucceeded={loginSucceeded} />
             <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-8 lg:min-h-0">
                 <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
                 <div className="absolute -bottom-36 -left-36 h-80 w-80 rounded-full bg-secondary/5 blur-3xl" />
                 <div className="relative w-full max-w-md animate-fade-in">
-                  <div ref={cardRef} className="rounded-[28px] border border-white bg-white/95 p-6 shadow-[0_24px_70px_rgba(52,62,72,0.12)] backdrop-blur sm:p-8">
+                  <div ref={cardRef} className="rounded-[28px] border border-white bg-white/95 p-6 shadow-[0_24px_70px_rgba(23,47,67,0.14)] backdrop-blur sm:p-8">
                     {/* Logo e Header */}
                     <div className="mb-8 text-center">
                         <div className="mb-5 inline-block rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 p-3 lg:hidden">

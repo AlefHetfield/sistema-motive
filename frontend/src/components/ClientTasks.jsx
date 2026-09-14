@@ -4,6 +4,7 @@ import { ListTodo, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { taskApi } from '../services/api';
 import { taskToday, addTaskDays, taskDateLabel } from '../utils/taskDates';
+import FancySelect from './FancySelect';
 
 export default function ClientTasks({ clientId, clientName }) {
   const [data,setData]=useState(null);
@@ -50,7 +51,7 @@ export default function ClientTasks({ clientId, clientName }) {
       {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
       <fieldset disabled={saving || !options} className="space-y-3">
         <label className="block text-xs font-medium text-gray-600">O que precisa ser feito?<input autoFocus required maxLength={250} className={field} placeholder="Ex.: Solicitar FGTS" value={title} onChange={e => setTitle(e.target.value)} /></label>
-        <label className="block text-xs font-medium text-gray-600">Responsável<select required disabled={!options?.canManageAll} className={field} value={assigneeId} onChange={e => setAssigneeId(e.target.value)}><option value="">Selecione quem vai cumprir</option>{options?.users.filter(user => user.isActive).map(user => <option key={user.id} value={user.id}>{user.nome}{user.id === options.userId ? ' (eu)' : ''}</option>)}</select></label>
+        <label className="block text-xs font-medium text-gray-600">Responsável<FancySelect className="mt-1" disabled={!options?.canManageAll} ariaLabel="Responsável" value={String(assigneeId)} onChange={setAssigneeId} placeholder="Selecione quem vai cumprir" options={(options?.users || []).filter(user => user.isActive).map(user => ({ value: String(user.id), label: `${user.nome}${user.id === options.userId ? ' (eu)' : ''}` }))} /></label>
         <div><p className="text-xs font-medium text-gray-600">Prazo (opcional)</p><div className="mt-2 flex flex-wrap gap-2">{[['Hoje', 0], ['Amanhã', 1], ['Próxima semana', 7]].map(([label, days]) => <button key={label} type="button" onClick={() => setDueDate(addTaskDays(taskToday(), days))} className="rounded-lg border bg-white px-2 py-1 text-xs text-primary">{label}</button>)}</div>
           <input type="date" aria-label="Prazo da tarefa" className={field} value={dueDate} onChange={e => setDueDate(e.target.value)} />{dueDate && <div className="mt-1 flex items-center justify-between text-xs text-gray-500"><span>{taskDateLabel(dueDate)}</span><button type="button" onClick={() => setDueDate('')} className="text-red-600">Remover prazo</button></div>}
         </div>

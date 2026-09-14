@@ -5,8 +5,8 @@ const percentage = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, ma
 const formatMoney = (value) => money.format(value).replace(/\u00a0/g, ' ');
 
 const COLORS = {
-  primary: [91, 124, 153],
-  secondary: [52, 62, 72],
+  primary: [49, 91, 120],
+  secondary: [23, 47, 67],
   muted: [108, 117, 125],
   border: [222, 226, 230],
   surface: [247, 249, 251],

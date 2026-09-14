@@ -3,6 +3,7 @@ import { Search, MapPin, FileSearch, Copy, SlidersHorizontal, ChevronLeft, Chevr
 import { toast } from 'sonner';
 import { fetchMatriculaMetadata, searchMatriculas } from '../services/api';
 import MatriculaStreetInput from '../components/MatriculaStreetInput';
+import FancySelect from '../components/FancySelect';
 
 const initialFilters = { street: '', number: '', neighborhood: '', city: 'sumare', lot: '', block: '', registration: '', fiscal: '', q: '' };
 const inputClass = 'mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15';
@@ -111,12 +112,8 @@ export default function MatriculaSearch() {
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Field name="neighborhood" label="Bairro / loteamento" placeholder="Ex.: Jardim Basilicata" {...fieldProps} />
-        <label className="block text-sm font-medium text-gray-700" htmlFor="matricula-city">Cidade
-          <select id="matricula-city" className={inputClass} value={filters.city} onChange={event => change('city', event.target.value)}>
-            <option value="">Todas as cidades</option>
-            <option value="sumare">Sumaré</option>
-            {(metadata?.cities || []).filter(city => city.value !== 'sumare').map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
-          </select>
+        <label className="block text-sm font-medium text-gray-700">Cidade
+          <FancySelect className="mt-1.5" ariaLabel="Cidade" value={filters.city} onChange={value => change('city', value)} placeholder="Todas as cidades" options={[{ value: '', label: 'Todas as cidades' }, { value: 'sumare', label: 'Sumaré' }, ...(metadata?.cities || []).filter(city => city.value !== 'sumare')]} />
         </label>
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

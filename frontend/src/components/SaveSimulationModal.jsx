@@ -80,7 +80,7 @@ export default function SaveSimulationModal({ simulationData, onClose, onSaved }
 
                 <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
                     <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancelar</button>
-                    <button type="button" disabled={!selectedClient || isSaving} onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#4a637a] disabled:cursor-not-allowed disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />} Salvar simulação</button>
+                    <button type="button" disabled={!selectedClient || isSaving} onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#274D68] disabled:cursor-not-allowed disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />} Salvar simulação</button>
                 </footer>
             </div>
         </div>
