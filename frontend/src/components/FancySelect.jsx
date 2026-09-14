@@ -8,6 +8,7 @@ export default function FancySelect({
   placeholder = 'Selecione...',
   className = '',
   disabled = false,
+  ariaLabel,
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -30,7 +31,10 @@ export default function FancySelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className={`w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-all flex items-center justify-between ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 text-sm shadow-[0_1px_2px_rgba(15,23,42,0.03)] outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400 opacity-70' : 'cursor-pointer hover:border-gray-300 hover:bg-gray-50/60'}`}
       >
         <span className={`truncate ${selected ? 'text-gray-800' : 'text-gray-500'}`}>
           {selected ? selected.label : placeholder}
@@ -39,8 +43,8 @@ export default function FancySelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-2 w-full bg-white/95 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="max-h-60 overflow-y-auto py-1">
+        <div role="listbox" aria-label={ariaLabel} className="absolute z-[70] mt-2 w-full overflow-hidden rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl">
+          <div className="max-h-60 overflow-y-auto">
             {options.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-400">Sem opções</div>
             ) : (
@@ -50,11 +54,13 @@ export default function FancySelect({
                   <button
                     type="button"
                     key={opt.value ?? opt.label}
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => {
                       onChange && onChange(opt.value);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-all ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-800'}`}
+                    className={`flex min-h-10 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-all ${isSelected ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-800 hover:bg-gray-50'}`}
                   >
                     {isSelected ? <Check size={16} className="text-primary" /> : <span className="w-4" />}
                     <span className="truncate">{opt.label}</span>

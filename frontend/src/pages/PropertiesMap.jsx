@@ -123,15 +123,16 @@ function PropertyListCard({ property, selected, highlighted, onClick, onHover, o
   const displayTitle = propertyCardTitle(property);
   const coverUrl = propertyCoverUrl(property);
   const driveCoverUrl = property.driveCoverFileId ? propertyDriveImageUrl(property.driveCoverFileId) : '';
+  const [imageFailed, setImageFailed] = useState(false);
   return (
     <div data-property-id={property.id} onMouseEnter={() => onHover(property.id)} onMouseLeave={() => onHover(null)} className={`relative w-full overflow-hidden rounded-xl border bg-white text-left transition [content-visibility:auto] [contain-intrinsic-size:76px] ${selected ? 'border-primary shadow-md ring-2 ring-primary/10' : highlighted ? 'border-primary/50 shadow-sm ring-2 ring-primary/5' : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'}`}>
       <button type="button" onClick={onClick} className="block w-full text-left">
         <div className="flex gap-2.5 p-2.5">
         <div className="flex h-[52px] w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
-          {coverUrl ? <img src={coverUrl} alt="" loading="lazy" decoding="async" onError={event => { if (driveCoverUrl && !event.currentTarget.dataset.driveFallback) { event.currentTarget.dataset.driveFallback = 'true'; event.currentTarget.src = driveCoverUrl; } }} className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-gray-300" />}
+          {coverUrl && !imageFailed ? <img src={coverUrl} alt="" loading="lazy" decoding="async" onError={event => { if (driveCoverUrl && !event.currentTarget.dataset.driveFallback && event.currentTarget.src !== driveCoverUrl) { event.currentTarget.dataset.driveFallback = 'true'; event.currentTarget.src = driveCoverUrl; return; } setImageFailed(true); }} className="h-full w-full object-cover" /> : <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-gray-300"><ImageIcon className="h-5 w-5" /><span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide">Sem foto</span></div>}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-1.5"><p className="truncate pr-7 text-sm font-bold leading-4 text-gray-900" title={displayTitle}>{displayTitle}</p><ChevronRight className="h-4 w-4 shrink-0 text-gray-300" /></div>
+          <div className="flex items-start justify-between gap-1.5"><p className="line-clamp-2 pr-7 text-sm font-bold leading-4 text-gray-900" title={displayTitle}>{displayTitle}</p><ChevronRight className="h-4 w-4 shrink-0 text-gray-300" /></div>
           <p className="mt-0.5 text-sm font-bold leading-5 text-primary">{property.price ? currency.format(property.price) : 'Valor não informado'}</p>
           <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] leading-4 text-gray-500">{property.code && <span className="shrink-0 font-bold text-gray-400">{property.code}</span>}{property.code && <span className="text-gray-300">·</span>}<StatusBadge status={property.status} size="xs" />{property.bedrooms !== null && property.bedrooms !== undefined && <span className="shrink-0">· {property.bedrooms} dorm.</span>}</div>
         </div>
@@ -801,7 +802,7 @@ export default function PropertiesMap() {
           <button type="button" onClick={() => setIsSidebarCollapsed(current => !current)} title={isSidebarCollapsed ? 'Expandir lista de imóveis' : 'Recolher lista de imóveis'} aria-label={isSidebarCollapsed ? 'Expandir lista de imóveis' : 'Recolher lista de imóveis'} className="absolute left-3 top-4 z-30 hidden h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-primary shadow-xl transition hover:border-primary/30 hover:bg-primary/5 lg:flex">{isSidebarCollapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}</button>
           <PropertyMap properties={filtered} selectedPropertyId={selectedProperty?.id} hoveredPropertyId={hoveredPropertyId} locatedAddress={locatedAddress} onSelect={selectProperty} onHover={setHoveredPropertyId} onCreateAtLocation={createAtLocation} />
           <div className="absolute left-3 right-3 top-3 z-20 lg:left-16 lg:right-auto lg:top-4 lg:w-[min(470px,calc(100%-80px))]">
-            <PropertyAddressSearch value={addressQuery} onChange={setAddressQuery} properties={properties} onSelectProperty={selectSearchProperty} onSelectAddress={selectAddressResult} placeholder="Localizar endereço ou condomínio no mapa..." />
+            <PropertyAddressSearch value={addressQuery} onChange={setAddressQuery} properties={properties} onSelectProperty={selectSearchProperty} onSelectAddress={selectAddressResult} placeholder={mobile ? 'Buscar endereço ou condomínio' : 'Localizar endereço ou condomínio no mapa...'} />
             {isLocatingAddress && <div className="mt-2 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 shadow-lg"><Loader2 className="h-4 w-4 animate-spin text-primary" />Localizando endereço no mapa...</div>}
             {locatedAddress && !isLocatingAddress && (
               <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">

@@ -15,6 +15,7 @@ import ClientDetailsDrawer from '../components/ClientDetailsDrawer';
 import PauseClientModal from '../components/PauseClientModal';
 import { ModernInput } from '../components/ModernInput';
 import StatusBadge from '../components/ui/StatusBadge';
+import useMobileLayout from '../hooks/useMobileLayout';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = [
@@ -339,6 +340,7 @@ const ClientActionsMenu = ({ client, activeTab, onDelete, onRestore, onPause, on
 
 const ClientsList = () => {
     const { user } = useAuth();
+    const mobile = useMobileLayout();
     const [searchParams, setSearchParams] = useSearchParams();
     const [allClients, setAllClients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -937,15 +939,51 @@ const ClientsList = () => {
 
     // Portal do dropdown de filtros calculado fora do JSX para evitar parsing estranho
     const filterDropdownPortal = isFilterDropdownOpen ? createPortal(
+        <>
+        {mobile && (
+            <button
+                type="button"
+                aria-label="Fechar filtros"
+                onClick={() => setIsFilterDropdownOpen(false)}
+                className="fixed inset-0 z-[9998] cursor-default bg-slate-950/35 backdrop-blur-[1px]"
+            />
+        )}
         <div
             data-filter-dropdown
+            role={mobile ? 'dialog' : undefined}
+            aria-modal={mobile ? 'true' : undefined}
+            aria-label={mobile ? 'Filtros de clientes' : undefined}
             style={{
                 position: 'fixed',
-                top: (filterDropdownRef.current?.getBoundingClientRect().bottom || 0) + 8,
-                right: Math.max(8, window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0)),
+                ...(mobile ? {
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                } : {
+                    top: (filterDropdownRef.current?.getBoundingClientRect().bottom || 0) + 8,
+                    right: Math.max(8, window.innerWidth - (filterDropdownRef.current?.getBoundingClientRect().right || 0)),
+                }),
             }}
-            className="w-[calc(100vw-1rem)] sm:w-80 bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200/50 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300 max-h-[80vh] overflow-y-auto"
+            className={mobile
+                ? 'z-[9999] max-h-[88dvh] w-full overflow-y-auto rounded-t-3xl border border-gray-200/50 bg-white/95 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2 duration-300'
+                : 'z-[9999] max-h-[80vh] w-80 overflow-y-auto rounded-3xl border border-gray-200/50 bg-white/95 shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-300'}
         >
+            {mobile && (
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-xl">
+                    <div>
+                        <h2 className="font-bold text-gray-900">Filtros de clientes</h2>
+                        <p className="text-xs text-gray-500">Refine a lista sem perder o contexto.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsFilterDropdownOpen(false)}
+                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-600"
+                        aria-label="Fechar filtros"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+            )}
             <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
                 {/* Status */}
                 <div>
@@ -1030,7 +1068,8 @@ const ClientsList = () => {
                     </button>
                 </div>
             </div>
-        </div>,
+        </div>
+        </>,
         document.body
     ) : null;
 
@@ -1134,7 +1173,7 @@ const ClientsList = () => {
                                 title="Mostrar clientes em espera"
                             >
                                 <PauseCircle size={16} />
-                                <span className="hidden sm:inline">Em espera</span>
+                                <span>Espera</span>
                                 {financialStats.waiting > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] leading-none text-amber-800">{financialStats.waiting}</span>}
                             </button>
                         )}
@@ -1166,7 +1205,7 @@ const ClientsList = () => {
                                 className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${activeFiltersCount > 0 ? 'border-primary/40 bg-primary/5 text-primary' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
                             >
                                 <Filter size={16} />
-                                <span className="hidden sm:inline">Filtros</span>
+                                <span>Filtros</span>
                                 {activeFiltersCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-white">{activeFiltersCount}</span>}
                                 <ChevronDown size={14} className={`transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
@@ -1176,7 +1215,7 @@ const ClientsList = () => {
                         <button
                             type="button"
                             onClick={() => handleOpenModal()}
-                            className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="flex basis-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:basis-auto"
                         >
                             <PlusCircle size={18} />
                             <span>Novo cliente</span>
@@ -1257,27 +1296,27 @@ const ClientsList = () => {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-2.5 sm:p-4">
                             <div className="mb-2 flex items-center gap-2 text-gray-500">
                                 <User size={16} />
                                 <span className="text-xs font-semibold uppercase tracking-wide">Clientes</span>
                             </div>
-                            <p className="text-2xl font-bold text-gray-900">{financialStats.total}</p>
+                            <p className="text-xl font-bold text-gray-900 sm:text-2xl">{financialStats.total}</p>
                         </div>
 
                         {!isAssistant ? (
-                            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                            <div className="min-w-0 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-blue-700">
                                     <Building size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Financiamento</span>
                                 </div>
-                                <p className="text-xl font-bold text-blue-950">
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
+                                <p className="truncate text-sm font-bold text-blue-950 sm:text-xl" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}>
+                                    {new Intl.NumberFormat('pt-BR', mobile ? { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 } : { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
                                 </p>
                             </div>
                         ) : (
-                            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                            <div className="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-emerald-700">
                                     <CheckCircle2 size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aprovados</span>
@@ -1287,22 +1326,22 @@ const ClientsList = () => {
                         )}
 
                         {activeTab === 'active' ? (
-                            <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                            <div className="min-w-0 rounded-xl border border-amber-100 bg-amber-50/60 p-2.5 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-amber-700">
                                     <AlertTriangle size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aguardando ação</span>
                                 </div>
-                                <p className="text-2xl font-bold text-amber-950">{financialStats.inconformes + financialStats.aguardandoReserva}</p>
-                                <p className="mt-1 text-xs text-amber-700">Inconformes ou aguardando reserva</p>
+                                <p className="text-xl font-bold text-amber-950 sm:text-2xl">{financialStats.inconformes + financialStats.aguardandoReserva}</p>
+                                <p className="mt-1 hidden text-xs text-amber-700 sm:block">Inconformes ou aguardando reserva</p>
                             </div>
                         ) : !isAssistant ? (
-                            <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-4">
+                            <div className="min-w-0 rounded-xl border border-purple-100 bg-purple-50/60 p-2.5 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-purple-700">
                                     <CheckCircle2 size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Remuneração</span>
                                 </div>
-                                <p className="text-xl font-bold text-purple-950">
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
+                                <p className="truncate text-sm font-bold text-purple-950 sm:text-xl" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}>
+                                    {new Intl.NumberFormat('pt-BR', mobile ? { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 } : { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
                                 </p>
                             </div>
                         ) : null}

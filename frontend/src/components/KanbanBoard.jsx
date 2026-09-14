@@ -117,7 +117,8 @@ const statusConfig = {
 
 export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, onPauseClient, onResumeClient }) {
   const mobile = useMobileLayout();
-  const [mobileStatus, setMobileStatus] = useState(STATUS_OPTIONS[0]);
+  const [mobileStatus, setMobileStatus] = useState(() => STATUS_OPTIONS.find(status => clients.some(client => client.status === status)) || STATUS_OPTIONS[0]);
+  const [showMobileStats, setShowMobileStats] = useState(false);
   const notify = useToast();
   const { logActivity } = useActivityLog();
   const { user } = useAuth();
@@ -157,6 +158,12 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
     });
     return grouped;
   }, [optimisticClients]);
+
+  useEffect(() => {
+    if (!mobile || clientsByStatus[mobileStatus]?.length) return;
+    const firstStatusWithClients = STATUS_OPTIONS.find(status => clientsByStatus[status]?.length);
+    if (firstStatusWithClients) setMobileStatus(firstStatusWithClients);
+  }, [clientsByStatus, mobile, mobileStatus]);
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -342,7 +349,41 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
   return (
     <div className="w-full h-full">
       {/* Header com estatísticas */}
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:mb-6 xl:grid-cols-7 xl:gap-4">
+      <div className="mb-3 lg:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">Clientes</p>
+            <p className="mt-1 text-xl font-bold text-blue-950">{stats.total}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Aprovados</p>
+            <p className="mt-1 text-xl font-bold text-emerald-950">{stats.aprovados}</p>
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Em andamento</p>
+            <p className="mt-1 text-xl font-bold text-amber-950">{Math.max(0, stats.total - stats.aprovados)}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-expanded={showMobileStats}
+          onClick={() => setShowMobileStats(value => !value)}
+          className="mt-1.5 flex min-h-9 w-full items-center justify-center gap-1 text-xs font-semibold text-primary"
+        >
+          {showMobileStats ? 'Ocultar indicadores' : 'Ver indicadores'}
+          <span aria-hidden="true">{showMobileStats ? '−' : '+'}</span>
+        </button>
+        {showMobileStats && (
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-white p-2.5">
+            <div><p className="text-[10px] text-gray-500">Engenharia</p><p className="font-bold text-orange-700">{stats.engenhariaSolicitada}</p></div>
+            <div><p className="text-[10px] text-gray-500">Aguardando reserva</p><p className="font-bold text-blue-700">{stats.aguardandoReserva}</p></div>
+            <div><p className="text-[10px] text-gray-500">Aguardando conformidade</p><p className="font-bold text-rose-700">{stats.aguardandoConformidade}</p></div>
+            {!isAssistant && <div className="min-w-0"><p className="text-[10px] text-gray-500">Financiamento</p><p className="truncate font-bold text-indigo-800" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.financiamentoTotal)}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(stats.financiamentoTotal)}</p></div>}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-4 hidden grid-cols-3 gap-3 lg:grid xl:mb-6 xl:grid-cols-7 xl:gap-4">
         <Motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

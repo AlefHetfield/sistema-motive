@@ -31,6 +31,7 @@ import { MUNICIPAL_LIMITS, MUNICIPAL_TABLE_EFFECTIVE_DATE } from '../data/munici
 import { calculateHousingSimulation } from '../utils/housingSimulator';
 import { downloadHousingSimulationPdf } from '../utils/housingSimulationPdf';
 import SaveSimulationModal from '../components/SaveSimulationModal';
+import FancySelect from '../components/FancySelect';
 import Button from '../components/ui/Button';
 import { controlClass, surfaceClass } from '../components/ui/styles';
 import useMobileLayout from '../hooks/useMobileLayout';
@@ -154,6 +155,27 @@ function CurrencyField({ value, onChange, placeholder }) {
       />
     </div>
   );
+}
+
+function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel }) {
+  const mobile = useMobileLayout();
+
+  if (mobile) {
+    return (
+      <select
+        className={fieldClass}
+        value={value}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {placeholder && !options.some((option) => option.value === '') && <option value="">{placeholder}</option>}
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    );
+  }
+
+  return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} />;
 }
 
 function Choice({ selected, onClick, children, tone = 'blue' }) {
@@ -568,10 +590,10 @@ function HousingSimulator() {
                 {isMcmv && (
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Field label="Possui 3 anos de FGTS?">
-                      <select className={fieldClass} value={form.fgts3y ? 'yes' : 'no'} onChange={(event) => set('fgts3y', event.target.value === 'yes')}><option value="no">Não</option><option value="yes">Sim</option></select>
+                      <ResponsiveSelect ariaLabel="Possui 3 anos de FGTS?" placeholder="" value={form.fgts3y ? 'yes' : 'no'} onChange={(value) => set('fgts3y', value === 'yes')} options={[{ value: 'no', label: 'Não' }, { value: 'yes', label: 'Sim' }]} />
                     </Field>
                     <Field label="Já recebeu subsídio habitacional?">
-                      <select className={fieldClass} value={form.previousSubsidy} onChange={(event) => set('previousSubsidy', event.target.value)}><option value="no">Não</option><option value="yes">Sim</option></select>
+                      <ResponsiveSelect ariaLabel="Já recebeu subsídio habitacional?" placeholder="" value={form.previousSubsidy} onChange={(value) => set('previousSubsidy', value)} options={[{ value: 'no', label: 'Não' }, { value: 'yes', label: 'Sim' }]} />
                     </Field>
                   </div>
                 )}
@@ -582,10 +604,10 @@ function HousingSimulator() {
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><MapPin className="h-5 w-5 text-primary" /> Localização do imóvel</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Estado">
-                      <select className={fieldClass} value={form.uf} onChange={(event) => { setForm((current) => ({ ...current, uf: event.target.value, municipality: '' })); setResult(null); setComparison(null); }}><option value="">Selecione</option>{Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select>
+                      <ResponsiveSelect ariaLabel="Estado" value={form.uf} onChange={(value) => { setForm((current) => ({ ...current, uf: value, municipality: '' })); setResult(null); setComparison(null); }} options={Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => ({ value: uf, label: uf }))} />
                     </Field>
                     <Field label="Município" hint={`Tabela vigente desde ${MUNICIPAL_TABLE_EFFECTIVE_DATE}.`}>
-                      <select className={fieldClass} disabled={!form.uf} value={form.municipality} onChange={(event) => set('municipality', event.target.value)}><option value="">Selecione</option>{municipalities.map(([name]) => <option key={name} value={name}>{name}</option>)}</select>
+                      <ResponsiveSelect ariaLabel="Município" disabled={!form.uf} value={form.municipality} onChange={(value) => set('municipality', value)} options={municipalities.map(([name]) => ({ value: name, label: name }))} />
                     </Field>
                   </div>
                 </section>
@@ -596,7 +618,7 @@ function HousingSimulator() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Valor do imóvel"><CurrencyField value={form.propertyValue} onChange={(value) => set('propertyValue', value)} placeholder="350.000,00" /></Field>
                   <Field label="Condição do imóvel">
-                    <select className={fieldClass} value={form.propertyCondition} onChange={(event) => set('propertyCondition', event.target.value)}><option>Novo</option><option>Usado</option></select>
+                    <ResponsiveSelect ariaLabel="Condição do imóvel" placeholder="" value={form.propertyCondition} onChange={(value) => set('propertyCondition', value)} options={[{ value: 'Novo', label: 'Novo' }, { value: 'Usado', label: 'Usado' }]} />
                   </Field>
                 </div>
               </section>
@@ -606,13 +628,13 @@ function HousingSimulator() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Valor da entrada"><CurrencyField value={form.downPayment} onChange={(value) => set('downPayment', value)} placeholder="70.000,00" /></Field>
                   <Field label="Sistema de amortização">
-                    <select className={fieldClass} value={form.system} onChange={(event) => set('system', event.target.value)}><option value="SAC">SAC</option><option value="PRICE">PRICE</option></select>
+                    <ResponsiveSelect ariaLabel="Sistema de amortização" placeholder="" value={form.system} onChange={(value) => set('system', value)} options={[{ value: 'SAC', label: 'SAC' }, { value: 'PRICE', label: 'PRICE' }]} />
                   </Field>
                   <Field label="Prazo desejado" hint="Deixe vazio para usar o máximo permitido."><div className="relative"><Clock3 className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" /><input className={`${fieldClass} pl-10`} type="number" min="1" max="420" placeholder="Meses" value={form.term} onChange={(event) => set('term', event.target.value)} /></div></Field>
                   <Field label="Parcela desejada" hint="Opcional: limita o financiamento."><CurrencyField value={form.targetInstallment} onChange={(value) => set('targetInstallment', value)} placeholder="2.500,00" /></Field>
                 </div>
                 {isCaixa && form.modality === 'SBPE' && (
-                  <div className="mt-4"><Field label="Relacionamento CAIXA"><select className={fieldClass} value={form.relationship} onChange={(event) => set('relationship', event.target.value)}><option value="none">Sem relacionamento</option><option value="b1">Bonificação 1</option><option value="b2">Bonificação 2 / Plus</option></select></Field></div>
+                  <div className="mt-4"><Field label="Relacionamento CAIXA"><ResponsiveSelect ariaLabel="Relacionamento CAIXA" placeholder="" value={form.relationship} onChange={(value) => set('relationship', value)} options={[{ value: 'none', label: 'Sem relacionamento' }, { value: 'b1', label: 'Bonificação 1' }, { value: 'b2', label: 'Bonificação 2 / Plus' }]} /></Field></div>
                 )}
                 <SimulationPreview {...preview} />
               </section>
