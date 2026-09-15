@@ -47,12 +47,12 @@ body { overflow-x: hidden; }
     --color-primary-hover: #274D68;
     --color-secondary: #172F43; /* Azul profundo */
     --color-accent: #D99A35; /* Dourado de destaque */
-    --color-background: #F4F6F7;
+    --color-background: #F6F8F9;
     --color-surface: #FFFFFF;
     --color-text-primary: #17212B;
     --color-text-secondary: #667583;
     --color-border: #DDE4E8;
-    --shadow-surface: 0 1px 2px rgba(23, 47, 67, 0.04), 0 10px 28px rgba(23, 47, 67, 0.045);
+    --shadow-surface: 0 1px 2px rgba(23, 47, 67, 0.035), 0 7px 20px rgba(23, 47, 67, 0.035);
 }
 
 body {
@@ -75,6 +75,23 @@ body {
     border-color: rgba(49, 91, 120, 0.28);
     box-shadow: 0 14px 34px rgba(23, 47, 67, 0.09);
     transform: translateY(-1px);
+}
+
+.workspace-topbar {
+    background: rgba(246, 248, 249, 0.9);
+    border-bottom: 1px solid rgba(221, 228, 232, 0.72);
+    backdrop-filter: blur(16px);
+}
+
+.workspace-canvas {
+    background:
+        radial-gradient(circle at 92% 0%, rgba(49, 91, 120, 0.055), transparent 27rem),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 18rem),
+        var(--color-background);
+}
+
+.workspace-section {
+    border-top: 1px solid var(--color-border);
 }
 
 .app-page-title {

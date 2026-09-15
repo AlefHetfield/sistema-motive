@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, FileText, Send } from 'lucide-react';
+import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, FileText, Send, Download, DatabaseBackup } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { downloadPropertiesBackup } from '../services/api';
 
 import { API_BASE_URL } from '../config/api';
 
@@ -32,6 +33,7 @@ const Settings = () => {
 
     // Backup
     const [sendingBackup, setSendingBackup] = useState(false);
+    const [downloadingMapBackup, setDownloadingMapBackup] = useState(false);
 
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
@@ -85,6 +87,27 @@ const Settings = () => {
             showNotification('Erro ao conectar com o servidor', 'error');
         } finally {
             setSendingBackup(false);
+        }
+    };
+
+    const handleMapBackup = async () => {
+        if (downloadingMapBackup) return;
+        setDownloadingMapBackup(true);
+        try {
+            const backup = await downloadPropertiesBackup();
+            const url = URL.createObjectURL(backup.blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = backup.fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showNotification(`Backup de ${backup.count} imóvel(is) baixado.`, 'success');
+        } catch (error) {
+            showNotification(error.message || 'Erro ao baixar o backup dos imóveis', 'error');
+        } finally {
+            setDownloadingMapBackup(false);
         }
     };
 
@@ -352,6 +375,29 @@ const Settings = () => {
 
                         {/* Seção de envio manual */}
                         <div className="space-y-4">
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-6">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                        <DatabaseBackup size={24} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900">Backup do Mapa de Imóveis</h3>
+                                        <p className="mb-4 mt-1 text-sm leading-6 text-gray-600">
+                                            Baixe uma cópia completa dos imóveis cadastrados em um arquivo JSON para guardar com segurança.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleMapBackup}
+                                            disabled={downloadingMapBackup}
+                                            className="flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {downloadingMapBackup ? <LoadingSpinner size={18} /> : <Download size={18} />}
+                                            {downloadingMapBackup ? 'Preparando backup...' : 'Baixar backup dos imóveis'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border border-primary/20">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">

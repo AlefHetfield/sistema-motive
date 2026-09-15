@@ -1108,9 +1108,10 @@ const ClientsList = () => {
     }
 
     return (
-        <div id="active-clients-content" className="fade-in min-h-full min-w-0 bg-background/80 sm:bg-transparent sm:p-6">
-            <div className="relative z-40 border-b border-gray-200 bg-white sm:relative sm:mb-4 sm:rounded-xl sm:border sm:shadow-sm">
-                <div className="flex overflow-x-auto" role="tablist" aria-label="Situação dos clientes">
+        <div id="active-clients-content" className="fade-in mx-auto min-h-full w-full max-w-[1600px] min-w-0 p-3 sm:px-7 sm:pb-7 sm:pt-3">
+            <section className="app-card sticky top-0 z-40 mb-5 overflow-visible rounded-2xl border bg-white">
+                <div className="flex items-center border-b border-[#E7ECEF] px-3 py-2 sm:px-4">
+                <div className="no-scrollbar flex overflow-x-auto rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Situação dos clientes">
                     {[
                         { id: 'active', label: 'Ativos' },
                         { id: 'signed', label: 'Assinados' },
@@ -1125,20 +1126,20 @@ const ClientsList = () => {
                                 setActiveTab(tab.id);
                                 if (tab.id !== 'active') setWaitingOnly(false);
                             }}
-                            className={`relative shrink-0 flex-1 whitespace-nowrap px-3 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-7 ${
+                            className={`shrink-0 flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all sm:flex-none sm:px-5 ${
                                 activeTab === tab.id
-                                    ? 'text-primary'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                                    ? 'bg-white text-primary shadow-[0_1px_3px_rgba(23,47,67,0.12)]'
+                                    : 'text-gray-500 hover:text-gray-800'
                             }`}
                         >
                             {tab.label}
-                            {activeTab === tab.id && <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-primary" />}
                         </button>
                     ))}
                 </div>
-            </div>
+                <span className="ml-auto hidden text-xs font-semibold text-gray-400 sm:block">{filteredClients.length} cliente(s)</span>
+                </div>
 
-            <section className="sticky top-[49px] z-30 mb-4 border-b border-gray-200 bg-white p-3 shadow-sm sm:relative sm:top-0 sm:rounded-xl sm:border sm:p-4" aria-label="Ferramentas de clientes">
+            <div className="p-3 sm:p-4" aria-label="Ferramentas de clientes">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
                         <div className="min-w-0 flex-1">
@@ -1247,6 +1248,7 @@ const ClientsList = () => {
                         </button>
                     </div>
                 )}
+            </div>
             </section>
 
             {/* Visualização Kanban - Apenas para aba "active" */}
@@ -1264,7 +1266,7 @@ const ClientsList = () => {
 
             {/* Mensagem quando modo Kanban em abas não "active" */}
             {viewMode === 'kanban' && activeTab !== 'active' && (
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-gray-200/50 border border-white p-12 text-center">
+                <div className="app-card rounded-2xl border bg-white p-12 text-center">
                     <LayoutGrid size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-600 font-medium">Modo Kanban está disponível apenas para clientes Ativos</p>
                     <button
@@ -1277,8 +1279,8 @@ const ClientsList = () => {
             )}
 
             {viewMode === 'table' && (
-                <section className="app-card mx-3 mb-4 rounded-2xl border bg-white p-4 sm:mx-0" aria-label="Resumo dos clientes">
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                <section className="app-card mb-5 overflow-hidden rounded-2xl border bg-white" aria-label="Resumo dos clientes">
+                    <div className="flex items-center justify-between gap-3 border-b border-[#E7ECEF] px-4 py-3.5">
                         <div>
                             <h2 className="text-sm font-semibold text-gray-900">Resumo da seleção</h2>
                             <p className="text-xs text-gray-500">Os valores acompanham a busca e os filtros aplicados.</p>
@@ -1296,8 +1298,8 @@ const ClientsList = () => {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-2.5 sm:p-4">
+                    <div className="grid grid-cols-3 gap-px bg-[#E7ECEF]">
+                        <div className="min-w-0 bg-white p-3 sm:p-4">
                             <div className="mb-2 flex items-center gap-2 text-gray-500">
                                 <User size={16} />
                                 <span className="text-xs font-semibold uppercase tracking-wide">Clientes</span>
@@ -1306,7 +1308,7 @@ const ClientsList = () => {
                         </div>
 
                         {!isAssistant ? (
-                            <div className="min-w-0 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5 sm:p-4">
+                            <div className="min-w-0 bg-white p-3 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-blue-700">
                                     <Building size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Financiamento</span>
@@ -1316,7 +1318,7 @@ const ClientsList = () => {
                                 </p>
                             </div>
                         ) : (
-                            <div className="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5 sm:p-4">
+                            <div className="min-w-0 bg-white p-3 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-emerald-700">
                                     <CheckCircle2 size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aprovados</span>
@@ -1326,7 +1328,7 @@ const ClientsList = () => {
                         )}
 
                         {activeTab === 'active' ? (
-                            <div className="min-w-0 rounded-xl border border-amber-100 bg-amber-50/60 p-2.5 sm:p-4">
+                            <div className="min-w-0 bg-white p-3 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-amber-700">
                                     <AlertTriangle size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aguardando ação</span>
@@ -1335,7 +1337,7 @@ const ClientsList = () => {
                                 <p className="mt-1 hidden text-xs text-amber-700 sm:block">Inconformes ou aguardando reserva</p>
                             </div>
                         ) : !isAssistant ? (
-                            <div className="min-w-0 rounded-xl border border-purple-100 bg-purple-50/60 p-2.5 sm:p-4">
+                            <div className="min-w-0 bg-white p-3 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-purple-700">
                                     <CheckCircle2 size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Remuneração</span>
@@ -1348,7 +1350,7 @@ const ClientsList = () => {
                     </div>
 
                     {activeTab === 'active' && showAllStats && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 lg:grid-cols-5">
+                        <div className="grid grid-cols-2 gap-3 border-t border-[#E7ECEF] bg-slate-50/60 p-4 lg:grid-cols-5">
                             {[
                                 { label: 'Aprovados', value: financialStats.aprovados, color: 'text-emerald-700' },
                                 { label: 'Engenharia solicitada', value: financialStats.engenhariaSolicitada, color: 'text-orange-700' },
@@ -1395,9 +1397,10 @@ const ClientsList = () => {
                                     const initials = getInitials(client.nome);
                                     const palette = pickAvatarPalette(client.nome);
                                     const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
+                                    const needsAttention = ['Inconforme', 'Aguardando Reserva'].includes(client.status);
                                     return (
                                         <tr key={client.id} className={`group transition-all ${client.emEspera ? 'bg-slate-50/90 opacity-70 hover:opacity-90' : 'bg-white hover:bg-gray-50/80'}`}>
-                                            <td className="px-4 py-3">
+                                            <td className={`border-l-2 px-4 py-3 ${needsAttention ? 'border-l-amber-400' : 'border-l-transparent'}`}>
                                                 <div className="flex min-w-[200px] items-center gap-3">
                                                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${palette}`}>{initials}</div>
                                                     <div className="min-w-0">
@@ -1486,9 +1489,11 @@ const ClientsList = () => {
                             const palette = pickAvatarPalette(client.nome);
                             const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                             const isExpanded = !!expandedMobileCards[client.id];
+                            const needsAttention = ['Inconforme', 'Aguardando Reserva'].includes(client.status);
                             
                             return (
-                                <article key={client.id} className={`app-card overflow-hidden rounded-2xl border transition-opacity ${client.emEspera ? 'bg-slate-50 opacity-70' : 'bg-white'}`}>
+                                <article key={client.id} className={`app-card relative overflow-hidden rounded-2xl border transition-opacity ${client.emEspera ? 'bg-slate-50 opacity-70' : 'bg-white'}`}>
+                                    {needsAttention && <span className="absolute inset-y-3 left-0 z-10 w-1 rounded-r-full bg-amber-400" />}
                                     {/* Header do Card */}
                                     <div className="p-3 border-b border-gray-100">
                                         <div className="flex items-start justify-between gap-3">

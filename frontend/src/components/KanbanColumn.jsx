@@ -15,6 +15,8 @@ export default function KanbanColumn({
   onRequestCompletion,
   onPauseClient,
   onResumeClient,
+  onMoveClient,
+  statusOptions,
   isDropTarget = false,
   isDragging = false 
 }) {
@@ -37,30 +39,26 @@ export default function KanbanColumn({
         scale: isHighlighted ? 1.02 : 1,
       }}
       transition={{ duration: 0.2 }}
-      className={`
-        flex flex-col bg-white rounded-xl shadow-sm border-2 flex-shrink-0 w-full h-fit
-        transition-all duration-200
-        ${isHighlighted ? 'border-blue-400 shadow-lg ring-2 ring-blue-200' : 'border-gray-100'}
-      `}
+      className={`flex h-full min-h-[310px] w-full flex-shrink-0 flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200 ${isHighlighted ? 'border-primary/50 shadow-lg ring-4 ring-primary/10' : 'border-slate-200'}`}
     >
       {/* Header da coluna */}
-      <div className={`bg-gradient-to-r ${config.color} p-4 rounded-t-xl sticky top-0 z-10`}>
-        <div className="flex items-center gap-2 mb-2">
-          <Icon className="w-5 h-5 text-white flex-shrink-0" />
-          <h3 className="font-semibold text-white truncate text-sm flex-1">{status}</h3>
-        </div>
-        <div className="text-white/80 text-xs font-medium">
-          {clients.length} cliente{clients.length !== 1 ? 's' : ''}
+      <div className="sticky top-0 z-10 bg-white">
+        <div className={`h-1 bg-gradient-to-r ${config.color}`} />
+        <div className="flex items-center gap-2.5 px-3.5 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon className="h-4 w-4" /></span>
+          <h3 className="min-w-0 flex-1 truncate text-sm font-bold text-slate-800">{status}</h3>
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{clients.length}</span>
         </div>
       </div>
 
-      {/* Área de drop - Limitado a 600px de altura com scroll oculto */}
+      {/* Área de drop */}
       <div
         ref={setNodeRef}
-        className="p-3 bg-gray-50/50 overflow-y-auto space-y-2 scrollbar-hide"
+        aria-label={`Etapa ${status}, ${clients.length} cliente${clients.length !== 1 ? 's' : ''}`}
+        className={`flex-1 space-y-2 overflow-y-auto border-t border-slate-100 p-2.5 transition-colors ${isHighlighted ? 'bg-primary/[0.07]' : 'bg-slate-50/70'}`}
         style={{
           maxHeight: '600px',
-          minHeight: '100px',
+          minHeight: '245px',
           scrollbarWidth: 'none', // Firefox
           msOverflowStyle: 'none', // IE e Edge
         }}
@@ -85,15 +83,18 @@ export default function KanbanColumn({
                   onRequestCompletion={onRequestCompletion}
                   onPauseClient={onPauseClient}
                   onResumeClient={onResumeClient}
+                  onMoveClient={onMoveClient}
+                  statusOptions={statusOptions}
                 />
               </Motion.div>
             ))
           ) : (
-            <div className="h-20 flex items-center justify-center text-gray-400 text-sm">
-              Nenhum cliente
+            <div className={`flex h-32 items-center justify-center rounded-xl border border-dashed text-sm font-medium transition ${isHighlighted ? 'border-primary/40 bg-white/70 text-primary' : 'border-slate-200 text-slate-400'}`}>
+              {isDragging ? 'Solte o cliente aqui' : 'Nenhum cliente'}
             </div>
           )}
         </SortableContext>
+        {clients.length > 0 && isDragging && <div className={`flex h-14 items-center justify-center rounded-xl border border-dashed text-xs font-bold transition ${isHighlighted ? 'border-primary/50 bg-white text-primary' : 'border-slate-200 text-slate-400'}`}>{isHighlighted ? 'Solte para mover' : 'Arraste para esta etapa'}</div>}
       </div>
     </Motion.div>
   );

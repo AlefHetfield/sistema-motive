@@ -135,7 +135,8 @@ const priceMarkerIcon = (property, selected, hovered) => {
     : '';
   const textX = property.isFavorite ? (width + 10) / 2 : (width + 20) / 2;
   const typeIcon = `<circle cx="15" cy="15" r="10" fill="${selected ? 'rgba(255,255,255,.2)' : color}"/><g transform="translate(5 5) scale(.42)">${markerGlyph(property.propertyType, '#ffffff', selected ? color : '#ffffff')}</g>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><path fill="${background}" stroke="${color}" stroke-width="${strokeWidth}" d="M9 2h${width - 18}a7 7 0 0 1 7 7v15a7 7 0 0 1-7 7H${width / 2 + 7}L${width / 2} ${height - 2}l-7-9H9a7 7 0 0 1-7-7V9a7 7 0 0 1 7-7Z"/>${typeIcon}<text x="${textX}" y="20" fill="${foreground}" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">${label}</text>${favorite}</svg>`;
+  const glow = selected ? '<defs><filter id="selected-glow" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#0f172a" flood-opacity=".28"/></filter></defs>' : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${glow}<path ${selected ? 'filter="url(#selected-glow)"' : ''} fill="${background}" stroke="${color}" stroke-width="${strokeWidth}" d="M9 2h${width - 18}a7 7 0 0 1 7 7v15a7 7 0 0 1-7 7H${width / 2 + 7}L${width / 2} ${height - 2}l-7-9H9a7 7 0 0 1-7-7V9a7 7 0 0 1 7-7Z"/>${typeIcon}<text x="${textX}" y="20" fill="${foreground}" font-family="Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">${label}</text>${favorite}</svg>`;
   const icon = {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
     scaledSize: new window.google.maps.Size(width, height),
@@ -151,6 +152,7 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const locatedMarkerRef = useRef(null);
+  const fittedPropertiesKeyRef = useRef('');
   const onSelectRef = useRef(onSelect);
   const onHoverRef = useRef(onHover);
   const onCreateAtLocationRef = useRef(onCreateAtLocation);
@@ -260,14 +262,15 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
     });
     markersRef.current = markers;
 
-    const selected = mapped.find(property => property.id === selectedPropertyIdRef.current);
-    if (selected) {
-      map.panTo({ lat: Number(selected.latitude), lng: Number(selected.longitude) });
-    } else if (mapped.length === 1) {
-      map.setCenter({ lat: Number(mapped[0].latitude), lng: Number(mapped[0].longitude) });
-      map.setZoom(16);
-    } else if (mapped.length > 1) {
-      map.fitBounds(bounds, 60);
+    const propertiesKey = mapped.map(property => `${property.id}:${property.latitude}:${property.longitude}`).sort().join('|');
+    if (propertiesKey !== fittedPropertiesKeyRef.current) {
+      fittedPropertiesKeyRef.current = propertiesKey;
+      if (mapped.length === 1) {
+        map.setCenter({ lat: Number(mapped[0].latitude), lng: Number(mapped[0].longitude) });
+        map.setZoom(16);
+      } else if (mapped.length > 1) {
+        map.fitBounds(bounds, 60);
+      }
     }
   }, [mapReady, properties]);
 
@@ -281,14 +284,6 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
       favoriteMarker?.setVisible(!selected && !hovered);
     });
   }, [hoveredPropertyId, mapReady, selectedPropertyId]);
-
-  useEffect(() => {
-    if (!mapReady || !selectedPropertyId) return;
-    const selected = markersRef.current.find(item => item.property.id === selectedPropertyId)?.property;
-    if (!selected) return;
-    const map = mapRef.current;
-    map.panTo({ lat: Number(selected.latitude), lng: Number(selected.longitude) });
-  }, [mapReady, selectedPropertyId]);
 
   useEffect(() => {
     locatedMarkerRef.current?.setMap(null);

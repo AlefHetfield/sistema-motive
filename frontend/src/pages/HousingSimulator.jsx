@@ -133,10 +133,10 @@ const fieldClass = controlClass;
 
 function Field({ label, hint, children }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-semibold text-gray-700">{label}</span>
+    <label className="block space-y-2">
+      <span className="text-[13px] font-bold text-slate-700">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-gray-500">{hint}</span>}
+      {hint && <span className="block text-[11px] leading-4 text-slate-500">{hint}</span>}
     </label>
   );
 }
@@ -163,10 +163,10 @@ function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione',
 
 function Choice({ selected, onClick, children, tone = 'blue' }) {
   const active = tone === 'red'
-    ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-100'
-    : 'border-primary bg-primary/5 text-primary ring-2 ring-primary/10';
+    ? 'border-red-200 bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100'
+    : 'border-primary/20 bg-primary text-white shadow-sm ring-1 ring-primary/10';
   return (
-    <button type="button" onClick={onClick} className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition ${selected ? active : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}>
+    <button type="button" onClick={onClick} className={`flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition ${selected ? active : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}>
       {children}
     </button>
   );
@@ -175,11 +175,12 @@ function Choice({ selected, onClick, children, tone = 'blue' }) {
 function Metric({ icon, label, value, strong = false }) {
   const Icon = icon;
   return (
-    <div className={`rounded-xl border p-4 ${strong ? 'border-primary/20 bg-primary/5' : 'border-gray-100 bg-gray-50/80'}`}>
-      <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-        <Icon className="h-4 w-4" /> {label}
+    <div className={`min-w-0 bg-white p-4 ${strong ? 'sm:p-5' : ''}`}>
+      <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${strong ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}><Icon className="h-3.5 w-3.5" /></span>
+        <span className="min-w-0 leading-4">{label}</span>
       </div>
-      <p className={`font-bold ${strong ? 'text-xl text-primary' : 'text-base text-gray-800'}`}>{value}</p>
+      <p className={`truncate font-bold tracking-tight ${strong ? 'text-lg text-primary sm:text-xl' : 'text-base text-slate-800'}`} title={value}>{value}</p>
     </div>
   );
 }
@@ -205,12 +206,12 @@ function SimulationPreview({ propertyValue, downPayment, income, targetInstallme
   const entryAboveProperty = downPayment > propertyValue;
 
   return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.07] to-white">
+    <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80">
       <div className="flex items-center justify-between gap-3 border-b border-primary/10 px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-bold text-gray-800"><Calculator className="h-4 w-4 text-primary" /> Resumo em tempo real</div>
         <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Atualizado automaticamente</span>
       </div>
-      <div className="grid gap-px bg-primary/10 sm:grid-cols-3">
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
         <div className="bg-white/90 px-4 py-3.5"><p className="text-xs text-gray-500">Entrada</p><p className="mt-1 font-bold text-gray-800">{currency.format(downPayment)}</p><p className="mt-0.5 text-xs font-medium text-primary">{percent.format(entryPercentage)}% do imóvel</p></div>
         <div className="bg-white/90 px-4 py-3.5"><p className="text-xs text-gray-500">Financiamento solicitado</p><p className="mt-1 font-bold text-gray-800">{currency.format(requestedFinancing)}</p><p className="mt-0.5 text-xs text-gray-400">Antes da análise das regras</p></div>
         <div className="bg-white/90 px-4 py-3.5"><p className="text-xs text-gray-500">Comprometimento desejado</p><p className="mt-1 font-bold text-gray-800">{targetInstallment > 0 && income > 0 ? `${percent.format(incomeCommitment)}% da renda` : 'Não informado'}</p><p className="mt-0.5 text-xs text-gray-400">Com base na parcela desejada</p></div>
@@ -530,30 +531,44 @@ function HousingSimulator() {
   })() : { decrease: false, increase: false };
 
   return (
-    <div className={`min-h-full bg-background/80 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 ${mobilePane === 'data' ? 'pb-24 sm:pb-6' : ''}`}>
-      <div className="mx-auto max-w-7xl">
+    <div className={`min-h-full px-3 py-3 sm:px-7 sm:pb-7 sm:pt-3 ${mobilePane === 'data' ? 'pb-24 sm:pb-7' : ''}`}>
+      <div className="mx-auto max-w-[1600px]">
+        <header className="mb-4 flex flex-col gap-4 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" /> Ferramenta comercial
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Simulador habitacional</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">Compare condições, ajuste o cenário e transforme o resultado em uma proposta para o cliente.</p>
+          </div>
+          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 sm:flex-none">
+              <span className={`h-2 w-2 rounded-full ${isCaixa ? 'bg-primary' : 'bg-red-500'}`} />
+              <span className="truncate text-xs font-bold text-slate-700">{isCaixa ? 'CAIXA' : 'Bradesco'} · {isMcmv ? 'MCMV' : 'SBPE'}</span>
+            </div>
+            <Button onClick={reset} variant="secondary" className="shrink-0">
+              <RotateCcw className="h-4 w-4" /> <span className="hidden sm:inline">Limpar simulação</span><span className="sm:hidden">Limpar</span>
+            </Button>
+          </div>
+        </header>
         {mobile && <div className="mb-4 grid grid-cols-2 rounded-xl bg-gray-200/70 p-1" aria-label="Etapa da simulação"><button type="button" aria-pressed={mobilePane === 'data'} onClick={() => setMobilePane('data')} className={`min-h-11 rounded-lg text-sm font-bold transition ${mobilePane === 'data' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>1. Dados</button><button type="button" disabled={!result} aria-pressed={mobilePane === 'result'} onClick={() => result && setMobilePane('result')} className={`min-h-11 rounded-lg text-sm font-bold transition disabled:opacity-40 ${mobilePane === 'result' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>2. Resultado</button></div>}
-        <div className={`${mobile && mobilePane !== 'data' ? 'hidden' : 'flex'} mb-4 justify-end`}>
-          <Button onClick={reset} variant="secondary">
-            <RotateCcw className="h-4 w-4" /> Limpar simulação
-          </Button>
-        </div>
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(390px,.8fr)]">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.28fr)_minmax(400px,.72fr)]">
           <form id="housing-simulator-form" onSubmit={calculate} className={`${mobile && mobilePane !== 'data' ? 'hidden' : ''} overflow-hidden ${surfaceClass}`}>
+            {!mobile && <div className="flex items-center justify-between gap-5 border-b border-slate-200 px-6 py-4"><div><h2 className="font-bold text-slate-900">Dados da simulação</h2><p className="mt-0.5 text-xs text-slate-500">Preencha os campos para calcular as condições disponíveis.</p></div><div className="flex items-center gap-2 text-[11px] font-bold text-slate-400"><span className="rounded-full bg-primary px-2.5 py-1 text-white">1</span><span>Cliente</span><span className="h-px w-5 bg-slate-200" /><span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">2</span><span>Imóvel</span><span className="h-px w-5 bg-slate-200" /><span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">3</span><span>Crédito</span></div></div>}
             {mobile && <div className="border-b border-gray-100 px-4 py-4"><div className="grid grid-cols-3 gap-2">{['Cliente', 'Imóvel', 'Financiamento'].map((label, index) => <button key={label} type="button" onClick={() => { if (index < mobileFormStep) { setMobileFormStep(index); setValidation(''); } }} className={`relative flex min-w-0 flex-col items-center gap-1.5 text-[11px] font-bold ${index <= mobileFormStep ? 'text-primary' : 'text-gray-400'}`}><span className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-white ${index < mobileFormStep ? 'bg-emerald-500 text-white' : index === mobileFormStep ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>{index < mobileFormStep ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</span><span className="relative z-10 truncate">{label}</span>{index < 2 && <span className={`absolute left-[calc(50%+18px)] right-[calc(-50%+18px)] top-3.5 z-0 h-0.5 ${index < mobileFormStep ? 'bg-emerald-400' : 'bg-gray-200'}`} />}</button>)}</div></div>}
-            <div className={`${mobile && mobileFormStep !== 0 ? 'hidden' : ''} border-b border-gray-100 p-5 sm:p-6`}>
-              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Instituição financeira</p>
+            <div className={`${mobile && mobileFormStep !== 0 ? 'hidden' : ''} border-b border-slate-200 bg-slate-50/70 p-5 sm:px-6 sm:py-5`}>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">Instituição financeira</p>
               <div className="flex gap-3">
                 <Choice selected={isCaixa} onClick={() => switchBank('CAIXA')}><span className="flex items-center justify-center gap-2"><Landmark className="h-4 w-4" /> CAIXA</span></Choice>
                 <Choice tone="red" selected={!isCaixa} onClick={() => switchBank('BRADESCO')}><span className="flex items-center justify-center gap-2"><Building2 className="h-4 w-4" /> Bradesco</span></Choice>
               </div>
             </div>
 
-            <div className="space-y-7 p-5 sm:p-6">
+            <div className="space-y-6 p-5 sm:p-6">
               {validation && <Alert type="error" message={validation} />}
               {isCaixa && (
-                <section className={mobile && mobileFormStep !== 0 ? 'hidden' : ''}>
+                <section className={`${mobile && mobileFormStep !== 0 ? 'hidden' : ''} border-b border-slate-100 pb-6`}>
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><ShieldCheck className="h-5 w-5 text-primary" /> Modalidade</h2>
                   <div className="flex gap-3">
                     <Choice selected={form.modality === 'SBPE'} onClick={() => set('modality', 'SBPE')}>SBPE</Choice>
@@ -562,7 +577,7 @@ function HousingSimulator() {
                 </section>
               )}
 
-              <section className={mobile && mobileFormStep !== 0 ? 'hidden' : ''}>
+              <section className={`${mobile && mobileFormStep !== 0 ? 'hidden' : ''} border-b border-slate-100 pb-6`}>
                 <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><WalletCards className="h-5 w-5 text-primary" /> Dados do proponente</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Data de nascimento" hint="Use o formato dia/mês/ano.">
@@ -583,7 +598,7 @@ function HousingSimulator() {
               </section>
 
               {isMcmv && (
-                <section className={mobile && mobileFormStep !== 1 ? 'hidden' : ''}>
+                <section className={`${mobile && mobileFormStep !== 1 ? 'hidden' : ''} border-b border-slate-100 pb-6`}>
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><MapPin className="h-5 w-5 text-primary" /> Localização do imóvel</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Estado">
@@ -596,7 +611,7 @@ function HousingSimulator() {
                 </section>
               )}
 
-              <section className={mobile && mobileFormStep !== 1 ? 'hidden' : ''}>
+              <section className={`${mobile && mobileFormStep !== 1 ? 'hidden' : ''} border-b border-slate-100 pb-6`}>
                 <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><Home className="h-5 w-5 text-primary" /> {mobile ? 'Dados do imóvel' : 'Imóvel e financiamento'}</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Valor do imóvel"><CurrencyField value={form.propertyValue} onChange={(value) => set('propertyValue', value)} placeholder="350.000,00" /></Field>
@@ -628,26 +643,30 @@ function HousingSimulator() {
             </div>
           </form>
 
-          <aside className={`${mobile && mobilePane !== 'result' ? 'hidden' : ''} xl:sticky xl:top-6`}>
+          <aside className={`${mobile && mobilePane !== 'result' ? 'hidden' : ''} xl:sticky xl:top-4`}>
             {!result ? (
-              <div className="app-card flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-8 text-center">
-                <div className="mb-5 rounded-2xl bg-primary/10 p-4 text-primary"><CircleDollarSign className="h-9 w-9" /></div>
-                <h2 className="text-lg font-bold text-gray-800">Resultado da simulação</h2>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">Preencha os dados ao lado para conferir financiamento estimado, entrada necessária, prazo, taxa e composição da primeira parcela.</p>
+              <div className="app-card overflow-hidden bg-white">
+                <div className="border-b border-slate-200 px-5 py-4"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Resumo financeiro</p><h2 className="mt-1 font-bold text-slate-900">Resultado da simulação</h2></div>
+                <div className="flex min-h-[390px] flex-col items-center justify-center p-8 text-center">
+                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><CircleDollarSign className="h-7 w-7" /></div>
+                  <h3 className="font-bold text-slate-800">Aguardando os dados</h3>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">O financiamento, a entrada, a parcela e a taxa aparecerão aqui após o cálculo.</p>
+                  <div className="mt-6 grid w-full max-w-sm grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200"><div className="bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Entrada</p><p className="mt-1 font-bold text-slate-300">—</p></div><div className="bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Parcela</p><p className="mt-1 font-bold text-slate-300">—</p></div><div className="bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">Prazo</p><p className="mt-1 font-bold text-slate-300">—</p></div></div>
+                </div>
               </div>
             ) : (
               <div className={`overflow-hidden ${surfaceClass}`}>
-                <div className={`${result.bank === 'CAIXA' ? 'bg-gradient-to-br from-primary to-secondary' : 'bg-gradient-to-br from-red-600 to-red-800'} p-5 text-white sm:p-6`}>
+                <div className={`${result.bank === 'CAIXA' ? 'bg-secondary' : 'bg-red-800'} p-5 text-white sm:p-6`}>
                   <div className="flex items-start justify-between gap-4">
                     <div><p className="text-xs font-semibold uppercase tracking-wider text-white/70">Enquadramento</p><h2 className="mt-1 text-xl font-bold">{result.program}</h2></div>
                     <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">{result.system}</span>
                   </div>
                   <div className="mt-5 sm:mt-6"><p className="text-sm text-white/75">Valor estimado do financiamento</p><p className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{currency.format(result.financed)}</p></div>
                 </div>
-                <div className="space-y-5 p-5 sm:p-6">
+                <div className="space-y-5 p-4 sm:p-5">
                   <ResultDiagnosis result={result} />
                   <ScenarioAdjustments form={form} result={result} entryAvailability={entryAvailability} onAdjust={adjustScenario} onEntryChange={changeEntry} onRestore={restoreScenario} />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
                     <Metric icon={Banknote} label="Entrada necessária" value={currency.format(result.requiredEntry)} strong />
                     <Metric icon={CircleDollarSign} label="Primeira parcela" value={currency.format(result.installment.total)} strong />
                     <Metric icon={Clock3} label="Prazo" value={`${result.term} meses`} />
