@@ -17,6 +17,7 @@ import HousingSimulator from './pages/HousingSimulator';
 import ContractGenerator from './pages/ContractGenerator';
 import PropertiesMap from './pages/PropertiesMap';
 import Tasks from './pages/Tasks';
+import CalendarPage from './pages/Calendar';
 import useMobileLayout from './hooks/useMobileLayout';
 
 function App() {
@@ -71,6 +72,7 @@ function App() {
             <Route path="cep-search" element={<CepSearch />} />
             <Route path="matriculas" element={<MatriculaSearch />} />
             <Route path="tasks" element={<Tasks />} />
+            <Route path="agenda" element={<CalendarPage />} />
             <Route path="settings" element={<Settings />} />
             
             {/* Rota exclusiva para Administradores */}

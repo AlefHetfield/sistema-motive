@@ -200,6 +200,49 @@ export async function fetchProperties(filters = {}) {
     return response.json();
 }
 
+export async function fetchCalendarStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/calendar/status`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao verificar a integração com o Google Agenda.');
+    return response.json();
+}
+
+export async function fetchCalendarEvents(timeMin, timeMax) {
+    const query = new URLSearchParams({ timeMin, timeMax });
+    const response = await fetch(`${API_BASE_URL}/api/calendar/events?${query}`, { credentials: 'include' });
+    if (!response.ok) throw await apiError(response, 'Falha ao carregar os compromissos.');
+    return response.json();
+}
+
+export async function createCalendarEvent(event) {
+    const response = await fetch(`${API_BASE_URL}/api/calendar/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(event),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao criar o compromisso.');
+    return response.json();
+}
+
+export async function updateCalendarEvent(eventId, event) {
+    const response = await fetch(`${API_BASE_URL}/api/calendar/events/${encodeURIComponent(eventId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(event),
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao atualizar o compromisso.');
+    return response.json();
+}
+
+export async function deleteCalendarEvent(eventId) {
+    const response = await fetch(`${API_BASE_URL}/api/calendar/events/${encodeURIComponent(eventId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao cancelar o compromisso.');
+}
+
 export async function downloadPropertiesBackup() {
     const response = await fetch(`${API_BASE_URL}/api/properties/backup`, { credentials: 'include' });
     if (!response.ok) throw await apiError(response, 'Falha ao gerar o backup do mapa.');

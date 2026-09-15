@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, FileText, Send, Download, DatabaseBackup } from 'lucide-react';
+import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, FileText, Send, Download, DatabaseBackup, CalendarDays, ExternalLink } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { downloadPropertiesBackup } from '../services/api';
+import { downloadPropertiesBackup, fetchCalendarStatus } from '../services/api';
 
 import { API_BASE_URL } from '../config/api';
 
 const Settings = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('profile');
+    const [searchParams] = useSearchParams();
+    const requestedTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(requestedTab === 'integrations' ? 'integrations' : 'profile');
     const [notification, setNotification] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -34,6 +37,14 @@ const Settings = () => {
     // Backup
     const [sendingBackup, setSendingBackup] = useState(false);
     const [downloadingMapBackup, setDownloadingMapBackup] = useState(false);
+    const [calendarStatus, setCalendarStatus] = useState(null);
+
+    useEffect(() => {
+        if (activeTab !== 'integrations' || calendarStatus) return;
+        fetchCalendarStatus()
+            .then(setCalendarStatus)
+            .catch(() => setCalendarStatus({ configured: false }));
+    }, [activeTab, calendarStatus]);
 
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
@@ -153,6 +164,7 @@ const Settings = () => {
     const tabs = [
         { id: 'profile', label: 'Perfil', icon: User },
         { id: 'security', label: 'Segurança', icon: Lock },
+        ...(user?.role === 'ADM' ? [{ id: 'integrations', label: 'Integrações', icon: CalendarDays }] : []),
         ...(user?.role === 'ADM' ? [{ id: 'reports', label: 'Relatórios', icon: FileText }] : []),
     ];
 
@@ -445,6 +457,25 @@ const Settings = () => {
                                 </ul>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'integrations' && (
+                    <div className="max-w-3xl">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div><h2 className="text-lg font-semibold text-gray-900">Google Agenda</h2><p className="mt-1 text-sm leading-6 text-gray-500">Agenda compartilhada para visitas e compromissos da equipe.</p></div>
+                            <span className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${calendarStatus?.configured ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}><span className={`h-2 w-2 rounded-full ${calendarStatus?.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />{calendarStatus === null ? 'Verificando...' : calendarStatus.configured ? 'Configurada' : 'Configuração pendente'}</span>
+                        </div>
+                        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                            <h3 className="font-bold text-slate-900">Como concluir a conexão</h3>
+                            <ol className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+                                <li><strong className="text-primary">1.</strong> Ative a Google Calendar API no mesmo projeto da conta de serviço.</li>
+                                <li><strong className="text-primary">2.</strong> No Google Agenda, compartilhe a agenda “Motive Imóveis” com o e-mail da conta de serviço e permita alterar eventos.</li>
+                                <li><strong className="text-primary">3.</strong> Copie o ID em “Integrar agenda” e salve como <code className="rounded bg-white px-1.5 py-0.5 font-bold text-slate-800">GOOGLE_CALENDAR_ID</code> nas variáveis do servidor.</li>
+                                <li><strong className="text-primary">4.</strong> Faça um novo deploy do servidor.</li>
+                            </ol>
+                        </div>
+                        <div className="mt-5 flex flex-wrap gap-2"><Link to="/agenda" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white hover:bg-[#274D68]"><CalendarDays className="h-4 w-4" />Abrir agenda</Link><a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Abrir Google Cloud <ExternalLink className="h-4 w-4" /></a></div>
                     </div>
                 )}
             </div>

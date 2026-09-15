@@ -12,6 +12,7 @@ import { contractDownloadName, generateContractDocx, normalizeAndValidateContrac
 import { createPropertyRouter } from './propertyRoutes.js';
 import { createMatriculaRouter } from './matriculaRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
+import { createCalendarRouter } from './calendarRoutes.js';
 import { encodeSession, decodeSession } from './session.js';
 
 // Configurar Prisma com pool de conexões para Vercel
@@ -109,6 +110,7 @@ function requireRole(...allowedRoles) {
 app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
 app.use('/api/matriculas', createMatriculaRouter(requireAuth));
 app.use('/api/tasks', createTaskRouter(prisma, requireAuth));
+app.use('/api/calendar', createCalendarRouter(requireAuth));
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`

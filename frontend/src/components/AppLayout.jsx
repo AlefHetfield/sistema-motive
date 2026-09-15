@@ -3,13 +3,14 @@ import { Menu, X } from 'lucide-react';
 import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Landmark, MapPin, MapPinned, ListTodo, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPin, MapPinned, ListTodo, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
 
 const corretorNavItems = [
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -23,6 +24,7 @@ const corretorNavItems = [
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -37,6 +39,7 @@ const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operação' },
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
@@ -52,6 +55,7 @@ const pageDescriptions = {
     '/dashboard': 'Acompanhe os principais indicadores e atividades da operação.',
     '/clients': 'Visualize e gerencie o progresso dos financiamentos em tempo real.',
     '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
+    '/agenda': 'Organize visitas e compromissos sincronizados com o Google Agenda.',
     '/properties-map': 'Localize, organize e atualize os imóveis disponíveis no mapa.',
     '/simulador': 'Compare condições de financiamento e gere propostas para seus clientes.',
     '/receipt-generator': 'Calcule valores e gere recibos de pró-labore em PDF.',

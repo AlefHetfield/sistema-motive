@@ -7,6 +7,7 @@ import {
   BedDouble,
   Building2,
   CalendarCheck,
+  CalendarPlus,
   Car,
   ChevronDown,
   ChevronLeft,
@@ -231,6 +232,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
       </div>
       <footer className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mobile-safe-bottom grid-cols-2 gap-2 border-t border-slate-200 bg-slate-50 p-3`}>
         <Link to={`/tasks?view=social&newProperty=${property.id}`} className="col-span-2 rounded-xl bg-secondary px-3 py-2.5 text-center text-sm font-bold text-white transition hover:bg-primary">Criar publicação</Link>
+        <Link to={`/agenda?newProperty=${property.id}`} className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><CalendarPlus className="h-4 w-4" />Agendar visita</Link>
         <a href={routeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><Route className="h-4 w-4" />Abrir rota</a>
         {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><ExternalLink className="h-4 w-4" />Abrir ficha</a>}
         <button type="button" onClick={onEdit} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white hover:bg-[#274D68]"><Pencil className="h-4 w-4" />Editar</button>
