@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, Check, Search } from 'lucide-react';
 
 function normalizeTypeahead(value) {
   return String(value || '')
@@ -19,11 +19,15 @@ export default function FancySelect({
   ariaLabel,
   size = 'default',
   typeahead = false,
+  searchable = false,
+  searchPlaceholder = 'Buscar opção...',
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
   const selectedOptionRef = useRef(null);
+  const searchInputRef = useRef(null);
   const typeBufferRef = useRef('');
   const typeTimerRef = useRef(null);
 
@@ -49,11 +53,26 @@ export default function FancySelect({
     selectedOptionRef.current?.scrollIntoView({ block: 'nearest' });
   }, [open, value]);
 
+  useEffect(() => {
+    if (!open) {
+      setSearchQuery('');
+      return undefined;
+    }
+    if (!searchable) return undefined;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, searchable]);
+
   useEffect(() => () => {
     if (typeTimerRef.current) window.clearTimeout(typeTimerRef.current);
   }, []);
 
   const selected = options.find((option) => option.value === value);
+  const filteredOptions = useMemo(() => {
+    const query = normalizeTypeahead(searchQuery);
+    if (!query) return options;
+    return options.filter((option) => normalizeTypeahead(`${option.label} ${option.value || ''} ${option.searchText || ''}`).includes(query));
+  }, [options, searchQuery]);
 
   const toggleOpen = () => {
     if (!open) {
@@ -120,11 +139,33 @@ export default function FancySelect({
 
       {open && (
         <div role="listbox" aria-label={ariaLabel} className={`absolute z-[70] min-w-full overflow-hidden rounded-2xl border border-[#DDE4E8] bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(23,47,67,0.18)] backdrop-blur-xl ${dropUp ? 'bottom-full mb-2' : 'mt-2'}`}>
+          {searchable && (
+            <div className="relative mb-1.5">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && filteredOptions.length === 1 && !filteredOptions[0].disabled) {
+                    event.preventDefault();
+                    onChange?.(filteredOptions[0].value);
+                    setOpen(false);
+                  }
+                }}
+                placeholder={searchPlaceholder}
+                aria-label={`Pesquisar em ${ariaLabel || 'opções'}`}
+                autoComplete="off"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary focus:bg-white focus:!ring-4 focus:!ring-primary/10 focus:!ring-offset-0 focus-visible:!ring-4 focus-visible:!ring-primary/10 focus-visible:!ring-offset-0"
+              />
+            </div>
+          )}
           <div className="max-h-60 overflow-y-auto">
-            {options.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-400">Sem opções</div>
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-3 text-center text-sm text-gray-400">Nenhuma opção encontrada</div>
             ) : (
-              options.map((option) => {
+              filteredOptions.map((option) => {
                 const isSelected = option.value === value;
                 return (
                   <button

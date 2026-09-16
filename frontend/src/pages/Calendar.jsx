@@ -107,6 +107,8 @@ const EVENT_LEGEND = [
 ];
 
 const propertyLabel = property => [property.code, property.title].filter(Boolean).join(' · ');
+const propertyVisitTitle = property => ['Visita', String(property?.neighborhood || '').trim()].filter(Boolean).join(' ');
+const isAutomaticVisitTitle = title => /^Visita(?:\s*-\s*.*|\s+[^-()]*)?$/i.test(String(title || '').trim());
 const isTimeExemptEvent = event => isAllDay(event) || String(event.title || '').toLocaleLowerCase('pt-BR').includes('folga');
 
 const addMinutesToTime = (value, amount) => {
@@ -201,7 +203,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
   const suggestedStart = initialTime || slot.start.slice(11);
   const suggestedEnd = addMinutesToTime(suggestedStart, 90);
   const [form, setForm] = useState(() => ({
-    title: event?.title || (initialProperty ? `Visita - ${propertyLabel(initialProperty)}` : 'Visita'),
+    title: event?.title || (initialProperty ? propertyVisitTitle(initialProperty) : 'Visita'),
     propertyId: String(event?.propertyId || initialProperty?.id || ''),
     location: event?.location || initialProperty?.address || '',
     description: event?.description || '',
@@ -212,6 +214,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
     endTime: event?.end?.dateTime ? localDateTimeValue(event.end.dateTime).slice(11) : initialTime ? suggestedEnd : slot.end.slice(11),
     reminderMinutes: '30',
   }));
+  const titleManuallyEditedRef = useRef(Boolean(event?.title) && !isAutomaticVisitTitle(event.title));
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
@@ -224,7 +227,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
       ...current,
       propertyId: value,
       ...(property ? {
-        title: !event || /^Visita(?:\s*-.*)?$/i.test(current.title) ? `Visita - ${propertyLabel(property)}` : current.title,
+        title: titleManuallyEditedRef.current ? current.title : propertyVisitTitle(property),
         location: property.address || current.location,
       } : {}),
     }));
@@ -294,8 +297,8 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
         <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
       </header>
       <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-        <Field label="Título" className="sm:col-span-2"><input required maxLength={200} className={inputClass} value={form.title} onChange={e => update('title', e.target.value)} placeholder="Visita - imóvel e cliente" /></Field>
-        <Field label="Imóvel" className="sm:col-span-2"><FancySelect ariaLabel="Imóvel da visita" value={form.propertyId} onChange={chooseProperty} placeholder="Sem imóvel vinculado" options={[{ value: '', label: 'Sem imóvel vinculado' }, ...properties.map(property => ({ value: String(property.id), label: propertyLabel(property) }))]} /></Field>
+        <Field label="Imóvel" className="sm:col-span-2"><FancySelect searchable searchPlaceholder="Buscar por código, nome, bairro ou endereço..." ariaLabel="Imóvel da visita" value={form.propertyId} onChange={chooseProperty} placeholder="Sem imóvel vinculado" options={[{ value: '', label: 'Sem imóvel vinculado' }, ...properties.map(property => ({ value: String(property.id), label: propertyLabel(property), searchText: [property.code, property.title, property.neighborhood, property.city, property.address].filter(Boolean).join(' ') }))]} /></Field>
+        <Field label="Título" className="sm:col-span-2"><input required maxLength={200} className={inputClass} value={form.title} onChange={e => { titleManuallyEditedRef.current = true; update('title', e.target.value); }} placeholder="Visita Bairro - Cliente (Responsável)" /></Field>
         <Field label="Data"><DatePickerField value={form.date} onChange={value => update('date', value)} /></Field>
         <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3.5 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.allDay} onChange={e => update('allDay', e.target.checked)} className="h-4 w-4 accent-primary" />Dia inteiro</label>
         {form.allDay ? <Field label="Último dia"><DatePickerField value={form.endDate} min={form.date} onChange={value => update('endDate', value)} /></Field> : <><Field label="Horário inicial"><TimePickerField value={form.startTime} onChange={chooseStartTime} options={TIME_OPTIONS.slice(0, -1)} /></Field><Field label="Horário final"><TimePickerField value={form.endTime} onChange={value => update('endTime', value)} /></Field></>}
@@ -401,6 +404,57 @@ function MobileWeekView({ days, events, todayKey, loading, onCreate, onEdit }) {
   })}</div>;
 }
 
+function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate, onEdit }) {
+  const defaultSelectedKey = cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear()
+    ? todayKey
+    : dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
+  const [selectedKey, setSelectedKey] = useState(defaultSelectedKey);
+
+  useEffect(() => {
+    setSelectedKey(cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear()
+      ? todayKey
+      : dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1)));
+  }, [cursor, todayKey]);
+
+  if (loading) return <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p>;
+
+  const selectedDay = days.find(day => dateKey(day) === selectedKey) || parseDateKey(selectedKey);
+  const selectedEvents = events.filter(event => eventOccursOn(event, selectedDay));
+  const selectedIsToday = selectedKey === todayKey;
+
+  return <div className="bg-slate-50/50">
+    <div className="flex gap-3 overflow-x-auto border-b border-slate-100 bg-white px-3 py-2.5 no-scrollbar">
+      {EVENT_LEGEND.map(item => <span key={item.label} className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-bold text-slate-500"><span className={`h-2 w-2 rounded-full ${item.color}`} />{item.label}</span>)}
+    </div>
+    <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+      {WEEKDAYS.map((day, index) => <div key={`${day}-${index}`} className={`py-2 text-center text-[9px] font-extrabold uppercase tracking-wide ${index === 0 || index === 6 ? 'text-slate-400' : 'text-slate-500'}`}>{day.slice(0, 1)}</div>)}
+    </div>
+    <div className="grid grid-cols-7 bg-slate-200/70 gap-px">
+      {days.map(day => {
+        const key = dateKey(day);
+        const dayEvents = events.filter(event => eventOccursOn(event, day));
+        const currentMonth = day.getMonth() === cursor.getMonth();
+        const today = key === todayKey;
+        const selected = key === selectedKey;
+        return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35' : ''}`}>
+          <button type="button" onClick={event => { event.stopPropagation(); setSelectedKey(key); }} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ${today ? 'bg-primary text-white shadow-sm' : currentMonth ? 'text-slate-700' : 'text-slate-300'}`}>{day.getDate()}</button>
+          <div className="space-y-0.5">
+            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event.title)}`}>{event.title}</button>)}
+            {dayEvents.length > 2 && <span className="block px-1 text-[8px] font-extrabold text-primary">+{dayEvents.length - 2}</span>}
+          </div>
+        </div>;
+      })}
+    </div>
+    <section className="border-t border-slate-200 bg-white p-4">
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-primary">{selectedIsToday ? 'Hoje' : 'Dia selecionado'}</p><h4 className="mt-0.5 truncate text-base font-bold capitalize text-slate-900">{selectedDay.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h4><p className="text-xs text-slate-400">{selectedEvents.length ? `${selectedEvents.length} compromisso(s)` : 'Agenda livre'}</p></div>
+        <button type="button" onClick={() => onCreate(selectedDay)} className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-sm"><Plus className="h-4 w-4" />Agendar</button>
+      </header>
+      <div className="space-y-2">{selectedEvents.length ? selectedEvents.map(event => <AgendaEvent key={event.id} event={event} onClick={() => onEdit(event)} />) : <button type="button" onClick={() => onCreate(selectedDay)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-5 text-sm font-semibold text-slate-400"><CalendarDays className="h-4 w-4" />Adicionar compromisso neste dia</button>}</div>
+    </section>
+  </div>;
+}
+
 export default function CalendarPage() {
   const mobile = useMobileLayout();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -487,6 +541,10 @@ export default function CalendarPage() {
     setLoading(true);
     setRevision(value => value + 1);
   };
+  const changeViewMode = nextMode => {
+    if ((viewMode === 'week') !== (nextMode === 'week')) setLoading(true);
+    setViewMode(nextMode);
+  };
   const goToPeriod = amount => {
     setLoading(true);
     if (viewMode === 'week') setWeekCursor(current => addDays(current, amount * 7));
@@ -530,7 +588,7 @@ export default function CalendarPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-3 sm:p-4">
           <div className="flex items-center gap-2"><Button variant="secondary" size="sm" onClick={goToToday}>Hoje</Button><button type="button" onClick={() => goToPeriod(-1)} aria-label={viewMode === 'week' ? 'Semana anterior' : 'Mês anterior'} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"><ChevronLeft className="h-5 w-5" /></button><button type="button" onClick={() => goToPeriod(1)} aria-label={viewMode === 'week' ? 'Próxima semana' : 'Próximo mês'} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"><ChevronRight className="h-5 w-5" /></button></div>
           <h3 className="text-center text-base font-bold capitalize text-slate-900 sm:text-lg">{periodTitle}</h3>
-          <div className="flex items-center gap-2"><span className="hidden rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500 sm:inline-flex">{visibleEvents.length} compromisso(s)</span><div className="inline-flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => { setLoading(true); setViewMode('month'); }} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${viewMode === 'month' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Mês</button><button type="button" onClick={() => { setLoading(true); setViewMode('week'); }} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${viewMode === 'week' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Semana</button></div></div>
+          <div className="flex items-center gap-2"><span className="hidden rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500 sm:inline-flex">{visibleEvents.length} compromisso(s)</span><div className="inline-flex rounded-xl bg-slate-100 p-1">{mobile ? <><button type="button" onClick={() => changeViewMode('month')} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${viewMode === 'month' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Lista</button><button type="button" onClick={() => changeViewMode('calendar')} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${viewMode === 'calendar' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Calendário</button><button type="button" onClick={() => changeViewMode('week')} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${viewMode === 'week' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Semana</button></> : <><button type="button" onClick={() => changeViewMode('month')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${viewMode === 'month' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Mês</button><button type="button" onClick={() => changeViewMode('week')} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${viewMode === 'week' ? 'bg-white text-primary shadow-sm' : 'text-slate-500'}`}>Semana</button></>}</div></div>
         </header>
 
         <div className="hidden flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-slate-100 bg-white px-4 py-2 sm:flex">
@@ -540,7 +598,9 @@ export default function CalendarPage() {
 
         {mobile ? viewMode === 'week'
           ? <MobileWeekView days={week.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
-          : <div className="divide-y divide-slate-100">{loading ? <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p> : visibleEvents.length ? visibleEvents.map(event => <article key={event.id} className="flex gap-3 p-4"><div className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-slate-100 py-2"><strong className="text-lg text-slate-800">{eventStart(event).getDate()}</strong><span className="text-[10px] font-bold uppercase text-slate-400">{WEEKDAYS[eventStart(event).getDay()]}</span></div><div className="min-w-0 flex-1"><AgendaEvent event={event} onClick={() => setEditor(event)} />{event.htmlLink && <a href={event.htmlLink} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary">Abrir no Google <ExternalLink className="h-3 w-3" /></a>}</div></article>) : <p className="p-10 text-center text-sm text-slate-500">Nenhum compromisso neste mês.</p>}</div>
+          : viewMode === 'calendar'
+            ? <MobileMonthCalendar cursor={cursor} days={grid.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
+            : <div className="divide-y divide-slate-100">{loading ? <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p> : visibleEvents.length ? visibleEvents.map(event => <article key={event.id} className="flex gap-3 p-4"><div className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-slate-100 py-2"><strong className="text-lg text-slate-800">{eventStart(event).getDate()}</strong><span className="text-[10px] font-bold uppercase text-slate-400">{WEEKDAYS[eventStart(event).getDay()]}</span></div><div className="min-w-0 flex-1"><AgendaEvent event={event} onClick={() => setEditor(event)} />{event.htmlLink && <a href={event.htmlLink} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary">Abrir no Google <ExternalLink className="h-3 w-3" /></a>}</div></article>) : <p className="p-10 text-center text-sm text-slate-500">Nenhum compromisso neste mês.</p>}</div>
           : viewMode === 'week' ? <WeekView days={week.days} events={visibleEvents} todayKey={todayKey} onCreate={createAt} onEdit={setEditor} /> : <div>
           <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">{WEEKDAYS.map((day, index) => <div key={day} className={`px-2 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-400 ${index === 0 || index === 6 ? 'bg-slate-100/70' : ''}`}>{day}</div>)}</div>
           <div className="grid grid-cols-7">{grid.days.map(day => {
