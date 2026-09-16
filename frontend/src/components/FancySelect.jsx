@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
+function normalizeTypeahead(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim();
+}
+
 export default function FancySelect({
   options = [],
   value = '',
@@ -10,16 +18,18 @@ export default function FancySelect({
   disabled = false,
   ariaLabel,
   size = 'default',
+  typeahead = false,
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef(null);
+  const selectedOptionRef = useRef(null);
+  const typeBufferRef = useRef('');
+  const typeTimerRef = useRef(null);
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) setOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -34,7 +44,17 @@ export default function FancySelect({
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [open]);
 
-  const selected = options.find((o) => o.value === value);
+  useEffect(() => {
+    if (!open) return;
+    selectedOptionRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [open, value]);
+
+  useEffect(() => () => {
+    if (typeTimerRef.current) window.clearTimeout(typeTimerRef.current);
+  }, []);
+
+  const selected = options.find((option) => option.value === value);
+
   const toggleOpen = () => {
     if (!open) {
       const rect = containerRef.current?.getBoundingClientRect();
@@ -43,12 +63,50 @@ export default function FancySelect({
     setOpen((current) => !current);
   };
 
+  const chooseByKeyboard = (event) => {
+    if (!typeahead || disabled || event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1) return;
+    const character = normalizeTypeahead(event.key);
+    if (!character) return;
+
+    event.preventDefault();
+    if (typeTimerRef.current) window.clearTimeout(typeTimerRef.current);
+    typeBufferRef.current += character;
+
+    let match = options.find((option) => !option.disabled && normalizeTypeahead(option.label).startsWith(typeBufferRef.current));
+    if (!match && typeBufferRef.current.length > 1) {
+      typeBufferRef.current = character;
+      match = options.find((option) => !option.disabled && normalizeTypeahead(option.label).startsWith(character));
+    }
+
+    if (match) onChange?.(match.value);
+    typeTimerRef.current = window.setTimeout(() => {
+      typeBufferRef.current = '';
+    }, 800);
+  };
+
+  const moveSelection = (direction) => {
+    const enabledOptions = options.filter((option) => !option.disabled);
+    if (!enabledOptions.length) return;
+    const currentIndex = enabledOptions.findIndex((option) => option.value === value);
+    const nextIndex = currentIndex < 0 ? 0 : Math.min(Math.max(currentIndex + direction, 0), enabledOptions.length - 1);
+    onChange?.(enabledOptions[nextIndex].value);
+  };
+
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <button
         type="button"
         disabled={disabled}
         onClick={toggleOpen}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!open) setOpen(true);
+            moveSelection(event.key === 'ArrowDown' ? 1 : -1);
+            return;
+          }
+          chooseByKeyboard(event);
+        }}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -66,24 +124,25 @@ export default function FancySelect({
             {options.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-400">Sem opções</div>
             ) : (
-              options.map((opt) => {
-                const isSelected = opt.value === value;
+              options.map((option) => {
+                const isSelected = option.value === value;
                 return (
                   <button
+                    ref={isSelected ? selectedOptionRef : null}
                     type="button"
-                    key={opt.value ?? opt.label}
+                    key={option.value ?? option.label}
                     role="option"
                     aria-selected={isSelected}
-                    disabled={opt.disabled}
+                    disabled={option.disabled}
                     onClick={() => {
-                      if (opt.disabled) return;
-                      onChange && onChange(opt.value);
+                      if (option.disabled) return;
+                      onChange?.(option.value);
                       setOpen(false);
                     }}
-                    className={`flex min-h-10 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-all ${opt.disabled ? 'cursor-not-allowed text-gray-300' : isSelected ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-800 hover:bg-slate-50'}`}
+                    className={`flex min-h-10 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-all ${option.disabled ? 'cursor-not-allowed text-gray-300' : isSelected ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-800 hover:bg-slate-50'}`}
                   >
                     {isSelected ? <Check size={16} className="text-primary" /> : <span className="w-4" />}
-                    <span className="truncate">{opt.label}</span>
+                    <span className="truncate">{option.label}</span>
                   </button>
                 );
               })

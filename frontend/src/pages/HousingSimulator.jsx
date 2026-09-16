@@ -157,8 +157,8 @@ function CurrencyField({ value, onChange, placeholder }) {
   );
 }
 
-function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel }) {
-  return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} />;
+function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel, typeahead = true }) {
+  return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} typeahead={typeahead} />;
 }
 
 function Choice({ selected, onClick, children, tone = 'blue' }) {
@@ -602,10 +602,10 @@ function HousingSimulator() {
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><MapPin className="h-5 w-5 text-primary" /> Localização do imóvel</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Estado">
-                      <ResponsiveSelect ariaLabel="Estado" value={form.uf} onChange={(value) => { setForm((current) => ({ ...current, uf: value, municipality: '' })); setResult(null); setComparison(null); }} options={Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => ({ value: uf, label: uf }))} />
+                      <ResponsiveSelect typeahead ariaLabel="Estado" value={form.uf} onChange={(value) => { setForm((current) => ({ ...current, uf: value, municipality: '' })); setResult(null); setComparison(null); }} options={Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => ({ value: uf, label: uf }))} />
                     </Field>
                     <Field label="Município" hint={`Tabela vigente desde ${MUNICIPAL_TABLE_EFFECTIVE_DATE}.`}>
-                      <ResponsiveSelect ariaLabel="Município" disabled={!form.uf} value={form.municipality} onChange={(value) => set('municipality', value)} options={municipalities.map(([name]) => ({ value: name, label: name }))} />
+                      <ResponsiveSelect typeahead ariaLabel="Município" disabled={!form.uf} value={form.municipality} onChange={(value) => set('municipality', value)} options={municipalities.map(([name]) => ({ value: name, label: name }))} />
                     </Field>
                   </div>
                 </section>
