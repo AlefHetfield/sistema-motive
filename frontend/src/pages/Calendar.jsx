@@ -107,7 +107,19 @@ const EVENT_LEGEND = [
 ];
 
 const propertyLabel = property => [property.code, property.title].filter(Boolean).join(' · ');
-const propertyVisitTitle = property => ['Visita', String(property?.neighborhood || '').trim()].filter(Boolean).join(' ');
+const cleanPropertyTitle = value => String(value || '')
+  .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
+  .replace(/\s*[-–]\s*\d+\s*(?:dorm(?:it[oó]rios?)?|quartos?).*$/i, '')
+  .replace(/\s*,?\s*R\$\s*[\d.\s]+(?:,\d{2})?\s*$/i, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+const propertyVisitLocation = property => {
+  const type = String(property?.propertyType || '').toLocaleLowerCase('pt-BR');
+  const condominium = cleanPropertyTitle(property?.title);
+  const neighborhood = String(property?.neighborhood || '').trim();
+  return type.includes('apartamento') ? condominium || neighborhood : neighborhood || condominium;
+};
+const propertyVisitTitle = property => ['Visita', propertyVisitLocation(property)].filter(Boolean).join(' ');
 const isAutomaticVisitTitle = title => /^Visita(?:\s*-\s*.*|\s+[^-()]*)?$/i.test(String(title || '').trim());
 const isTimeExemptEvent = event => isAllDay(event) || String(event.title || '').toLocaleLowerCase('pt-BR').includes('folga');
 
