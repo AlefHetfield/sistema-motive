@@ -65,11 +65,16 @@ export default function Tasks() {
   const [error, setError] = useState('');
   const [editor, setEditor] = useState(null);
   const [newTitle, setNewTitle] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
   const [busy, setBusy] = useState(false);
   const [newList, setNewList] = useState('');
   const [shared, setShared] = useState(false);
   const [listForm, setListForm] = useState(false);
   const [initialClient, setInitialClient] = useState(null);
+  const taskViewRef = useRef(null);
+  const queryKeyRef = useRef('');
+  taskViewRef.current = { view, socialDone, delegatedStatus, assigneeId, clientId, listId, search, userId: options?.userId };
+  queryKeyRef.current = JSON.stringify([view, socialDone, delegatedStatus, assigneeId, clientId, listId, search, page]);
   useEffect(() => {
     if (!linkedTaskId) return;
     const controller = new AbortController();
@@ -112,15 +117,51 @@ export default function Tasks() {
     if (nextView === view && nextList === listId && page === 1) return;
     setView(nextView); setListId(nextList); setPage(1); setLoading(true);
   };
+  const taskIsVisible = task => {
+    if (!task || task.deletedAt) return false;
+    const { view: currentView, socialDone: showSocialDone, delegatedStatus: currentDelegatedStatus, assigneeId: currentAssigneeId, clientId: currentClientId, listId: currentListId, search: currentSearch, userId } = taskViewRef.current;
+    const taskAssigneeId = String(task.assigneeId ?? task.assignee?.id ?? '');
+    if (currentAssigneeId && taskAssigneeId !== currentAssigneeId) return false;
+    if (currentClientId && String(task.clientId ?? task.client?.id ?? '') !== currentClientId) return false;
+    if (currentListId && String(task.listId ?? task.list?.id ?? '') !== currentListId) return false;
+    if (currentSearch && !task.title.toLocaleLowerCase('pt-BR').includes(currentSearch.toLocaleLowerCase('pt-BR'))) return false;
+    if (currentView === 'social') return task.category === 'SOCIAL' && (showSocialDone ? task.status === 'DONE' : task.status !== 'DONE');
+    if (currentView === 'done') return task.status === 'DONE';
+    if (currentView === 'delegated') {
+      if (String(task.delegatedById ?? '') !== String(userId ?? '') || taskAssigneeId === String(userId ?? '')) return false;
+      return currentDelegatedStatus === 'all' || (currentDelegatedStatus === 'done' ? task.status === 'DONE' : task.status !== 'DONE');
+    }
+    if (task.status === 'DONE') return false;
+    if (currentView === 'day') return task.myDay?.slice(0, 10) === today() && taskAssigneeId === String(userId ?? '');
+    if (currentView === 'important') return task.important;
+    if (currentView === 'overdue') return Boolean(task.dueDate && task.dueDate.slice(0, 10) < today());
+    if (currentView === 'planned') return Boolean(task.dueDate);
+    if (currentView === 'waiting') return task.status === 'WAITING';
+    return true;
+  };
+  const reconcileTask = saved => {
+    setData(current => {
+      if (!current) return current;
+      const existed = current.tasks.some(item => item.id === saved.id);
+      const visible = taskIsVisible(saved);
+      const tasks = visible
+        ? existed ? current.tasks.map(item => item.id === saved.id ? saved : item) : [saved, ...current.tasks]
+        : current.tasks.filter(item => item.id !== saved.id);
+      const total = Math.max(0, current.total + (visible && !existed ? 1 : !visible && existed ? -1 : 0));
+      return { ...current, tasks, total, pages: Math.ceil(total / 50) };
+    });
+  };
   const changeTask = async (task, patch, undo = false) => {
     if (busy || pendingChanges.current.has(task.id)) return;
+    const startedQueryKey = queryKeyRef.current;
     mutationRevision.current += 1;
     pendingChanges.current.set(task.id, patch);
     setOptimisticChanges(new Map(pendingChanges.current));
     try {
       const saved = await taskApi(`/${task.id}`, { method:'PATCH', body:{...patch,version:task.version} });
       if (!mounted.current) return;
-      setData(current => current ? { ...current, tasks: current.tasks.map(item => item.id === saved.id ? saved : item) } : current);
+      if (startedQueryKey === queryKeyRef.current) reconcileTask(saved);
+      else reload();
       if (undo) toast.success(patch.remove ? 'Tarefa removida.' : 'Tarefa concluída.', { action:{label:'Desfazer',onClick:async () => {
         if (!mounted.current) return;
         await changeTask(saved, patch.remove ? {restore:true} : {status:task.status});
@@ -131,19 +172,22 @@ export default function Tasks() {
       pendingChanges.current.delete(task.id);
       if (mounted.current) {
         setOptimisticChanges(new Map(pendingChanges.current));
-        if (!pendingChanges.current.size) reload();
       }
     }
   };
   const quickCreate = async event => {
-    event.preventDefault(); if (!newTitle.trim() || !options || busy) return;
-    setBusy(true);
+    event.preventDefault(); if (!newTitle.trim() || !options || creatingTask) return;
+    const startedQueryKey = queryKeyRef.current;
+    setCreatingTask(true);
     try {
       const body = { title:newTitle.trim(), ...(view === 'social' ? { category: 'SOCIAL' } : {}), assigneeId: Number(assigneeId) || options.userId,
         ...(listId ? {listId:Number(listId)} : {}), ...(clientId ? {clientId:Number(clientId)} : {}),
         ...(view === 'day' ? {myDay:today(),assigneeId:options.userId} : {}), ...(view === 'important' ? {important:true} : {}), ...(view === 'waiting' ? {status:'WAITING'} : {}) };
-      await taskApi('',{method:'POST',body}); setNewTitle(''); reload(); toast.success('Tarefa criada.');
-    } catch(err) {toast.error(err.message);} finally {setBusy(false);}
+      const created = await taskApi('',{method:'POST',body});
+      if (startedQueryKey === queryKeyRef.current) reconcileTask(created);
+      else reload();
+      setNewTitle(''); toast.success('Tarefa criada.');
+    } catch(err) {toast.error(err.message);} finally {setCreatingTask(false);}
   };
   const createList = async event => {
     event.preventDefault(); if (busy) return; setBusy(true);
@@ -180,7 +224,7 @@ export default function Tasks() {
           <div className="hidden flex-wrap justify-end gap-2 lg:flex">{canReorder && <><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} aria-label={`Subir ${task.title} na fila`} onClick={() => movePublication(task, 'up')} className="text-gray-500 disabled:opacity-30"><ArrowUp size={18} /></button><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} aria-label={`Descer ${task.title} na fila`} onClick={() => movePublication(task, 'down')} className="text-gray-500 disabled:opacity-30"><ArrowDown size={18} /></button></>}<button type="button" disabled={taskBusy} aria-label={`Importância de ${task.title}`} aria-pressed={task.important} onClick={()=>changeTask(task,{important:!task.important})} className={task.important?'text-amber-500':'text-gray-300 hover:text-amber-500'}><Star size={19} fill={task.important?'currentColor':'none'}/></button><button type="button" disabled={taskBusy} aria-label={`Adicionar ${task.title} ao meu dia`} onClick={()=>changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()})} className={task.myDay?.slice(0,10)===today()?'text-primary':'text-gray-300 hover:text-primary'}><Sun size={19}/></button><button type="button" disabled={taskBusy} aria-label={`Excluir ${task.title}`} onClick={()=>changeTask(task,{remove:true},true)} className="text-gray-300 hover:text-red-600"><Trash2 size={17}/></button></div>
         </article>; })}{!data?.tasks.length&&!error&&<div className="rounded-2xl border border-dashed bg-white p-10 text-center"><ListTodo className="mx-auto mb-3 text-primary" size={32}/><h4 className="font-semibold text-gray-800">Tudo tranquilo por aqui</h4><p className="mt-2 text-sm text-gray-500">Nenhuma tarefa nesta visualização. Crie uma tarefa ou ajuste os filtros.</p></div>}</div>}
         {data?.pages>1&&<div className="flex items-center justify-center gap-4"><button disabled={loading||data.page<=1} onClick={()=>{setPage(data.page-1);setLoading(true);}} aria-label="Página anterior"><ArrowLeft size={18}/></button><span className="text-sm">{data.page}/{data.pages}</span><button disabled={loading||data.page>=data.pages} onClick={()=>{setPage(data.page+1);setLoading(true);}} aria-label="Próxima página"><ArrowRight size={18}/></button></div>}
-        {view !== 'delegated' && <form onSubmit={quickCreate} className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><input required maxLength={250} value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Adicionar uma tarefa e pressionar Enter" aria-label="Título da nova tarefa" className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none"/><button disabled={busy||!options||!newTitle.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Adicionar</button></form>}
+        {view !== 'delegated' && <form onSubmit={quickCreate} className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><input required disabled={creatingTask} maxLength={250} value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Adicionar uma tarefa e pressionar Enter" aria-label="Título da nova tarefa" className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none disabled:opacity-60"/><button disabled={creatingTask||!options||!newTitle.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{creatingTask ? 'Adicionando…' : 'Adicionar'}</button></form>}
         {activeList&&(options.canManageAll||(!activeList.shared&&activeList.ownerId===options.userId))&&<button type="button" className="text-xs text-gray-500 underline" onClick={async()=>{if(!window.confirm('Excluir esta lista? As tarefas serão mantidas sem lista.'))return;try{await taskApi(`/lists/${activeList.id}`,{method:'DELETE'});setOptionsRevision(value => value + 1);filter('all');reload();}catch(err){toast.error(err.message);}}}>Excluir lista (manter tarefas)</button>}
       </main>
     </div>

@@ -107,17 +107,19 @@ export function createTaskRouter(prisma, requireAuth) {
     if (!managesTasks(user) && assigneeId !== user.id) throw fail('Você só pode atribuir tarefas a si mesmo.', 403);
     if (data.clientId !== undefined && !canReadClients(user)) throw fail('Seu perfil não permite vincular clientes.', 403);
     const listId = data.listId === undefined ? previous?.listId : data.listId;
+    const validateAssignee = !previous || data.assigneeId !== undefined;
+    const validateList = Boolean(listId && (!previous || data.listId !== undefined || data.assigneeId !== undefined));
     // Independent validations can share a round trip window without skipping permissions.
     const [assignee, property, client, list] = await Promise.all([
-      prisma.user.findUnique({ where: { id: assigneeId }, select: { isActive: true } }),
+      validateAssignee ? prisma.user.findUnique({ where: { id: assigneeId }, select: { isActive: true } }) : null,
       data.propertyId ? prisma.property.findUnique({ where: { id: data.propertyId }, select: { id: true } }) : null,
       data.clientId ? prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } }) : null,
-      listId ? prisma.taskList.findFirst({ where: { id: listId, ...listScope(user) } }) : null,
+      validateList ? prisma.taskList.findFirst({ where: { id: listId, ...listScope(user) } }) : null,
     ]);
     if (data.propertyId && !property) throw fail('Imóvel não encontrado.');
-    if (!assignee || (!assignee.isActive && (!previous || assigneeId !== previous.assigneeId))) throw fail('Selecione um responsável ativo.');
+    if (validateAssignee && (!assignee || (!assignee.isActive && (!previous || assigneeId !== previous.assigneeId)))) throw fail('Selecione um responsável ativo.');
     if (data.clientId && !client) throw fail('Cliente não encontrado.');
-    if (listId && (!list || (!list.shared && list.ownerId !== assigneeId))) throw fail('Use uma lista compartilhada ou pertencente ao responsável.');
+    if (validateList && (!list || (!list.shared && list.ownerId !== assigneeId))) throw fail('Use uma lista compartilhada ou pertencente ao responsável.');
     return assigneeId;
   }
   router.get('/options', async (req, res) => {
