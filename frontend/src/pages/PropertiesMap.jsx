@@ -13,19 +13,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  ExternalLink,
   FilterX,
+  Globe2,
   Home,
   Image as ImageIcon,
   Loader2,
   MapPin,
   Maximize2,
+  Megaphone,
   MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
   Plus,
-  Route,
   Search,
   SlidersHorizontal,
   Star,
@@ -166,8 +166,6 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
   if (!gallery.length && !siteCover.length && !isLoadingPhotos && propertyCoverUrl(property) && !failedPhotoIds.has('cover')) gallery.push({ id: 'cover', name: property.title, url: propertyCoverUrl(property) });
   const displayedPhotoIndex = Math.min(activePhoto, Math.max(0, gallery.length - 1));
   const displayedPhoto = gallery[displayedPhotoIndex];
-  const hasCoordinates = Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude));
-  const routeUrl = hasCoordinates ? `https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address)}`;
   const copyOwnerWhatsapp = async () => {
     try {
       await navigator.clipboard.writeText(formatWhatsapp(property.ownerWhatsapp));
@@ -230,13 +228,12 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
           <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"><span>Informações complementares</span><ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-90" /></summary><div className={`whitespace-pre-wrap break-words border-t border-slate-100 bg-slate-50/60 px-3.5 py-3 text-sm leading-6 ${property.additionalInformation ? 'text-gray-600' : 'italic text-gray-400'}`}>{property.additionalInformation || 'Nenhuma informação complementar cadastrada.'}</div></details>
         </div>
       </div>
-      <footer className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mobile-safe-bottom grid-cols-2 gap-2 border-t border-slate-200 bg-slate-50 p-3`}>
-        <Link to={`/tasks?view=social&newProperty=${property.id}`} className="col-span-2 rounded-xl bg-secondary px-3 py-2.5 text-center text-sm font-bold text-white transition hover:bg-primary">Criar publicação</Link>
-        <Link to={`/agenda?newProperty=${property.id}`} className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><CalendarPlus className="h-4 w-4" />Agendar visita</Link>
-        <a href={routeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><Route className="h-4 w-4" />Abrir rota</a>
-        {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-primary ring-1 ring-gray-200 hover:bg-primary/5"><ExternalLink className="h-4 w-4" />Abrir ficha</a>}
-        <button type="button" onClick={onEdit} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white hover:bg-[#274D68]"><Pencil className="h-4 w-4" />Editar</button>
-        <button type="button" onClick={onDelete} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-100"><Trash2 className="h-4 w-4" />Excluir</button>
+      <footer className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mobile-safe-bottom ${property.sourceUrl ? 'grid-cols-4' : 'grid-cols-3'} gap-2 border-t border-slate-200 bg-slate-50 p-3`}>
+        <Link to={`/agenda?newProperty=${property.id}`} className={`${property.sourceUrl ? 'col-span-4' : 'col-span-3'} inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]`}><CalendarPlus className="h-4 w-4" />Agendar visita</Link>
+        <Link to={`/tasks?view=social&newProperty=${property.id}`} aria-label="Criar publicação deste imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-secondary ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-95"><Megaphone className="h-4 w-4" /><span className="truncate">Publicar</span></Link>
+        {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" aria-label="Abrir imóvel no site" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-primary ring-1 ring-slate-200 transition hover:bg-primary/5 active:scale-95"><Globe2 className="h-4 w-4" /><span className="truncate">Site</span></a>}
+        <button type="button" onClick={onEdit} aria-label="Editar imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-primary ring-1 ring-slate-200 transition hover:bg-primary/5 active:scale-95"><Pencil className="h-4 w-4" /><span className="truncate">Editar</span></button>
+        <button type="button" onClick={onDelete} aria-label="Excluir imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-red-50 px-1 py-2 text-[11px] font-bold text-red-600 ring-1 ring-red-100 transition hover:bg-red-100 active:scale-95"><Trash2 className="h-4 w-4" /><span className="truncate">Excluir</span></button>
       </footer>
     </aside>
   );
