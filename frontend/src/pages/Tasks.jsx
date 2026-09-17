@@ -1,5 +1,5 @@
 import useMobileLayout from '../hooks/useMobileLayout';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import TaskPropertyCard from '../components/TaskPropertyCard';
 import { Check, Circle, Star, Sun, ListTodo, CalendarDays, Clock, Plus, Search, Trash2, Users, UserRound, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
@@ -44,8 +44,17 @@ export default function Tasks() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
+  const [optionsRevision, setOptionsRevision] = useState(0);
+  const pendingChanges = useRef(new Map());
+  const mutationRevision = useRef(0);
+  const mounted = useRef(true);
+  const [optimisticChanges, setOptimisticChanges] = useState(new Map());
   useEffect(() => {
-    const refresh = () => { if (!document.hidden) setRevision(value => value + 1); };
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) { setRevision(value => value + 1); setOptionsRevision(value => value + 1); } };
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
   }, []);
@@ -80,11 +89,16 @@ export default function Tasks() {
     const controller = new AbortController();
     taskApi('/options', { signal: controller.signal }).then(setOptions).catch(err => { if (!controller.signal.aborted) setError(err.message); });
     return () => controller.abort();
-  }, [revision]);
+  }, [optionsRevision]);
   useEffect(() => {
+    // A refresh must not replace a pending change with an older server snapshot.
+    // The last mutation triggers one refresh for the whole batch.
+    if (pendingChanges.current.size) return;
     const controller = new AbortController();
+    const startedAtRevision = mutationRevision.current;
     const filters = new URLSearchParams({ view, ...(view === 'social' ? { status: socialDone ? 'done' : 'pending', order: socialOrder } : {}), ...(view === 'delegated' ? { status: delegatedStatus } : {}), page: String(page), ...(listId ? { listId } : {}), ...(assigneeId ? { assigneeId } : {}), ...(clientId ? { clientId } : {}), ...(search ? { q:search } : {}) });
-    taskApi(`?${filters}`, { signal:controller.signal }).then(result => { setData(result); setError(''); }).catch(err => { if (!controller.signal.aborted) setError(err.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    const isCurrent = () => !controller.signal.aborted && startedAtRevision === mutationRevision.current;
+    taskApi(`?${filters}`, { signal:controller.signal }).then(result => { if (isCurrent()) { setData(result); setError(''); } }).catch(err => { if (isCurrent()) setError(err.message); }).finally(() => { if (isCurrent()) setLoading(false); });
     return () => controller.abort();
   }, [view, listId, assigneeId, clientId, search, page, revision, currentDay, delegatedStatus, socialDone, socialOrder]);
   useEffect(() => {
@@ -99,14 +113,27 @@ export default function Tasks() {
     setView(nextView); setListId(nextList); setPage(1); setLoading(true);
   };
   const changeTask = async (task, patch, undo = false) => {
-    if (busy) return;
-    setBusy(true);
+    if (busy || pendingChanges.current.has(task.id)) return;
+    mutationRevision.current += 1;
+    pendingChanges.current.set(task.id, patch);
+    setOptimisticChanges(new Map(pendingChanges.current));
     try {
       const saved = await taskApi(`/${task.id}`, { method:'PATCH', body:{...patch,version:task.version} });
-      reload();
+      if (!mounted.current) return;
+      setData(current => current ? { ...current, tasks: current.tasks.map(item => item.id === saved.id ? saved : item) } : current);
       if (undo) toast.success(patch.remove ? 'Tarefa removida.' : 'Tarefa concluída.', { action:{label:'Desfazer',onClick:async () => {
-        try { await taskApi(`/${saved.id}`,{method:'PATCH',body:{version:saved.version,...(patch.remove ? {restore:true} : {status:task.status})}}); reload(); } catch(err) {toast.error(err.message);} } } });
-    } catch(err) { toast.error(err.message); reload(); } finally { setBusy(false); }
+        if (!mounted.current) return;
+        await changeTask(saved, patch.remove ? {restore:true} : {status:task.status});
+      } } });
+    } catch(err) {
+      if (mounted.current) toast.error(err.message);
+    } finally {
+      pendingChanges.current.delete(task.id);
+      if (mounted.current) {
+        setOptimisticChanges(new Map(pendingChanges.current));
+        if (!pendingChanges.current.size) reload();
+      }
+    }
   };
   const quickCreate = async event => {
     event.preventDefault(); if (!newTitle.trim() || !options || busy) return;
@@ -120,13 +147,13 @@ export default function Tasks() {
   };
   const createList = async event => {
     event.preventDefault(); if (busy) return; setBusy(true);
-    try { const list=await taskApi('/lists',{method:'POST',body:{name:newList,shared}}); setNewList('');setListForm(false);reload();filter('all',String(list.id)); }
+    try { const list=await taskApi('/lists',{method:'POST',body:{name:newList,shared}}); setNewList('');setListForm(false);setOptionsRevision(value => value + 1);reload();filter('all',String(list.id)); }
     catch(err){toast.error(err.message);}finally{setBusy(false);}
   };
   const activeList = options?.lists.find(list=>String(list.id)===listId);
   const canReorder = view === 'social' && socialOrder === 'manual' && !socialDone && options?.canManageAll && !assigneeId && !clientId && !search;
   const movePublication = async (task, direction) => {
-    if (busy) return;
+    if (busy || pendingChanges.current.size) return;
     setBusy(true);
     try { await taskApi(`/${task.id}/social-order`, { method: 'PATCH', body: { version: task.version, direction } }); }
     catch (err) { toast.error(err.message); }
@@ -145,16 +172,16 @@ export default function Tasks() {
         {view === 'delegated' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary/5 p-3"><p className="text-sm text-gray-600">Demandas que você atribuiu a outras pessoas.</p><FancySelect className="min-w-44" size="compact" ariaLabel="Situação das tarefas delegadas" value={delegatedStatus} onChange={value => { setDelegatedStatus(value); setPage(1); setLoading(true); }} options={[{ value: 'pending', label: 'Pendentes' }, { value: 'done', label: 'Concluídas' }, { value: 'all', label: 'Todas' }]} /></div>}
         {clientId&&<div className="flex items-center justify-between rounded-xl bg-blue-50 p-3 text-sm text-blue-800"><span>Tarefas do cliente {initialClient?.nome||`#${clientId}`}</span><button type="button" onClick={()=>{setParams({});setInitialClient(null);setPage(1);}}>Remover filtro</button></div>}
         <form onSubmit={e=>{e.preventDefault();setSearch(query);setPage(1);setLoading(true);reload();}} className="flex gap-2"><input aria-label="Pesquisar tarefas" placeholder="Pesquisar pelo título da tarefa" className={`${inputClass} min-w-0 flex-1`} value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" aria-label="Pesquisar" className="rounded-xl border bg-white px-4"><Search size={18}/></button></form>
-        {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={reload} className="underline">Tentar novamente</button></p>}
-        {loading?<p role="status" className="p-8 text-center text-sm text-gray-500">Carregando tarefas…</p>:<div className="space-y-2">{data?.tasks.map(task=><article key={task.id} className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm lg:flex lg:gap-3 lg:p-4">
-          <button type="button" disabled={busy} aria-label={task.status==='DONE'?`Reabrir ${task.title}`:`Concluir ${task.title}`} onClick={()=>changeTask(task,{status:task.status==='DONE'?'TODO':'DONE'},task.status!=='DONE')} className={`mt-1 rounded-full ${task.status==='DONE'?'text-emerald-600':'text-gray-400 hover:text-primary'}`}>{task.status==='DONE'?<Check size={22}/>:<Circle size={22}/>}</button>
-          <div className="min-w-0 flex-1 pr-9 lg:pr-0"><button type="button" onClick={()=>setEditor(task)} className="w-full text-left"><span className={`block break-words font-medium ${task.status==='DONE'?'text-gray-400 line-through':'text-slate-800'}`}>{task.title}</span><span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500"><span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-indigo-700"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-[9px] font-bold">{task.assignee.nome.charAt(0)}</span>{task.assignee.nome}</span>{task.client&&<span className="rounded-full bg-slate-100 px-2 py-1">{task.client.nome}</span>}{task.dueDate&&<span className={task.dueDate.slice(0,10)<today()&&task.status!=='DONE'?'font-semibold text-red-600':''}>{taskDateLabel(task.dueDate)}</span>}<span>{statusLabels[task.status]}</span>{task.steps.length>0&&<span>{task.steps.filter(step=>step.done).length}/{task.steps.length} etapas</span>}</span></button>{task.property && <div className="mt-3"><TaskPropertyCard property={task.property} /></div>}</div>
-          <div className="absolute right-2 top-2 lg:hidden"><button type="button" aria-label={`Ações de ${task.title}`} aria-expanded={openActionTaskId === task.id} onClick={()=>setOpenActionTaskId(current=>current===task.id?null:task.id)} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"><MoreHorizontal size={20}/></button>{openActionTaskId === task.id && <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">{canReorder && <><button type="button" disabled={busy || (data.page === 1 && data.tasks[0]?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'up');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowUp size={17}/> Subir na fila</button><button type="button" disabled={busy || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'down');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowDown size={17}/> Descer na fila</button></>}<button type="button" disabled={busy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{important:!task.important});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Star size={17} fill={task.important?'currentColor':'none'} className={task.important?'text-amber-500':''}/>{task.important?'Remover importância':'Marcar importante'}</button><button type="button" disabled={busy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Sun size={17}/> {task.myDay?.slice(0,10)===today()?'Remover do meu dia':'Adicionar ao meu dia'}</button><button type="button" disabled={busy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{remove:true},true);}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"><Trash2 size={17}/> Excluir tarefa</button></div>}</div>
-          <div className="hidden flex-wrap justify-end gap-2 lg:flex">{canReorder && <><button type="button" disabled={busy || (data.page === 1 && data.tasks[0]?.id === task.id)} aria-label={`Subir ${task.title} na fila`} onClick={() => movePublication(task, 'up')} className="text-gray-500 disabled:opacity-30"><ArrowUp size={18} /></button><button type="button" disabled={busy || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} aria-label={`Descer ${task.title} na fila`} onClick={() => movePublication(task, 'down')} className="text-gray-500 disabled:opacity-30"><ArrowDown size={18} /></button></>}<button type="button" disabled={busy} aria-label={`Importância de ${task.title}`} aria-pressed={task.important} onClick={()=>changeTask(task,{important:!task.important})} className={task.important?'text-amber-500':'text-gray-300 hover:text-amber-500'}><Star size={19} fill={task.important?'currentColor':'none'}/></button><button type="button" disabled={busy} aria-label={`Adicionar ${task.title} ao meu dia`} onClick={()=>changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()})} className={task.myDay?.slice(0,10)===today()?'text-primary':'text-gray-300 hover:text-primary'}><Sun size={19}/></button><button type="button" disabled={busy} aria-label={`Excluir ${task.title}`} onClick={()=>changeTask(task,{remove:true},true)} className="text-gray-300 hover:text-red-600"><Trash2 size={17}/></button></div>
-        </article>)}{!data?.tasks.length&&!error&&<div className="rounded-2xl border border-dashed bg-white p-10 text-center"><ListTodo className="mx-auto mb-3 text-primary" size={32}/><h4 className="font-semibold text-gray-800">Tudo tranquilo por aqui</h4><p className="mt-2 text-sm text-gray-500">Nenhuma tarefa nesta visualização. Crie uma tarefa ou ajuste os filtros.</p></div>}</div>}
+        {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={() => { if (!options) setOptionsRevision(value => value + 1); reload(); }} className="underline">Tentar novamente</button></p>}
+        {loading?<p role="status" className="p-8 text-center text-sm text-gray-500">Carregando tarefas…</p>:<div className="space-y-2">{data?.tasks.map(originalTask => { const patch = optimisticChanges.get(originalTask.id); const task = { ...originalTask, ...patch }; const taskBusy = busy || Boolean(patch); return <article key={task.id} aria-busy={Boolean(patch)} className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm lg:flex lg:gap-3 lg:p-4">
+          <button type="button" disabled={taskBusy} aria-label={task.status==='DONE'?`Reabrir ${task.title}`:`Concluir ${task.title}`} onClick={()=>changeTask(task,{status:task.status==='DONE'?'TODO':'DONE'},task.status!=='DONE')} className={`mt-1 rounded-full ${task.status==='DONE'?'text-emerald-600':'text-gray-400 hover:text-primary'}`}>{task.status==='DONE'?<Check size={22}/>:<Circle size={22}/>}</button>
+          <div className="min-w-0 flex-1 pr-9 lg:pr-0"><button type="button" disabled={taskBusy} onClick={()=>setEditor(task)} className="w-full text-left"><span className={`block break-words font-medium ${task.status==='DONE'?'text-gray-400 line-through':'text-slate-800'}`}>{task.title}</span><span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500"><span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-indigo-700"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-[9px] font-bold">{task.assignee.nome.charAt(0)}</span>{task.assignee.nome}</span>{task.client&&<span className="rounded-full bg-slate-100 px-2 py-1">{task.client.nome}</span>}{task.dueDate&&<span className={task.dueDate.slice(0,10)<today()&&task.status!=='DONE'?'font-semibold text-red-600':''}>{taskDateLabel(task.dueDate)}</span>}<span role={patch ? 'status' : undefined}>{patch ? (patch.remove ? 'Removendo…' : 'Salvando…') : statusLabels[task.status]}</span>{task.steps.length>0&&<span>{task.steps.filter(step=>step.done).length}/{task.steps.length} etapas</span>}</span></button>{task.property && <div className="mt-3"><TaskPropertyCard property={task.property} /></div>}</div>
+          <div className="absolute right-2 top-2 lg:hidden"><button type="button" aria-label={`Ações de ${task.title}`} aria-expanded={openActionTaskId === task.id} onClick={()=>setOpenActionTaskId(current=>current===task.id?null:task.id)} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"><MoreHorizontal size={20}/></button>{openActionTaskId === task.id && <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">{canReorder && <><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'up');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowUp size={17}/> Subir na fila</button><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'down');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowDown size={17}/> Descer na fila</button></>}<button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{important:!task.important});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Star size={17} fill={task.important?'currentColor':'none'} className={task.important?'text-amber-500':''}/>{task.important?'Remover importância':'Marcar importante'}</button><button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Sun size={17}/> {task.myDay?.slice(0,10)===today()?'Remover do meu dia':'Adicionar ao meu dia'}</button><button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{remove:true},true);}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"><Trash2 size={17}/> Excluir tarefa</button></div>}</div>
+          <div className="hidden flex-wrap justify-end gap-2 lg:flex">{canReorder && <><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} aria-label={`Subir ${task.title} na fila`} onClick={() => movePublication(task, 'up')} className="text-gray-500 disabled:opacity-30"><ArrowUp size={18} /></button><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} aria-label={`Descer ${task.title} na fila`} onClick={() => movePublication(task, 'down')} className="text-gray-500 disabled:opacity-30"><ArrowDown size={18} /></button></>}<button type="button" disabled={taskBusy} aria-label={`Importância de ${task.title}`} aria-pressed={task.important} onClick={()=>changeTask(task,{important:!task.important})} className={task.important?'text-amber-500':'text-gray-300 hover:text-amber-500'}><Star size={19} fill={task.important?'currentColor':'none'}/></button><button type="button" disabled={taskBusy} aria-label={`Adicionar ${task.title} ao meu dia`} onClick={()=>changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()})} className={task.myDay?.slice(0,10)===today()?'text-primary':'text-gray-300 hover:text-primary'}><Sun size={19}/></button><button type="button" disabled={taskBusy} aria-label={`Excluir ${task.title}`} onClick={()=>changeTask(task,{remove:true},true)} className="text-gray-300 hover:text-red-600"><Trash2 size={17}/></button></div>
+        </article>; })}{!data?.tasks.length&&!error&&<div className="rounded-2xl border border-dashed bg-white p-10 text-center"><ListTodo className="mx-auto mb-3 text-primary" size={32}/><h4 className="font-semibold text-gray-800">Tudo tranquilo por aqui</h4><p className="mt-2 text-sm text-gray-500">Nenhuma tarefa nesta visualização. Crie uma tarefa ou ajuste os filtros.</p></div>}</div>}
         {data?.pages>1&&<div className="flex items-center justify-center gap-4"><button disabled={loading||data.page<=1} onClick={()=>{setPage(data.page-1);setLoading(true);}} aria-label="Página anterior"><ArrowLeft size={18}/></button><span className="text-sm">{data.page}/{data.pages}</span><button disabled={loading||data.page>=data.pages} onClick={()=>{setPage(data.page+1);setLoading(true);}} aria-label="Próxima página"><ArrowRight size={18}/></button></div>}
         {view !== 'delegated' && <form onSubmit={quickCreate} className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><input required maxLength={250} value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Adicionar uma tarefa e pressionar Enter" aria-label="Título da nova tarefa" className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none"/><button disabled={busy||!options||!newTitle.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Adicionar</button></form>}
-        {activeList&&(options.canManageAll||(!activeList.shared&&activeList.ownerId===options.userId))&&<button type="button" className="text-xs text-gray-500 underline" onClick={async()=>{if(!window.confirm('Excluir esta lista? As tarefas serão mantidas sem lista.'))return;try{await taskApi(`/lists/${activeList.id}`,{method:'DELETE'});filter('all');reload();}catch(err){toast.error(err.message);}}}>Excluir lista (manter tarefas)</button>}
+        {activeList&&(options.canManageAll||(!activeList.shared&&activeList.ownerId===options.userId))&&<button type="button" className="text-xs text-gray-500 underline" onClick={async()=>{if(!window.confirm('Excluir esta lista? As tarefas serão mantidas sem lista.'))return;try{await taskApi(`/lists/${activeList.id}`,{method:'DELETE'});setOptionsRevision(value => value + 1);filter('all');reload();}catch(err){toast.error(err.message);}}}>Excluir lista (manter tarefas)</button>}
       </main>
     </div>
     {editor&&options&&<TaskEditor key={editor.id||'new'} task={editor.new?null:editor} options={options} initialClient={initialClient} initialList={listId} initialDay={view === 'day'} initialSocial={view === 'social'} initialProperty={initialProperty} requireDelegation={Boolean(editor.new && view === 'delegated')} onClose={closeEditor} onSaved={reload}/>}

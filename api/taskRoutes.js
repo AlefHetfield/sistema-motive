@@ -103,20 +103,21 @@ export function createTaskRouter(prisma, requireAuth) {
     res.json({ ok: true });
   });
   async function validateRelations(data, user, previous) {
-    if (data.propertyId && !await prisma.property.findUnique({ where: { id: data.propertyId }, select: { id: true } })) throw fail('Imóvel não encontrado.');
     const assigneeId = data.assigneeId ?? previous?.assigneeId ?? user.id;
     if (!managesTasks(user) && assigneeId !== user.id) throw fail('Você só pode atribuir tarefas a si mesmo.', 403);
-    const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { isActive: true } });
-    if (!assignee || (!assignee.isActive && (!previous || assigneeId !== previous.assigneeId))) throw fail('Selecione um responsável ativo.');
-    if (data.clientId !== undefined) {
-      if (!canReadClients(user)) throw fail('Seu perfil não permite vincular clientes.', 403);
-      if (data.clientId && !await prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } })) throw fail('Cliente não encontrado.');
-    }
+    if (data.clientId !== undefined && !canReadClients(user)) throw fail('Seu perfil não permite vincular clientes.', 403);
     const listId = data.listId === undefined ? previous?.listId : data.listId;
-    if (listId) {
-      const list = await prisma.taskList.findFirst({ where: { id: listId, ...listScope(user) } });
-      if (!list || (!list.shared && list.ownerId !== assigneeId)) throw fail('Use uma lista compartilhada ou pertencente ao responsável.');
-    }
+    // Independent validations can share a round trip window without skipping permissions.
+    const [assignee, property, client, list] = await Promise.all([
+      prisma.user.findUnique({ where: { id: assigneeId }, select: { isActive: true } }),
+      data.propertyId ? prisma.property.findUnique({ where: { id: data.propertyId }, select: { id: true } }) : null,
+      data.clientId ? prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } }) : null,
+      listId ? prisma.taskList.findFirst({ where: { id: listId, ...listScope(user) } }) : null,
+    ]);
+    if (data.propertyId && !property) throw fail('Imóvel não encontrado.');
+    if (!assignee || (!assignee.isActive && (!previous || assigneeId !== previous.assigneeId))) throw fail('Selecione um responsável ativo.');
+    if (data.clientId && !client) throw fail('Cliente não encontrado.');
+    if (listId && (!list || (!list.shared && list.ownerId !== assigneeId))) throw fail('Use uma lista compartilhada ou pertencente ao responsável.');
     return assigneeId;
   }
   router.get('/options', async (req, res) => {
