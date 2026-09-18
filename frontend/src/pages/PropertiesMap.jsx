@@ -3,12 +3,14 @@ import FancySelect from '../components/FancySelect';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   Bath,
   BedDouble,
   Building2,
   CalendarCheck,
   CalendarPlus,
   Car,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -26,6 +28,7 @@ import {
   PanelLeftOpen,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   SlidersHorizontal,
   Star,
@@ -42,11 +45,12 @@ import PropertyMap from '../components/properties/PropertyMap';
 import PropertyFormModal from '../components/properties/PropertyFormModal';
 import PropertyAddressSearch from '../components/properties/PropertyAddressSearch';
 import { PROPERTY_CITY_PRIORITY, PROPERTY_STATUSES, propertyCityColor } from '../components/properties/propertyConstants';
-import { createProperty, deleteProperty, fetchProperties, fetchPropertyDrivePhotos, geocodePropertyPlace, propertyDriveImageUrl, setPropertyFavorite, updateProperty } from '../services/api';
+import { createProperty, deleteProperty, fetchProperties, fetchPropertyDrivePhotos, geocodePropertyPlace, propertyDriveImageUrl, refreshPropertyListings, setPropertyFavorite, updateProperty } from '../services/api';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '', floorGroup: '', suite: '', landConfiguration: '' };
+const initialListingRefresh = { running: false, complete: false, processed: 0, updated: 0, failed: [], cursor: 0, error: '' };
 const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 
 const formatDate = value => value ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não confirmada';
@@ -239,6 +243,39 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
   );
 }
 
+function RefreshListingsModal({ total, state, onClose, onConfirm }) {
+  const progress = total ? Math.min(100, Math.round((state.processed / total) * 100)) : 0;
+  const canClose = !state.running;
+  return <div className="fixed inset-0 z-[9700] flex items-end justify-center bg-gray-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+    <button type="button" className="absolute inset-0" onClick={canClose ? onClose : undefined} aria-label="Fechar atualização de imóveis" />
+    <section role="dialog" aria-modal="true" aria-labelledby="refresh-listings-title" className="mobile-safe-bottom relative w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl">
+      <header className="flex items-start gap-3 border-b border-gray-100 p-5">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${state.complete ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
+          {state.complete ? <CheckCircle2 className="h-5 w-5" /> : <RefreshCw className={`h-5 w-5 ${state.running ? 'animate-spin' : ''}`} />}
+        </span>
+        <div className="min-w-0 flex-1"><h2 id="refresh-listings-title" className="text-lg font-bold text-gray-900">{state.complete ? 'Imóveis atualizados' : 'Atualizar Imóveis'}</h2><p className="mt-1 text-sm leading-5 text-gray-500">Consulta novamente os links do site e atualiza fotos, valores e informações dos imóveis.</p></div>
+        {canClose && <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>}
+      </header>
+
+      <div className="p-5">
+        {!state.running && !state.complete && state.processed === 0 && !state.error && <div className="rounded-xl border border-primary/15 bg-primary/[0.05] p-4 text-sm leading-6 text-primary">Encontramos <strong>{total} imóvel(is)</strong> com link do site. A atualização será feita em pequenos lotes e pode levar alguns minutos.</div>}
+        {(state.running || state.processed > 0) && <div>
+          <div className="flex items-center justify-between text-xs font-bold text-gray-600"><span>{state.running ? 'Atualizando imóveis...' : 'Processamento concluído'}</span><span>{state.processed} de {total}</span></div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+          <div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Atualizados</p><p className="mt-1 text-xl font-bold text-emerald-700">{state.updated}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Precisam de revisão</p><p className="mt-1 text-xl font-bold text-amber-700">{state.failed.length}</p></div></div>
+        </div>}
+        {state.error && <div className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-bold">Atualização interrompida</p><p className="mt-0.5 leading-5">{state.error}</p></div></div>}
+        {state.complete && state.failed.length > 0 && <div className="mt-4 max-h-36 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"><p className="mb-2 font-bold">Imóveis que precisam de revisão:</p>{state.failed.map(item => <p key={item.id} className="py-0.5">{item.code || item.title}: {item.error}</p>)}</div>}
+      </div>
+
+      <footer className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4">
+        {canClose && <Button variant="secondary" onClick={onClose}>{state.complete ? 'Concluir' : 'Cancelar'}</Button>}
+        {!state.complete && <Button onClick={onConfirm} loading={state.running} loadingLabel="Atualizando..." disabled={total === 0}>{state.error ? 'Tentar novamente' : 'Atualizar todos'}</Button>}
+      </footer>
+    </section>
+  </div>;
+}
+
 function DeleteModal({ property, onClose, onConfirm, isDeleting }) {
   return <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Cancelar exclusão" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="h-5 w-5" /></span><h2 className="mt-4 text-lg font-bold text-gray-900">Excluir imóvel?</h2><p className="mt-2 text-sm leading-6 text-gray-500">O imóvel <strong>{cleanPropertyTitle(property.title)}</strong> será removido do mapa e não poderá ser recuperado.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="button" disabled={isDeleting} onClick={onConfirm} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">{isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}Excluir imóvel</button></div></div></div>;
 }
@@ -264,6 +301,8 @@ export default function PropertiesMap() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [favoritePending, setFavoritePending] = useState(() => new Set());
+  const [showListingRefresh, setShowListingRefresh] = useState(false);
+  const [listingRefresh, setListingRefresh] = useState(initialListingRefresh);
   const [collapsedCities, setCollapsedCities] = useState(() => new Set());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(350);
@@ -346,6 +385,7 @@ export default function PropertiesMap() {
     filters.landConfiguration ? { field: 'landConfiguration', label: filters.landConfiguration === 'unknown' ? 'Terreno: não informado' : `Terreno: ${filters.landConfiguration}` } : null,
   ].filter(Boolean), [filters]);
   const mappedCount = filtered.filter(item => item.latitude !== null && item.longitude !== null).length;
+  const listingRefreshTotal = useMemo(() => properties.filter(property => /https?:\/\/(?:www\.)?motiveimoveis\.com/i.test(property.sourceUrl || '')).length, [properties]);
   const cityGroups = useMemo(() => {
     const groups = new Map();
     for (const property of filtered) {
@@ -457,6 +497,43 @@ export default function PropertiesMap() {
     }
   };
 
+  const openListingRefresh = () => {
+    setListingRefresh(initialListingRefresh);
+    setShowListingRefresh(true);
+  };
+
+  const runListingRefresh = async () => {
+    let cursor = listingRefresh.cursor;
+    let hasMore = true;
+    setListingRefresh(current => ({ ...current, running: true, complete: false, error: '' }));
+    try {
+      while (hasMore) {
+        const result = await refreshPropertyListings(cursor, 6);
+        const refreshed = Array.isArray(result.updated) ? result.updated : [];
+        const failures = Array.isArray(result.failed) ? result.failed : [];
+        if (refreshed.length) {
+          const byId = new Map(refreshed.map(property => [property.id, property]));
+          setProperties(current => current.map(property => byId.get(property.id) || property));
+          setSelectedProperty(current => current ? byId.get(current.id) || current : current);
+        }
+        cursor = result.nextCursor || cursor;
+        hasMore = Boolean(result.hasMore);
+        setListingRefresh(current => ({
+          ...current,
+          processed: current.processed + Number(result.processed || 0),
+          updated: current.updated + refreshed.length,
+          failed: [...current.failed, ...failures],
+          cursor,
+        }));
+      }
+      setListingRefresh(current => ({ ...current, running: false, complete: true, cursor }));
+      toast.success('Atualização dos imóveis concluída.');
+    } catch (error) {
+      setListingRefresh(current => ({ ...current, running: false, cursor, error: error.message }));
+      toast.error(error.message);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deletePending) return;
     setIsDeleting(true);
@@ -507,6 +584,7 @@ export default function PropertiesMap() {
             <p className="text-xs font-semibold text-slate-500 lg:mt-2"><strong className="text-slate-800">{filtered.length}</strong> imóvel(is) · <strong className="text-slate-800">{mappedCount}</strong> visível(is) no mapa</p>
           </div>
           <div className="hidden flex-wrap items-center gap-2 lg:flex">
+            <Button variant="secondary" onClick={openListingRefresh} disabled={!listingRefreshTotal}><RefreshCw className="h-4 w-4" />Atualizar Imóveis</Button>
             <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
           </div>
         </div>
@@ -543,7 +621,7 @@ export default function PropertiesMap() {
               {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <FancySelect size="compact" className="col-span-2" ariaLabel="Filtrar por configuração do terreno" value={filters.landConfiguration} onChange={value => updateFilter('landConfiguration', value)} placeholder="Todos os terrenos" options={[{ value: '', label: 'Todos os terrenos' }, ...LAND_CONFIGURATIONS.map(item => ({ value: item, label: item })), { value: 'unknown', label: 'Não informado' }]} />}
             </div>
             {activeFilterChips.length > 0 && <button type="button" onClick={() => setFilters(initialFilters)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gray-100 text-sm font-bold text-gray-600"><FilterX className="h-4 w-4" />Limpar todos os filtros</button>}
-            <div className="border-t border-gray-100 pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ação rápida</p><Button onClick={() => { setMobileFilters(false); setCreationLocation(null); setEditingProperty(null); }} className="w-full"><Plus className="h-4 w-4" />Cadastrar imóvel</Button></div>
+            <div className="border-t border-gray-100 pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ações rápidas</p><div className="grid gap-2"><Button variant="secondary" onClick={() => { setMobileFilters(false); openListingRefresh(); }} disabled={!listingRefreshTotal} className="w-full"><RefreshCw className="h-4 w-4" />Atualizar Imóveis</Button><Button onClick={() => { setMobileFilters(false); setCreationLocation(null); setEditingProperty(null); }} className="w-full"><Plus className="h-4 w-4" />Cadastrar imóvel</Button></div></div>
             <Button onClick={() => setMobileFilters(false)} size="lg" className="w-full">Ver {filtered.length} imóvel(is)</Button>
           </div>
         </section>
@@ -575,6 +653,7 @@ export default function PropertiesMap() {
 
       {selectedProperty && mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} />}
       {editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
+      {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}
       {deletePending && <DeleteModal property={deletePending} onClose={() => setDeletePending(null)} onConfirm={confirmDelete} isDeleting={isDeleting} />}
     </div>
   );

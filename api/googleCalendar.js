@@ -107,6 +107,8 @@ const normalizeEvent = event => ({
   htmlLink: event.htmlLink || '',
   recurringEventId: event.recurringEventId || null,
   propertyId: event.extendedProperties?.private?.propertyId || null,
+  clientName: event.extendedProperties?.private?.clientName || '',
+  brokerName: event.extendedProperties?.private?.brokerName || '',
   createdBySystem: event.extendedProperties?.private?.source === 'sistema-motive',
   creator: event.creator?.displayName || event.creator?.email || '',
   updatedAt: event.updated || null,
@@ -147,6 +149,8 @@ const buildEventPayload = input => {
       private: {
         source: 'sistema-motive',
         ...(input.propertyId ? { propertyId: String(input.propertyId) } : {}),
+        ...(input.clientName ? { clientName: String(input.clientName) } : {}),
+        ...(input.brokerName ? { brokerName: String(input.brokerName) } : {}),
       },
     },
   };

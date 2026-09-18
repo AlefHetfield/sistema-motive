@@ -16,6 +16,7 @@ const PROPERTY_REFERENCE_PREFIXES = {
 };
 const MOTIVE_LISTING_HOSTS = new Set(['motiveimoveis.com', 'www.motiveimoveis.com']);
 const LISTING_HTML_LIMIT = 2 * 1024 * 1024;
+const listingError = (message, { status = 502, kind = 'listing' } = {}) => Object.assign(new Error(message), { status, kind });
 const cleanText = (value, max = 500) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const nullableText = (value, max) => cleanText(value, max) || null;
 const cleanMultilineText = (value, max = 5000) => String(value ?? '')
@@ -155,9 +156,7 @@ const listingDetails = (html) => {
 const listingPreview = async (sourceUrl) => {
   const listingUrl = motiveListingUrl(sourceUrl);
   if (!listingUrl) {
-    const error = new Error('Use um link de imóvel do site motiveimoveis.com.');
-    error.status = 400;
-    throw error;
+    throw listingError('Use um link de imóvel do site motiveimoveis.com.', { status: 400 });
   }
 
   const controller = new AbortController();
@@ -171,12 +170,18 @@ const listingPreview = async (sourceUrl) => {
         'User-Agent': 'Motive-Sistema/1.0 (+https://www.motiveimoveis.com)',
       },
     });
-    if (!response.ok) throw new Error('O anúncio não respondeu corretamente.');
-    if (!motiveListingUrl(response.url)) throw new Error('O anúncio redirecionou para um endereço não permitido.');
+    if (!response.ok) {
+      if ([404, 410].includes(response.status)) throw listingError('O anúncio não foi encontrado ou ainda não está publicado.', { status: 404 });
+      if ([401, 403].includes(response.status)) throw listingError('O site da Motive recusou a consulta automática. Tente novamente mais tarde.', { status: 502, kind: 'connection' });
+      if (response.status === 429) throw listingError('O site da Motive limitou temporariamente as consultas. Aguarde alguns minutos e tente novamente.', { status: 503, kind: 'connection' });
+      if (response.status >= 500) throw listingError('O site da Motive está temporariamente indisponível.', { status: 503, kind: 'connection' });
+      throw listingError(`O anúncio não respondeu corretamente (HTTP ${response.status}).`);
+    }
+    if (!motiveListingUrl(response.url)) throw listingError('O anúncio redirecionou para um endereço não permitido.');
     const contentLength = Number(response.headers.get('content-length'));
-    if (contentLength > LISTING_HTML_LIMIT) throw new Error('A página do anúncio é maior que o permitido.');
+    if (contentLength > LISTING_HTML_LIMIT) throw listingError('A página do anúncio é maior que o permitido.');
     const html = await response.text();
-    if (html.length > LISTING_HTML_LIMIT) throw new Error('A página do anúncio é maior que o permitido.');
+    if (html.length > LISTING_HTML_LIMIT) throw listingError('A página do anúncio é maior que o permitido.');
 
     const schema = listingSchema(html);
     const schemaImages = Array.isArray(schema.image) ? schema.image : [schema.image].filter(Boolean);
@@ -184,12 +189,15 @@ const listingPreview = async (sourceUrl) => {
     const property = listingDetails(html);
     property.externalReference = property.externalReference || listingReferenceFromUrl(response.url);
     if (!imageValue && !Object.values(property).some(value => value !== null)) {
-      const error = new Error('Não encontrei informações publicadas nesse anúncio.');
-      error.status = 422;
-      throw error;
+      throw listingError('Não encontrei informações publicadas nesse anúncio.', { status: 422 });
     }
-    const imageUrl = imageValue ? new URL(imageValue, response.url) : null;
-    if (imageUrl && !['http:', 'https:'].includes(imageUrl.protocol)) throw new Error('A foto principal do anúncio possui um endereço inválido.');
+    let imageUrl = null;
+    try {
+      imageUrl = imageValue ? new URL(imageValue, response.url) : null;
+    } catch {
+      throw listingError('A foto principal do anúncio possui um endereço inválido.');
+    }
+    if (imageUrl && !['http:', 'https:'].includes(imageUrl.protocol)) throw listingError('A foto principal do anúncio possui um endereço inválido.');
     return {
       imageUrl: imageUrl?.toString() || null,
       title: metaContent(html, ['og:title', 'twitter:title']),
@@ -198,9 +206,12 @@ const listingPreview = async (sourceUrl) => {
     };
   } catch (error) {
     if (error.name === 'AbortError') {
-      const timeoutError = new Error('O site demorou demais para responder. Tente novamente.');
-      timeoutError.status = 504;
-      throw timeoutError;
+      throw listingError('O site da Motive demorou demais para responder. Tente novamente.', { status: 504, kind: 'connection' });
+    }
+    if (error.kind) throw error;
+    if (error instanceof TypeError) {
+      console.warn('Falha de conexão com o site da Motive:', error.cause?.code || error.message);
+      throw listingError('Não foi possível conectar ao site da Motive. Verifique a conexão do servidor e tente novamente.', { status: 502, kind: 'connection' });
     }
     throw error;
   } finally {
@@ -643,6 +654,7 @@ export function createPropertyRouter(prisma, requireAuth) {
                 code: property.code,
                 title: property.title,
                 error: error.message || 'O anúncio não respondeu corretamente.',
+                kind: error.kind || 'listing',
               },
             };
           }
@@ -651,6 +663,14 @@ export function createPropertyRouter(prisma, requireAuth) {
           if (result.property) updated.push(result.property);
           if (result.failure) failed.push(result.failure);
         }
+      }
+
+      const siteUnavailable = batch.length > 0
+        && updated.length === 0
+        && failed.length === batch.length
+        && failed.every(failure => failure.kind === 'connection');
+      if (siteUnavailable) {
+        throw listingError(failed[0].error || 'Não foi possível conectar ao site da Motive.', { status: 502, kind: 'connection' });
       }
 
       res.json({
@@ -662,7 +682,7 @@ export function createPropertyRouter(prisma, requireAuth) {
       });
     } catch (error) {
       console.error('Erro ao atualizar anúncios em lote:', error);
-      res.status(500).json({ error: 'Não foi possível atualizar os anúncios em lote.' });
+      res.status(error.status || 500).json({ error: error.status ? error.message : 'Não foi possível atualizar os anúncios em lote.' });
     }
   });
 

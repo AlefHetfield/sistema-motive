@@ -8,6 +8,7 @@ import {
   Clock3,
   Copy,
   ExternalLink,
+  ImageIcon,
   Loader2,
   MapPin,
   Plus,
@@ -25,6 +26,8 @@ import {
   fetchCalendarEvents,
   fetchCalendarStatus,
   fetchProperties,
+  fetchPropertySitePreview,
+  propertyDriveImageUrl,
   updateCalendarEvent,
 } from '../services/api';
 
@@ -119,8 +122,34 @@ const propertyVisitLocation = property => {
   const neighborhood = String(property?.neighborhood || '').trim();
   return type.includes('apartamento') ? condominium || neighborhood : neighborhood || condominium;
 };
-const propertyVisitTitle = property => ['Visita', propertyVisitLocation(property)].filter(Boolean).join(' ');
-const isAutomaticVisitTitle = title => /^Visita(?:\s*-\s*.*|\s+[^-()]*)?$/i.test(String(title || '').trim());
+const buildVisitTitle = (property, clientName = '', brokerName = '') => [
+  'Visita',
+  propertyVisitLocation(property),
+  String(clientName).trim(),
+  String(brokerName).trim() ? `(${String(brokerName).trim()})` : '',
+].filter(Boolean).join(' - ');
+const visitTitleDetails = (event, property) => {
+  if (event?.clientName || event?.brokerName) {
+    return { clientName: event.clientName || '', brokerName: event.brokerName || '' };
+  }
+
+  const title = String(event?.title || '').trim();
+  if (!/^Visita(?:\s|\s*-)/i.test(title)) return { clientName: '', brokerName: '' };
+
+  const brokerMatch = title.match(/\s*(?:-\s*)?\(([^()]*)\)\s*$/);
+  const brokerName = brokerMatch?.[1]?.trim() || '';
+  let remainder = brokerMatch ? title.slice(0, brokerMatch.index).trim() : title;
+  remainder = remainder.replace(/^Visita\s*(?:-\s*)?/i, '').trim();
+
+  const propertyName = propertyVisitLocation(property);
+  if (propertyName && remainder.toLocaleLowerCase('pt-BR').startsWith(propertyName.toLocaleLowerCase('pt-BR'))) {
+    remainder = remainder.slice(propertyName.length).replace(/^\s*-\s*/, '').trim();
+  } else if (remainder.includes(' - ')) {
+    remainder = remainder.slice(remainder.lastIndexOf(' - ') + 3).trim();
+  }
+
+  return { clientName: remainder, brokerName };
+};
 const isTimeExemptEvent = event => isAllDay(event) || String(event.title || '').toLocaleLowerCase('pt-BR').includes('folga');
 
 const addMinutesToTime = (value, amount) => {
@@ -214,9 +243,13 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
   const eventEndDate = event ? eventEnd(event) : addDays(eventStartDate, 1);
   const suggestedStart = initialTime || slot.start.slice(11);
   const suggestedEnd = addMinutesToTime(suggestedStart, 90);
+  const initialSelectedProperty = properties.find(item => String(item.id) === String(event?.propertyId || initialProperty?.id || '')) || initialProperty;
+  const initialVisitDetails = visitTitleDetails(event, initialSelectedProperty);
   const [form, setForm] = useState(() => ({
-    title: event?.title || (initialProperty ? propertyVisitTitle(initialProperty) : 'Visita'),
+    title: event?.title || buildVisitTitle(initialProperty),
     propertyId: String(event?.propertyId || initialProperty?.id || ''),
+    clientName: initialVisitDetails.clientName,
+    brokerName: initialVisitDetails.brokerName,
     location: event?.location || initialProperty?.address || '',
     description: event?.description || '',
     allDay: editingAllDay,
@@ -226,10 +259,46 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
     endTime: event?.end?.dateTime ? localDateTimeValue(event.end.dateTime).slice(11) : initialTime ? suggestedEnd : slot.end.slice(11),
     reminderMinutes: '30',
   }));
-  const titleManuallyEditedRef = useRef(Boolean(event?.title) && !isAutomaticVisitTitle(event.title));
+  const titleManuallyEditedRef = useRef(Boolean(event?.title) && !/^Visita/i.test(event.title));
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }));
+  const selectedProperty = properties.find(item => String(item.id) === String(form.propertyId));
+  const isVisit = !event || /^Visita/i.test(event.title) || Boolean(event.clientName || event.brokerName);
+  const [sitePreview, setSitePreview] = useState({ imageUrl: '', loading: false });
+  useEffect(() => {
+    let active = true;
+    const sourceUrl = selectedProperty?.sourceUrl;
+    if (!sourceUrl) {
+      setSitePreview({ imageUrl: '', loading: false });
+      return () => { active = false; };
+    }
+
+    if (selectedProperty.photoUrl) {
+      setSitePreview({ imageUrl: selectedProperty.photoUrl, loading: false });
+      return () => { active = false; };
+    }
+
+    setSitePreview({ imageUrl: '', loading: true });
+    fetchPropertySitePreview(sourceUrl)
+      .then(result => {
+        if (active) setSitePreview({ imageUrl: result.imageUrl || '', loading: false });
+      })
+      .catch(() => {
+        if (active) setSitePreview({ imageUrl: '', loading: false });
+      });
+    return () => { active = false; };
+  }, [selectedProperty?.id, selectedProperty?.photoUrl, selectedProperty?.sourceUrl]);
+  const updateVisitIdentity = (key, value) => {
+    setForm(current => {
+      const next = { ...current, [key]: value };
+      const property = properties.find(item => String(item.id) === String(next.propertyId));
+      return {
+        ...next,
+        title: titleManuallyEditedRef.current ? current.title : buildVisitTitle(property, next.clientName, next.brokerName),
+      };
+    });
+  };
   const chooseStartTime = value => {
     setForm(current => ({ ...current, startTime: value, endTime: addMinutesToTime(value, 90) }));
   };
@@ -238,10 +307,8 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
     setForm(current => ({
       ...current,
       propertyId: value,
-      ...(property ? {
-        title: titleManuallyEditedRef.current ? current.title : propertyVisitTitle(property),
-        location: property.address || current.location,
-      } : {}),
+      title: titleManuallyEditedRef.current ? current.title : buildVisitTitle(property, current.clientName, current.brokerName),
+      ...(property ? { location: property.address || current.location } : {}),
     }));
   };
   const submit = async submitEvent => {
@@ -282,16 +349,15 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
         return Math.abs(eventStart(item) - candidateStart) < 90 * 60 * 1000;
       });
   const copyForWhatsApp = async () => {
-    const property = properties.find(item => String(item.id) === String(form.propertyId));
     const formattedDate = parseDateKey(form.date).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     const schedule = form.allDay ? 'Dia inteiro' : `${form.startTime} às ${form.endTime}`;
     const message = [
       `📅 *${form.title || 'Compromisso'}*`,
       `🗓️ ${formattedDate}`,
       `⏰ ${schedule}`,
-      property ? `🏠 ${propertyLabel(property)}` : '',
       form.location ? `📍 ${form.location}` : '',
       form.description ? `📝 ${form.description}` : '',
+      selectedProperty?.sourceUrl ? `🌐 Link do imóvel: ${selectedProperty.sourceUrl}` : '',
     ].filter(Boolean).join('\n');
     try {
       await navigator.clipboard.writeText(message);
@@ -310,14 +376,32 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
       </header>
       <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
         <Field label="Imóvel" className="sm:col-span-2"><FancySelect searchable searchPlaceholder="Buscar por código, nome, bairro ou endereço..." ariaLabel="Imóvel da visita" value={form.propertyId} onChange={chooseProperty} placeholder="Sem imóvel vinculado" options={[{ value: '', label: 'Sem imóvel vinculado' }, ...properties.map(property => ({ value: String(property.id), label: propertyLabel(property), searchText: [property.code, property.title, property.neighborhood, property.city, property.address].filter(Boolean).join(' ') }))]} /></Field>
-        <Field label="Título" className="sm:col-span-2"><input required maxLength={200} className={inputClass} value={form.title} onChange={e => { titleManuallyEditedRef.current = true; update('title', e.target.value); }} placeholder="Visita Bairro - Cliente (Responsável)" /></Field>
+        {selectedProperty?.sourceUrl && <div className="sm:col-span-2 flex min-w-0 items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 p-2.5">
+          <div className="flex h-14 w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-sky-200">
+            {sitePreview.imageUrl ? <img src={sitePreview.imageUrl} alt={`Foto de ${propertyVisitLocation(selectedProperty) || 'imóvel vinculado'}`} loading="lazy" className="h-full w-full object-cover" onError={event => {
+              const driveCover = selectedProperty.driveCoverFileId ? propertyDriveImageUrl(selectedProperty.driveCoverFileId) : '';
+              if (driveCover && event.currentTarget.src !== driveCover) event.currentTarget.src = driveCover;
+              else setSitePreview(current => ({ ...current, imageUrl: '' }));
+            }} /> : sitePreview.loading ? <Loader2 className="h-5 w-5 animate-spin text-sky-500" /> : <ImageIcon className="h-5 w-5 text-sky-300" />}
+          </div>
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold text-sky-900">Site do imóvel vinculado</p><p className="mt-0.5 truncate text-xs text-sky-700">{selectedProperty.sourceUrl}</p></div>
+          <a href={selectedProperty.sourceUrl} target="_blank" rel="noreferrer" className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-sky-800 shadow-sm ring-1 ring-sky-200 transition hover:bg-sky-100">Visualizar <ExternalLink className="h-3.5 w-3.5" /></a>
+        </div>}
+        {isVisit ? <>
+          <Field label="Cliente"><input maxLength={120} className={inputClass} value={form.clientName} onChange={e => updateVisitIdentity('clientName', e.target.value)} placeholder="Nome do cliente (opcional)" /></Field>
+          <Field label="Corretor responsável"><input maxLength={120} className={inputClass} value={form.brokerName} onChange={e => updateVisitIdentity('brokerName', e.target.value)} placeholder="Nome do corretor (opcional)" /></Field>
+          <Field label="Título do evento" className="sm:col-span-2"><input required maxLength={300} className={`${inputClass} font-semibold`} value={form.title} onChange={e => {
+            titleManuallyEditedRef.current = Boolean(e.target.value.trim());
+            update('title', e.target.value);
+          }} aria-describedby="event-title-help" /><span id="event-title-help" className="mt-1.5 block text-[11px] text-slate-500">A sugestão usa imóvel, cliente e corretor, mas o título pode ser alterado livremente.</span></Field>
+        </> : <Field label="Título do evento" className="sm:col-span-2"><input required maxLength={300} className={inputClass} value={form.title} onChange={e => update('title', e.target.value)} /></Field>}
         <Field label="Data"><DatePickerField value={form.date} onChange={value => update('date', value)} /></Field>
         <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3.5 text-sm font-semibold text-slate-700"><input type="checkbox" checked={form.allDay} onChange={e => update('allDay', e.target.checked)} className="h-4 w-4 accent-primary" />Dia inteiro</label>
         {form.allDay ? <Field label="Último dia"><DatePickerField value={form.endDate} min={form.date} onChange={value => update('endDate', value)} /></Field> : <><Field label="Horário inicial"><TimePickerField value={form.startTime} onChange={chooseStartTime} options={TIME_OPTIONS.slice(0, -1)} /></Field><Field label="Horário final"><TimePickerField value={form.endTime} onChange={value => update('endTime', value)} /></Field></>}
         {nearbyEvents.length > 0 && <div role="alert" className="sm:col-span-2 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="text-sm font-bold">Horários muito próximos</p><p className="mt-0.5 text-xs leading-5">Existe {nearbyEvents.length === 1 ? 'outro compromisso' : `${nearbyEvents.length} outros compromissos`} com menos de 1h30 de diferença: {nearbyEvents.map(item => `${eventTime(item)} — ${item.title}`).join('; ')}.</p></div></div>}
         <Field label="Lembrete"><FancySelect ariaLabel="Antecedência do lembrete" value={form.reminderMinutes} onChange={value => update('reminderMinutes', value)} options={[{ value: '10', label: '10 minutos antes' }, { value: '30', label: '30 minutos antes' }, { value: '60', label: '1 hora antes' }, { value: '1440', label: '1 dia antes' }]} /></Field>
         <Field label="Local" className="sm:col-span-2"><input maxLength={500} className={inputClass} value={form.location} onChange={e => update('location', e.target.value)} placeholder="Endereço da visita" /></Field>
-        <Field label="Observações" className="sm:col-span-2"><textarea rows={4} maxLength={4000} className={`${inputClass} h-auto resize-y py-3`} value={form.description} onChange={e => update('description', e.target.value)} placeholder="Cliente, corretor responsável e orientações para a visita" /></Field>
+        <Field label="Observações" className="sm:col-span-2"><textarea rows={4} maxLength={4000} className={`${inputClass} h-auto resize-y py-3`} value={form.description} onChange={e => update('description', e.target.value)} placeholder="Orientações e informações adicionais para a visita" /></Field>
         {confirmingDelete && <div className="sm:col-span-2 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-semibold text-red-700">Remover definitivamente este compromisso da agenda?</p><div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => setConfirmingDelete(false)}>Voltar</Button><Button variant="danger" size="sm" loading={saving} onClick={remove}>Confirmar</Button></div></div>}
       </div>
       <footer className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/95 px-5 py-4 backdrop-blur sm:px-6">

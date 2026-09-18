@@ -17,6 +17,8 @@ const normalizeInput = body => ({
   end: body?.end,
   reminderMinutes: Math.max(0, Math.min(40320, Number(body?.reminderMinutes) || 30)),
   propertyId: body?.propertyId ? Number(body.propertyId) : null,
+  clientName: String(body?.clientName || '').trim().slice(0, 120),
+  brokerName: String(body?.brokerName || '').trim().slice(0, 120),
   allDay: Boolean(body?.allDay),
 });
 
