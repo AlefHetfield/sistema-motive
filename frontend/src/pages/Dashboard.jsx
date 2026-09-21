@@ -12,29 +12,23 @@ import {
     FileText,
     Home,
     MapPinned,
+    ListTodo,
     RefreshCw,
     Sparkles,
     UserPlus,
     Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import HealthCheck from '../components/HealthCheck';
 import StatusBadge from '../components/ui/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/api';
-import { fetchClients, fetchProperties } from '../services/api';
+import { fetchClients, fetchProperties, taskApi } from '../services/api';
+import { taskDateLabel } from '../utils/taskDates';
 
 const FINAL_STATUSES = ['Assinado-Movido', 'Assinado', 'Arquivado'];
 const ATTENTION_STATUSES = ['Inconforme', 'Aguardando Reserva'];
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-const FUNNEL_STAGES = [
-    { label: 'Documentação', statuses: ['Documentação Recebida'], color: 'bg-slate-400' },
-    { label: 'Aprovação', statuses: ['Aprovado'], color: 'bg-emerald-500' },
-    { label: 'Engenharia', statuses: ['Solicitando Engenharia', 'Engenharia Solicitada'], color: 'bg-amber-500' },
-    { label: 'Fichas e finalização', statuses: ['Baixando FGTS', 'Preenchendo Fichas', 'Assinando Fichas', 'Finalizando'], color: 'bg-sky-500' },
-    { label: 'Conformidade', statuses: ['Aguardando Reserva', 'Enviando para Conformidade', 'Aguardando Conformidade', 'Inconforme', 'Conforme - Ag. Contrato'], color: 'bg-violet-500' },
-    { label: 'Contrato', statuses: ['Assinando Contrato'], color: 'bg-primary' },
-];
 
 const QUICK_ACTIONS = [
     { label: 'Novo cliente', description: 'Iniciar atendimento', to: '/clients?new=1', icon: UserPlus, tone: 'bg-primary text-white shadow-primary/20' },
@@ -107,6 +101,8 @@ const Dashboard = () => {
     const [clients, setClients] = useState([]);
     const [properties, setProperties] = useState([]);
     const [activities, setActivities] = useState([]);
+    const [taskDashboard, setTaskDashboard] = useState(null);
+    const [taskBusy, setTaskBusy] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -114,14 +110,16 @@ const Dashboard = () => {
         setIsLoading(true);
         setError('');
         try {
-            const [clientData, propertyData, activityResponse] = await Promise.all([
+            const [clientData, propertyData, activityResponse, taskData] = await Promise.all([
                 fetchClients(),
                 fetchProperties(),
                 fetch(`${API_BASE_URL}/api/activities/recent?limit=6`, { credentials: 'include' }),
+                taskApi('/dashboard').catch(() => null),
             ]);
             setClients(Array.isArray(clientData) ? clientData : []);
             setProperties(Array.isArray(propertyData) ? propertyData : []);
             if (activityResponse.ok) setActivities(await activityResponse.json());
+            if (taskData) setTaskDashboard(taskData);
         } catch (loadError) {
             console.error('Erro ao carregar o dashboard:', loadError);
             setError('Não foi possível carregar todos os dados do painel.');
@@ -190,12 +188,7 @@ const Dashboard = () => {
             .sort((a, b) => b.score - a.score)
             .slice(0, 8);
 
-        const funnel = FUNNEL_STAGES.map(stage => ({
-            ...stage,
-            count: operational.filter(client => stage.statuses.includes(client.status)).length,
-        }));
-
-        return { active, operational, waitingAction, stalled, signedThisMonth, overdueProperties, priorities, funnel };
+        return { active, operational, waitingAction, stalled, signedThisMonth, overdueProperties, priorities };
     }, [clients, properties]);
 
     if (isLoading) {
@@ -214,7 +207,17 @@ const Dashboard = () => {
     }
 
     const firstName = user?.nome?.trim().split(/\s+/)[0] || 'bem-vindo';
-    const maxFunnelCount = Math.max(...dashboard.funnel.map(stage => stage.count), 1);
+    const completeTask = async task => {
+        if (taskBusy) return;
+        setTaskBusy(task.id);
+        try {
+            await taskApi(`/${task.id}`, { method: 'PATCH', body: { version: task.version, status: 'DONE' } });
+            setTaskDashboard(await taskApi('/dashboard'));
+            window.dispatchEvent(new Event('motive:task-notifications-changed'));
+            toast.success('Tarefa concluída.');
+        } catch (taskError) { toast.error(taskError.message); }
+        finally { setTaskBusy(null); }
+    };
 
     return (
         <div className="min-h-full p-4 sm:px-7 sm:pb-7 sm:pt-3">
@@ -305,24 +308,7 @@ const Dashboard = () => {
                         )}
                     </div>
 
-                    <div className="app-card rounded-2xl border bg-white p-5">
-                        <div className="flex items-start justify-between gap-3">
-                            <div><h2 className="font-bold text-gray-900">Funil de atendimento</h2><p className="mt-1 text-xs text-gray-500">{dashboard.operational.length} processos em andamento</p></div>
-                            <Users size={19} className="text-primary" />
-                        </div>
-                        <div className="mt-5 space-y-4">
-                            {dashboard.funnel.map(stage => (
-                                <div key={stage.label}>
-                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="font-medium text-gray-600">{stage.label}</span><span className="font-bold text-gray-900">{stage.count}</span></div>
-                                    <div className="h-2 overflow-hidden rounded-full bg-gray-100"><div className={`h-full rounded-full transition-all duration-700 ${stage.color}`} style={{ width: `${Math.max(stage.count ? 8 : 0, (stage.count / maxFunnelCount) * 100)}%` }} /></div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-5 rounded-xl border border-violet-100 bg-violet-50 px-3.5 py-3">
-                            <div className="flex items-center justify-between"><span className="text-xs font-medium text-violet-700">Imóveis a revisar</span><span className="text-lg font-bold text-violet-900">{dashboard.overdueProperties.length}</span></div>
-                            <Link to="/properties-map" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:underline">Abrir mapa <ArrowRight size={13} /></Link>
-                        </div>
-                    </div>
+                    {taskDashboard&&<div className="app-card overflow-hidden rounded-2xl border bg-white"><div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-4"><div><div className="flex items-center gap-2"><ListTodo size={18} className="text-primary"/><h2 className="font-bold text-gray-900">Minhas tarefas</h2>{taskDashboard.unread>0&&<span className="rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-extrabold uppercase text-sky-700">{taskDashboard.unread} nova{taskDashboard.unread===1?'':'s'}</span>}</div><p className="mt-1 text-xs text-gray-500">{taskDashboard.total} pendentes · {taskDashboard.overdue} atrasadas</p></div><Link to="/tasks" aria-label="Ver todas as tarefas" className="rounded-lg p-1.5 text-primary hover:bg-primary/5"><ArrowRight size={17}/></Link></div><div className="divide-y divide-gray-100">{taskDashboard.tasks.length>0?taskDashboard.tasks.slice(0,4).map(task=>{const overdue=task.dueDate&&task.dueDate.slice(0,10)<new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());return <div key={task.id} className={`flex items-center gap-2.5 px-4 py-3 ${task.isNew?'bg-sky-50/40':''}`}><button type="button" disabled={taskBusy===task.id} onClick={()=>completeTask(task)} aria-label={`Concluir ${task.title}`} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 text-transparent hover:border-emerald-500 hover:text-emerald-600 disabled:opacity-40"><CheckCircle2 size={16}/></button><Link to={`/tasks?task=${task.id}`} className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="truncate text-sm font-semibold text-slate-900">{task.title}</span>{task.isNew&&<span className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-extrabold uppercase text-sky-700">Nova</span>}</span><span className={`mt-0.5 block truncate text-[11px] ${overdue?'font-semibold text-red-600':'text-slate-500'}`}>{overdue?'Atrasada':task.status==='WAITING'?'Aguardando retorno':task.dueDate?taskDateLabel(task.dueDate):task.delegatedBy?`Por ${task.delegatedBy.nome}`:'Sem prazo'}</span></Link><ChevronRight size={15} className="shrink-0 text-slate-300"/></div>}) : <div className="px-5 py-10 text-center"><CheckCircle2 size={28} className="mx-auto text-emerald-500"/><p className="mt-2 text-sm font-semibold text-slate-800">Tudo em dia por aqui</p></div>}</div><div className="grid grid-cols-3 gap-px border-t bg-slate-100 text-center"><Link to="/tasks?view=day" className="bg-white px-2 py-3 hover:bg-slate-50"><strong className="block text-base text-sky-700">{taskDashboard.dueToday}</strong><span className="text-[10px] text-slate-500">Hoje</span></Link><Link to="/tasks?view=overdue" className="bg-white px-2 py-3 hover:bg-slate-50"><strong className="block text-base text-red-600">{taskDashboard.overdue}</strong><span className="text-[10px] text-slate-500">Atrasadas</span></Link><Link to="/tasks?view=waiting" className="bg-white px-2 py-3 hover:bg-slate-50"><strong className="block text-base text-amber-600">{taskDashboard.waiting}</strong><span className="text-[10px] text-slate-500">Aguardando</span></Link></div></div>}
                 </section>
 
                 <section className="app-card rounded-2xl border bg-white">

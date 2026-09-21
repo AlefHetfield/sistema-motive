@@ -24,6 +24,7 @@ test('validação de tarefas rejeita datas, campos e etapas inválidos', () => {
   assert.throws(() => taskData({ dueDate: '2026-02-30' }));
   assert.throws(() => taskData({ status: 'inventado' }));
   assert.throws(() => taskData({ important: 'false' }));
+  assert.throws(() => taskData({ isPrivate: 'sim' }));
   assert.throws(() => taskData({ steps: [{ title: 'documento', done: 'sim' }] }));
   assert.deepEqual(taskData({ title: ' Conferir RG ', steps: [{ title: ' Conferir ', done: false }] }, true), { title: 'Conferir RG', steps: [{ title: 'Conferir', done: false }] });
 });
@@ -43,6 +44,7 @@ test('API com PostgreSQL: isolamento por perfil, clientes, listas, versões e de
       userIds.push(user.id); return user;
     };
     const admin = await createUser('Admin','ADM');
+    const secondAdmin = await createUser('Segundo Admin','ADM');
     const vanessa = await createUser('Vanessa','ASSISTENTE');
     const other = await createUser('Outro','CORRETOR');
     const manager = await createUser('Gestor','CORRETOR',true);
@@ -61,6 +63,22 @@ test('API com PostgreSQL: isolamento por perfil, clientes, listas, versões e de
       const data=await response.json().catch(()=>null);return {status:response.status,data};
     };
     assert.equal((await request(null)).status,401);
+    const adminSummaryBefore = (await request(admin, '/summary')).data.all;
+    const secondAdminSummaryBefore = (await request(secondAdmin, '/summary')).data.all;
+    const personal = (await request(admin, '', 'POST', { title: 'Lembrete particular', notes: `${prefix}-anotacao-pessoal` })).data;
+    assert.equal(personal.isPrivate, true);
+    assert.equal((await request(admin, `?q=${prefix}-anotacao-pessoal`)).data.total, 1);
+    assert.equal((await request(secondAdmin, `/${personal.id}`)).status, 404);
+    assert.equal((await request(secondAdmin, `?q=${prefix}-anotacao-pessoal`)).data.total, 0);
+    const teamTask = (await request(admin, '', 'POST', { title: 'Lembrete compartilhado', isPrivate: false })).data;
+    assert.equal(teamTask.isPrivate, false);
+    assert.equal((await request(secondAdmin, `/${teamTask.id}`)).status, 200);
+    assert.equal((await request(admin, '/summary')).data.all, adminSummaryBefore + 2);
+    assert.equal((await request(secondAdmin, '/summary')).data.all, secondAdminSummaryBefore + 1);
+    const delegatedBySecondAdmin = (await request(secondAdmin, '', 'POST', { title: 'Delegação do segundo administrador', assigneeId: vanessa.id, status: 'DONE', isPrivate: true })).data;
+    assert.equal(delegatedBySecondAdmin.isPrivate, false);
+    assert.equal(delegatedBySecondAdmin.delegatedById, secondAdmin.id);
+    await prisma.task.deleteMany({ where: { id: { in: [personal.id, teamTask.id, delegatedBySecondAdmin.id] } } });
     const privateList=(await request(vanessa,'/lists','POST',{name:'Pessoal'})).data;
     const sharedList=(await request(admin,'/lists','POST',{name:'Documentação',shared:true})).data;
     assert.equal((await request(vanessa,'/lists','POST',{name:'Inválida',shared:true})).status,403);
@@ -80,10 +98,15 @@ test('API com PostgreSQL: isolamento por perfil, clientes, listas, versões e de
     assert.equal(inbox.items[0].taskId, own.id);
     assert.equal(inbox.items[0].actorName, 'Admin');
     assert.equal(inbox.items[0].task.client.id, clientId);
+    const vanessaDashboard = (await request(vanessa, '/dashboard')).data;
+    assert.equal(vanessaDashboard.tasks.some(task => task.id === own.id && task.isNew), true);
+    assert.equal(vanessaDashboard.unread, 1);
+    assert.equal((await request(vanessa, `?q=Solicitar%20FGTS`)).data.tasks[0].isNew, true);
     assert.equal((await request(admin, '/notifications')).data.unreadCount, 0);
     assert.equal((await request(other, '/notifications')).data.items[0].task.client, null);
     assert.equal((await request(other, `/notifications/${inbox.items[0].id}/read`, 'PATCH')).status, 404);
     assert.equal((await request(admin, `/notifications/${inbox.items[0].id}/read`, 'PATCH')).status, 404);
+    assert.equal((await request(vanessa, `/notifications/task/${own.id}/read`, 'PATCH')).status, 200);
     assert.equal((await request(vanessa, `/notifications/${inbox.items[0].id}/read`, 'PATCH')).status, 200);
     assert.equal((await request(vanessa, '/notifications')).data.unreadCount, 0);
     const afterReading = (await request(vanessa, `/${own.id}`)).data;
@@ -170,7 +193,7 @@ test('API com PostgreSQL: isolamento por perfil, clientes, listas, versões e de
     assert.equal(afterReadingAll.version, foreign.version);
     // The most recent delegator, not necessarily the creator, owns the follow-up.
     await prisma.user.update({ where: { id: manager.id }, data: { role: 'ADM' } });
-    let demand = (await request(admin, '', 'POST', { title: 'Demanda para acompanhar', assigneeId: admin.id, clientId })).data;
+    let demand = (await request(admin, '', 'POST', { title: 'Demanda para acompanhar', assigneeId: admin.id, clientId, isPrivate: false })).data;
     demand = (await request(manager, `/${demand.id}`, 'PATCH', { version: demand.version, assigneeId: vanessa.id })).data;
     assert.equal(demand.createdById, admin.id);
     assert.equal(demand.delegatedById, manager.id);

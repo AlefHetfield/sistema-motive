@@ -311,7 +311,7 @@ const AppLayout = () => {
             
             {/* Conteúdo Principal - Agora com padding-left para compensar a sidebar */}
             <main inert={mobileOpen} className={`flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background transition-[padding] duration-200 ${mobile ? 'pl-0' : sidebarPinned ? 'pl-[268px]' : 'pl-[88px]'}`}>
-                <header className="workspace-topbar flex h-16 shrink-0 items-center justify-between gap-2 px-3 lg:h-[76px] lg:px-7">
+                <header className="workspace-topbar relative z-[70] flex h-16 shrink-0 items-center justify-between gap-2 px-3 lg:h-[76px] lg:px-7">
                     {mobile && <button ref={menuButtonRef} type="button" onClick={() => setMobileMenu(location.key)} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="sidebar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-primary hover:bg-gray-100"><Menu size={23} /></button>}
                     <div className="flex min-w-0 items-center gap-3">
                         {currentPage?.icon && (
@@ -336,7 +336,7 @@ const AppLayout = () => {
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2 lg:gap-3">
-                        {isAuthenticated && user?.id && <TaskNotifications key={user.id} />}
+                        {isAuthenticated && user?.id && <TaskNotifications key={user.id} userId={user.id} />}
                         <div className="hidden border-l border-[#DDE4E8] pl-4 text-right lg:block">
                             <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>
                             <p className="text-xs text-gray-500">

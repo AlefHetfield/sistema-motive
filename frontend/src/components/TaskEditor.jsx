@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TaskClientPicker from './TaskClientPicker';
 import TaskPropertyPicker from './TaskPropertyPicker';
-import { X, Plus, Circle, CheckCircle2, Star, Sun, CalendarDays, UserRound, Users, ListTodo, StickyNote, Clock, ChevronDown, Check } from 'lucide-react';
+import { X, Plus, Circle, CheckCircle2, Star, Sun, CalendarDays, UserRound, Users, ListTodo, StickyNote, Clock, ChevronDown, Check, LockKeyhole } from 'lucide-react';
 import { taskApi } from '../services/api';
 import { taskToday, addTaskDays, taskDateLabel } from '../utils/taskDates';
 import FancySelect from './FancySelect';
@@ -12,7 +12,7 @@ const dateValue = value => value?.slice(0, 10) || '';
 
 function Action({ icon, label, active, expanded, onClick, children }) {
   const Icon = icon;
-  return <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+  return <section className={`relative rounded-xl border border-gray-200 bg-white ${expanded ? 'z-20' : 'z-0'}`}>
     <button type="button" onClick={onClick} aria-expanded={children ? expanded : undefined} aria-pressed={!children ? Boolean(active) : undefined}
       className={`flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition hover:bg-gray-50 ${active ? 'text-primary' : 'text-gray-600'}`}>
       <Icon size={18} className="shrink-0" /><span className="min-w-0 flex-1 break-words">{label}</span>
@@ -26,7 +26,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
   const navigate = useNavigate();
   const dialogRef = useRef(null);
   const [form, setForm] = useState(() => ({ title: task?.title || (initialProperty ? `Publicar ${initialProperty.title}`.slice(0, 250) : ''), category: task?.category || (initialSocial ? 'SOCIAL' : 'GENERAL'), propertyId: task?.propertyId || initialProperty?.id || null, notes: task?.notes || '', status: task?.status || 'TODO', important: task?.important || false,
-    assigneeId: task?.assigneeId || (requireDelegation ? '' : options.userId), clientId: task?.clientId || initialClient?.id || '', listId: task?.listId || initialList || '', dueDate: dateValue(task?.dueDate), myDay: task ? dateValue(task.myDay) : initialDay ? taskToday() : '', steps: task?.steps || [] }));
+    assigneeId: task?.assigneeId || (requireDelegation ? '' : options.userId), clientId: task?.clientId || initialClient?.id || '', listId: task?.listId || initialList || '', dueDate: dateValue(task?.dueDate), myDay: task ? dateValue(task.myDay) : initialDay ? taskToday() : '', steps: task?.steps || [], isPrivate: task ? Boolean(task.isPrivate) : !initialSocial }));
   const [expanded, setExpanded] = useState(requireDelegation ? 'assignee' : initialProperty || task?.property ? 'property' : '');
   const [customDate, setCustomDate] = useState(false);
   const [today, setToday] = useState(taskToday);
@@ -85,6 +85,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
   const list = options.lists.find(item => item.id === Number(form.listId));
   const inMyDay = form.myDay === today;
   const ownTask = Number(form.assigneeId) === options.userId;
+  const canChangePrivacy = !task || task.createdById === options.userId;
   const selectDate = value => { set('dueDate', value); setExpanded(''); setCustomDate(false); };
   const addStep = () => {
     if (stepTitle.trim() && form.steps.length < 100) { set('steps', [...form.steps, { title: stepTitle.trim(), done: false }]); setStepTitle(''); }
@@ -138,9 +139,10 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
             </div>
           </Action>
           <Action icon={UserRound} label={assignee?.nome ? `Responsável: ${assignee.nome}` : 'Atribuir responsável'} expanded={expanded === 'assignee'} onClick={() => toggle('assignee')}>
-            <FancySelect ariaLabel="Responsável" value={String(form.assigneeId)} disabled={!options.canManageAll} placeholder="Selecione quem vai cumprir" options={options.users.filter(user => !requireDelegation || user.id !== options.userId).map(user => ({ value: String(user.id), label: `${user.nome}${!user.isActive ? ' (inativo)' : ''}`, disabled: !user.isActive }))} onChange={value => { const nextId = Number(value); setForm(current => ({ ...current, assigneeId: nextId, listId: options.lists.some(item => item.id === Number(current.listId) && (item.shared || item.ownerId === nextId)) ? current.listId : '' })); setExpanded(''); }} />
+            <FancySelect inlineMenu ariaLabel="Responsável" value={String(form.assigneeId)} disabled={!options.canManageAll} placeholder="Selecione quem vai cumprir" options={options.users.filter(user => !requireDelegation || user.id !== options.userId).map(user => ({ value: String(user.id), label: `${user.nome}${!user.isActive ? ' (inativo)' : ''}`, disabled: !user.isActive }))} onChange={value => { const nextId = Number(value); setForm(current => ({ ...current, assigneeId: nextId, isPrivate: nextId === options.userId ? current.isPrivate : false, listId: options.lists.some(item => item.id === Number(current.listId) && (item.shared || item.ownerId === nextId)) ? current.listId : '' })); setExpanded(''); }} />
             {!options.canManageAll && <p className="text-xs text-gray-500">Você acompanha as tarefas atribuídas a você.</p>}
           </Action>
+          {!social && ownTask && canChangePrivacy && <Action icon={form.isPrivate ? LockKeyhole : Users} active={form.isPrivate} label={form.isPrivate ? 'Pessoal · somente você pode visualizar' : 'Equipe · administradores podem visualizar'} onClick={() => set('isPrivate', !form.isPrivate)} />}
           {social && <Action icon={ListTodo} active={Boolean(property)} label={property ? 'Imóvel vinculado' : 'Vincular imóvel (opcional)'} expanded={expanded === 'property'} onClick={() => toggle('property')}>
             <TaskPropertyPicker property={property} onSelect={item => { setProperty(item); set('propertyId', item?.id || null); }} />
           </Action>}
@@ -148,7 +150,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
             <TaskClientPicker client={client} onSelect={item => { setClient(item); set('clientId', item?.id || ''); }} />
           </Action>}
           {!social && <Action icon={ListTodo} label={list ? `Lista: ${list.name}` : 'Adicionar a uma lista'} expanded={expanded === 'list'} onClick={() => toggle('list')}>
-            <FancySelect ariaLabel="Lista" value={String(form.listId)} onChange={value => { set('listId', value); setExpanded(''); }} placeholder="Sem lista" options={[{ value: '', label: 'Sem lista' }, ...options.lists.filter(item => item.shared || item.ownerId === Number(form.assigneeId)).map(item => ({ value: String(item.id), label: `${item.name}${item.shared ? ' · Equipe' : ' · Pessoal'}` }))]} />
+            <FancySelect inlineMenu ariaLabel="Lista" value={String(form.listId)} onChange={value => { set('listId', value); setExpanded(''); }} placeholder="Sem lista" options={[{ value: '', label: 'Sem lista' }, ...options.lists.filter(item => item.shared || item.ownerId === Number(form.assigneeId)).map(item => ({ value: String(item.id), label: `${item.name}${item.shared ? ' · Equipe' : ' · Pessoal'}` }))]} />
           </Action>}
           {!completed && !social && <Action icon={Clock} label="Aguardando retorno" active={form.status === 'WAITING'} onClick={() => set('status', form.status === 'WAITING' ? 'TODO' : 'WAITING')} />}
           {!social && <Action icon={StickyNote} active={Boolean(form.notes)} label={form.notes ? 'Anotação adicionada' : 'Adicionar anotação'} expanded={expanded === 'notes'} onClick={() => toggle('notes')}>

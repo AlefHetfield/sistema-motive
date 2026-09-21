@@ -1,7 +1,10 @@
 import express from 'express';
 
 export const managesTasks = user => user.role === 'ADM';
-export const taskScope = user => managesTasks(user) ? {} : { assigneeId: user.id };
+// Administrators can manage team tasks, but personal tasks stay with their creator.
+export const taskScope = user => managesTasks(user)
+  ? { OR: [{ isPrivate: false }, { isPrivate: true, createdById: user.id, assigneeId: user.id }] }
+  : { assigneeId: user.id };
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const id = value => {
   if (!/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value))) throw fail('Identificador inválido.');
@@ -37,6 +40,10 @@ export function taskData(body, creating = false) {
   if (body.important !== undefined) {
     if (typeof body.important !== 'boolean') throw fail('Importância inválida.');
     data.important = body.important;
+  }
+  if (body.isPrivate !== undefined) {
+    if (typeof body.isPrivate !== 'boolean') throw fail('Visibilidade inválida.');
+    data.isPrivate = body.isPrivate;
   }
   for (const field of ['dueDate', 'myDay']) if (body[field] !== undefined) data[field] = day(body[field]);
   for (const field of ['assigneeId', 'clientId', 'listId', 'propertyId']) if (body[field] !== undefined) data[field] = body[field] === null && field !== 'assigneeId' ? null : id(body[field]);
@@ -83,13 +90,14 @@ export function createTaskRouter(prisma, requireAuth) {
   router.get('/notifications', async (req, res) => {
     const scope = notificationScope(req.taskUser);
     const before = req.query.before ? id(req.query.before) : null;
-    const [items, unreadCount] = await prisma.$transaction([
+    const [items, unreadCount, unreadAssignedCount] = await prisma.$transaction([
       prisma.taskNotification.findMany({ where: { ...scope, ...(before ? { id: { lt: before } } : {}) }, orderBy: { id: 'desc' }, take: 31,
         include: { task: { select: { id: true, title: true, dueDate: true, client: { select: { id: true, nome: true } } } } } }),
       prisma.taskNotification.count({ where: { ...scope, readAt: null } }),
+      prisma.taskNotification.count({ where: { recipientId: req.taskUser.id, kind: 'ASSIGNED', readAt: null, task: { assigneeId: req.taskUser.id, deletedAt: null } } }),
     ]);
     const page = items.slice(0, 30).map(item => ({ ...item, task: { ...item.task, client: canReadClients(req.taskUser) ? item.task.client : null } }));
-    res.json({ items: page, unreadCount, nextCursor: items.length > 30 ? page.at(-1).id : null });
+    res.json({ items: page, unreadCount, unreadAssignedCount, nextCursor: items.length > 30 ? page.at(-1).id : null });
   });
   router.patch('/notifications/read-all', async (req, res) => {
     // Only acknowledge notifications the browser has already received.
@@ -100,6 +108,11 @@ export function createTaskRouter(prisma, requireAuth) {
   router.patch('/notifications/:id/read', async (req, res) => {
     const result = await prisma.taskNotification.updateMany({ where: { id: id(req.params.id), ...notificationScope(req.taskUser) }, data: { readAt: new Date() } });
     if (!result.count) throw fail('Notificação não encontrada.', 404);
+    res.json({ ok: true });
+  });
+  router.patch('/notifications/task/:taskId/read', async (req, res) => {
+    const taskId = id(req.params.taskId);
+    await prisma.taskNotification.updateMany({ where: { recipientId: req.taskUser.id, taskId, kind: 'ASSIGNED', readAt: null, task: { assigneeId: req.taskUser.id, deletedAt: null } }, data: { readAt: new Date() } });
     res.json({ ok: true });
   });
   async function validateRelations(data, user, previous) {
@@ -179,6 +192,40 @@ export function createTaskRouter(prisma, requireAuth) {
     await prisma.taskList.delete({ where: { id: list.id } });
     res.sendStatus(204);
   });
+  router.get('/summary', async (req, res) => {
+    const user = req.taskUser;
+    const today = day(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+    const scope = taskScope(user);
+    const pending = { ...scope, deletedAt: null, status: { not: 'DONE' } };
+    const queries = [
+      prisma.task.count({ where: pending }),
+      prisma.task.count({ where: { ...pending, assigneeId: user.id, myDay: today } }),
+      prisma.task.count({ where: { ...pending, important: true } }),
+      prisma.task.count({ where: { ...pending, dueDate: { lt: today } } }),
+      prisma.task.count({ where: { ...pending, dueDate: { not: null } } }),
+      prisma.task.count({ where: { ...pending, status: 'WAITING' } }),
+      prisma.task.count({ where: { ...scope, deletedAt: null, status: 'DONE' } }),
+      prisma.task.count({ where: { ...pending, category: 'SOCIAL' } }),
+    ];
+    if (managesTasks(user)) queries.push(prisma.task.count({ where: { ...pending, delegatedById: user.id, assigneeId: { not: user.id } } }));
+    const [all, myDay, important, overdue, planned, waiting, done, social, delegated = 0] = await prisma.$transaction(queries);
+    res.json({ all, myDay, important, overdue, planned, waiting, done, social, delegated });
+  });
+  router.get('/dashboard', async (req, res) => {
+    const user = req.taskUser;
+    const today = day(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+    const pending = { assigneeId: user.id, deletedAt: null, status: { not: 'DONE' } };
+    const [tasks, total, overdue, dueToday, waiting, unread] = await prisma.$transaction([
+      prisma.task.findMany({ where: pending, include: { ...include, delegatedBy: { select: { id: true, nome: true } } }, orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { important: 'desc' }, { id: 'desc' }], take: 5 }),
+      prisma.task.count({ where: pending }),
+      prisma.task.count({ where: { ...pending, dueDate: { lt: today } } }),
+      prisma.task.count({ where: { ...pending, OR: [{ dueDate: today }, { myDay: today }] } }),
+      prisma.task.count({ where: { ...pending, status: 'WAITING' } }),
+      prisma.taskNotification.findMany({ where: { recipientId: user.id, kind: 'ASSIGNED', readAt: null, task: pending }, select: { taskId: true } }),
+    ]);
+    const unreadIds = new Set(unread.map(item => item.taskId));
+    res.json({ tasks: tasks.map(task => present({ ...task, isNew: unreadIds.has(task.id) }, user)), total, overdue, dueToday, waiting, unread: unreadIds.size });
+  });
   router.get('/', async (req, res) => {
     const user = req.taskUser;
     const where = { ...taskScope(user), deletedAt: null };
@@ -212,13 +259,18 @@ export function createTaskRouter(prisma, requireAuth) {
       else where.status = status === 'done' ? 'DONE' : { not: 'DONE' };
     }
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
-    if (q) where.title = { contains: q, mode: 'insensitive' };
+    if (q) where.AND = [...(where.AND || []), { OR: [
+      { title: { contains: q, mode: 'insensitive' } },
+      { notes: { contains: q, mode: 'insensitive' } },
+    ] }];
     const page = Math.max(1, Math.min(100000, Number.parseInt(req.query.page, 10) || 1));
     const total = await prisma.task.count({ where });
     const currentPage = Math.min(page, Math.ceil(total / 50) || 1);
-    const orderBy = view === 'social' ? (req.query.order === 'manual' ? [{ socialOrder: 'asc' }, { id: 'asc' }] : [{ dueDate: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }]) : [{ important: 'desc' }, { dueDate: { sort: 'asc', nulls: 'last' } }, { id: 'desc' }];
+    const orderBy = view === 'social' ? (req.query.order === 'manual' ? [{ socialOrder: 'asc' }, { id: 'asc' }] : [{ dueDate: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }]) : view === 'done' ? [{ completedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }] : [{ dueDate: { sort: 'asc', nulls: 'last' } }, { important: 'desc' }, { id: 'desc' }];
     const tasks = await prisma.task.findMany({ where, include, orderBy, skip: (currentPage - 1) * 50, take: 50 });
-    res.json({ tasks: tasks.map(task => present(task, user)), total, page: currentPage, pages: Math.ceil(total / 50) });
+    const unread = tasks.length ? await prisma.taskNotification.findMany({ where: { recipientId: user.id, kind: 'ASSIGNED', readAt: null, taskId: { in: tasks.map(task => task.id) } }, select: { taskId: true } }) : [];
+    const unreadIds = new Set(unread.map(item => item.taskId));
+    res.json({ tasks: tasks.map(task => present({ ...task, isNew: unreadIds.has(task.id) }, user)), total, page: currentPage, pages: Math.ceil(total / 50) });
   });
   router.get('/:id', async (req, res) => {
     const task = await prisma.task.findFirst({ where: { id: id(req.params.id), ...taskScope(req.taskUser), deletedAt: null }, include });
@@ -230,6 +282,8 @@ export function createTaskRouter(prisma, requireAuth) {
     data.assigneeId = await validateRelations(data, req.taskUser);
     data.createdById = req.taskUser.id;
     data.delegatedById = data.assigneeId !== req.taskUser.id ? req.taskUser.id : null;
+    const canBePrivate = data.category !== 'SOCIAL' && data.assigneeId === req.taskUser.id;
+    data.isPrivate = canBePrivate ? (data.isPrivate ?? true) : false;
     const created = await prisma.$transaction(async tx => {
       let task = await tx.task.create({ data, include });
       if (task.category === 'SOCIAL') task = await tx.task.update({ where: { id: task.id }, data: { socialOrder: task.id }, include });
@@ -246,6 +300,11 @@ export function createTaskRouter(prisma, requireAuth) {
     const data = taskData(req.body);
     if (data.category && data.category !== previous.category) throw fail('A lista de origem da tarefa não pode ser alterada.');
     await validateRelations(data, req.taskUser, previous);
+    const nextAssigneeId = data.assigneeId ?? previous.assigneeId;
+    if (data.isPrivate === true && (previous.createdById !== req.taskUser.id || nextAssigneeId !== req.taskUser.id || previous.category === 'SOCIAL')) {
+      throw fail('Apenas uma tarefa criada e atribuída a você pode ser pessoal.', 403);
+    }
+    if (nextAssigneeId !== previous.createdById || previous.category === 'SOCIAL') data.isPrivate = false;
     if (data.assigneeId !== undefined && data.assigneeId !== previous.assigneeId) {
       data.delegatedById = data.assigneeId !== req.taskUser.id ? req.taskUser.id : null;
     }

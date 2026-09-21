@@ -134,6 +134,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setIsAuthenticated(true);
                 clearCachedSession();
+                try { sessionStorage.setItem('motive_just_logged_in', String(userData.id)); } catch { /* armazenamento indisponível */ }
                 return { success: true, user: userData };
             } else {
                 const error = await response.json();
@@ -167,6 +168,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setIsAuthenticated(false);
             clearCachedSession();
+            try { sessionStorage.removeItem('motive_just_logged_in'); } catch { /* armazenamento indisponível */ }
             
             // Redireciona para login
             window.location.href = '/login';

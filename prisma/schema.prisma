@@ -195,6 +195,7 @@ model Task {
   socialOrder Int @default(0)
   propertyId Int?
   notes String @default("")
+  isPrivate Boolean @default(false)
   status String @default("TODO")
   important Boolean @default(false)
   dueDate DateTime? @db.Date

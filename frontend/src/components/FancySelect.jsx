@@ -21,6 +21,7 @@ export default function FancySelect({
   typeahead = false,
   searchable = false,
   searchPlaceholder = 'Buscar opção...',
+  inlineMenu = false,
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -138,7 +139,7 @@ export default function FancySelect({
       </button>
 
       {open && (
-        <div role="listbox" aria-label={ariaLabel} className={`absolute z-[70] min-w-full overflow-hidden rounded-2xl border border-[#DDE4E8] bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(23,47,67,0.18)] backdrop-blur-xl ${dropUp ? 'bottom-full mb-2' : 'mt-2'}`}>
+        <div role="listbox" aria-label={ariaLabel} className={`${inlineMenu ? 'relative mt-2' : `absolute z-[70] min-w-full ${dropUp ? 'bottom-full mb-2' : 'mt-2'}`} overflow-hidden rounded-2xl border border-[#DDE4E8] bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(23,47,67,0.18)] backdrop-blur-xl`}>
           {searchable && (
             <div className="relative mb-1.5">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
