@@ -232,7 +232,7 @@ const AppLayout = () => {
                 role={mobileOpen ? 'dialog' : undefined}
                 aria-modal={mobileOpen || undefined}
                 className={`fixed flex flex-col overflow-hidden bg-secondary text-white ${
-                    mobile ? `left-0 top-0 z-[80] h-dvh w-[min(20rem,85vw)] transform-gpu shadow-2xl [backface-visibility:hidden] will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none ${mobileOpen ? 'translate-x-0' : '-translate-x-[105%]'}` : `bottom-3 left-3 top-3 z-50 rounded-[22px] border border-white/10 shadow-[0_20px_50px_rgba(15,30,43,0.22)] transition-[width] duration-200 ${sidebarExpanded ? 'w-[244px]' : 'w-16'}`
+                    mobile ? `left-0 top-0 z-[80] h-dvh w-[min(20rem,85vw)] transform-gpu shadow-2xl [backface-visibility:hidden] will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none ${mobileOpen ? 'translate-x-0' : '-translate-x-[105%]'}` : `bottom-3 left-3 top-3 z-[80] rounded-[22px] border border-white/10 shadow-[0_20px_50px_rgba(15,30,43,0.22)] transition-[width] duration-200 ${sidebarExpanded ? 'w-[244px]' : 'w-16'}`
                 }`}
                 onMouseEnter={() => { if (!mobile) setSidebarHovered(true); }}
                 onMouseLeave={() => setSidebarHovered(false)}
