@@ -10,6 +10,7 @@ datasource db {
 
 model Client {
   id                     Int                 @id @default(autoincrement())
+  propertyId             Int?
   nome                   String?
   cpf                    String?
   imovel                 String?
@@ -38,7 +39,9 @@ model Client {
   simulacoes             HousingSimulation[]
   contratos              Contract[]
   tasks                  Task[]
+  property               Property?           @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
+  @@index([propertyId])
   @@map("clients")
 }
 
@@ -168,6 +171,7 @@ model Property {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   tasks Task[]
+  clients Client[]
 
   @@index([status])
   @@index([city])

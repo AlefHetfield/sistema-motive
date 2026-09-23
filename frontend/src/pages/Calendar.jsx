@@ -70,6 +70,7 @@ const nextVisitSlot = () => {
 const eventStart = event => event.start?.dateTime ? new Date(event.start.dateTime) : parseDateKey(event.start?.date);
 const eventEnd = event => event.end?.dateTime ? new Date(event.end.dateTime) : parseDateKey(event.end?.date);
 const isAllDay = event => Boolean(event.start?.date);
+const isPastEvent = event => eventEnd(event).getTime() <= Date.now();
 
 const eventOccursOn = (event, day) => {
   const dayStart = parseDateKey(dateKey(day));
@@ -109,7 +110,13 @@ const EVENT_LEGEND = [
   { label: 'Outros', color: 'bg-slate-400' },
 ];
 
-const propertyLabel = property => [property.code, property.title].filter(Boolean).join(' · ');
+const formatPropertyPrice = value => Number.isFinite(Number(value))
+  ? new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(Number(value))
+  : 'Valor não informado';
 const cleanPropertyTitle = value => String(value || '')
   .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
   .replace(/\s*[-–]\s*\d+\s*(?:dorm(?:it[oó]rios?)?|quartos?).*$/i, '')
@@ -120,8 +127,21 @@ const propertyVisitLocation = property => {
   const type = String(property?.propertyType || '').toLocaleLowerCase('pt-BR');
   const condominium = cleanPropertyTitle(property?.title);
   const neighborhood = String(property?.neighborhood || '').trim();
-  return type.includes('apartamento') ? condominium || neighborhood : neighborhood || condominium;
+  const condominiumClues = [property?.title, property?.address, property?.description, property?.additionalInformation]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('pt-BR');
+  const isCondominium = type.includes('apartamento')
+    || type.includes('condom')
+    || /condom[ií]nio|\bcond\b/.test(condominiumClues);
+  return isCondominium ? condominium || neighborhood : neighborhood || condominium;
 };
+const propertyLabel = property => [
+  property.code || property.propertyType || 'Imóvel',
+  propertyVisitLocation(property) || 'Bairro/condomínio não informado',
+  String(property.ownerName || '').trim(),
+  formatPropertyPrice(property.price),
+].filter(Boolean).join(' - ');
 const buildVisitTitle = (property, clientName = '', brokerName = '') => [
   'Visita',
   propertyVisitLocation(property),
@@ -375,7 +395,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
         <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
       </header>
       <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-        <Field label="Imóvel" className="sm:col-span-2"><FancySelect searchable searchPlaceholder="Buscar por código, nome, bairro ou endereço..." ariaLabel="Imóvel da visita" value={form.propertyId} onChange={chooseProperty} placeholder="Sem imóvel vinculado" options={[{ value: '', label: 'Sem imóvel vinculado' }, ...properties.map(property => ({ value: String(property.id), label: propertyLabel(property), searchText: [property.code, property.title, property.neighborhood, property.city, property.address].filter(Boolean).join(' ') }))]} /></Field>
+        <Field label="Imóvel" className="sm:col-span-2"><FancySelect searchable searchPlaceholder="Buscar por código, bairro, condomínio, proprietário ou valor..." ariaLabel="Imóvel da visita" value={form.propertyId} onChange={chooseProperty} placeholder="Sem imóvel vinculado" options={[{ value: '', label: 'Sem imóvel vinculado' }, ...properties.map(property => ({ value: String(property.id), label: propertyLabel(property), searchText: [property.code, property.propertyType, property.title, property.neighborhood, property.address, property.ownerName, property.price, formatPropertyPrice(property.price)].filter(Boolean).join(' ') }))]} /></Field>
         {selectedProperty?.sourceUrl && <div className="sm:col-span-2 flex min-w-0 items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 p-2.5">
           <div className="flex h-14 w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-sky-200">
             {sitePreview.imageUrl ? <img src={sitePreview.imageUrl} alt={`Foto de ${propertyVisitLocation(selectedProperty) || 'imóvel vinculado'}`} loading="lazy" className="h-full w-full object-cover" onError={event => {
@@ -414,7 +434,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
 
 function AgendaEvent({ event, onClick, compact = false }) {
   const fullLabel = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event.title)}`}>
+  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : ''}`}>
     <span className={`block truncate font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{!isAllDay(event) && <span className="mr-1 font-medium opacity-70">{eventTime(event)}</span>}{event.title}</span>
     {!compact && event.location && <span className="mt-1 flex items-center gap-1 truncate text-xs opacity-75"><MapPin className="h-3 w-3 shrink-0" />{event.location}</span>}
   </button>;
@@ -478,7 +498,7 @@ function WeekView({ days, events, todayKey, onCreate, onEdit }) {
               const height = Math.max(((end - start) / 60) * WEEK_HOUR_HEIGHT, 28);
               const conflict = dayEvents.some(other => other.id !== event.id && !isTimeExemptEvent(other) && Math.abs(eventStart(other) - eventStart(event)) < 90 * 60 * 1000);
               const label = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight shadow-sm transition hover:z-20 hover:brightness-95 ${eventTone(event.title)} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
+              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight shadow-sm transition hover:z-20 hover:brightness-95 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : ''} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
             })}
             {today && nowMinutes >= rangeStart && nowMinutes <= rangeEnd && <div className="pointer-events-none absolute left-0 right-0 z-30 h-px bg-red-500" style={{ top: ((nowMinutes - rangeStart) / 60) * WEEK_HOUR_HEIGHT }}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" /></div>}
           </div>;
@@ -535,7 +555,7 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
         return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 overflow-hidden cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35' : ''}`}>
           <button type="button" onClick={event => { event.stopPropagation(); setSelectedKey(key); }} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ${today ? 'bg-primary text-white shadow-sm' : currentMonth ? 'text-slate-700' : 'text-slate-300'}`}>{day.getDate()}</button>
           <div className="space-y-0.5">
-            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event.title)}`}>{event.title}</button>)}
+            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35]' : ''}`}>{event.title}</button>)}
             {dayEvents.length > 2 && <span className="block px-1 text-[8px] font-extrabold text-primary">+{dayEvents.length - 2}</span>}
           </div>
         </div>;
@@ -659,6 +679,13 @@ export default function CalendarPage() {
   };
   const todayKey = dateKey(new Date());
   const visibleEvents = events.filter(event => eventEnd(event) > visibleRange.start && eventStart(event) < visibleRange.end);
+  const mobileUpcomingEvents = visibleEvents.filter(event => !isPastEvent(event));
+  const mobileUpcomingGroups = Object.values(mobileUpcomingEvents.reduce((groups, event) => {
+    const key = dateKey(eventStart(event));
+    if (!groups[key]) groups[key] = { key, events: [] };
+    groups[key].events.push(event);
+    return groups;
+  }, {}));
   const upcoming = events.filter(event => eventEnd(event) >= new Date()).slice(0, 6);
   const upcomingGroups = Object.values(upcoming.reduce((groups, event) => {
     const key = dateKey(eventStart(event));
@@ -706,7 +733,10 @@ export default function CalendarPage() {
           ? <MobileWeekView days={week.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
           : viewMode === 'calendar'
             ? <MobileMonthCalendar cursor={cursor} days={grid.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
-            : <div className="min-w-0 divide-y divide-slate-100">{loading ? <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p> : visibleEvents.length ? visibleEvents.map(event => <article key={event.id} className="flex min-w-0 gap-2 p-3"><div className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-slate-100 py-2"><strong className="text-lg text-slate-800">{eventStart(event).getDate()}</strong><span className="text-[10px] font-bold uppercase text-slate-400">{WEEKDAYS[eventStart(event).getDay()]}</span></div><div className="min-w-0 flex-1 overflow-hidden"><AgendaEvent event={event} onClick={() => setEditor(event)} />{event.htmlLink && <a href={event.htmlLink} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-xs font-bold text-primary">Abrir no Google <ExternalLink className="h-3 w-3 shrink-0" /></a>}</div></article>) : <p className="p-10 text-center text-sm text-slate-500">Nenhum compromisso neste mês.</p>}</div>
+            : <div className="min-w-0">{loading ? <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p> : mobileUpcomingGroups.length ? <div className="space-y-1 pb-2">{mobileUpcomingGroups.map(group => <section key={group.key}>
+              <div className="sticky top-0 z-10 border-y border-slate-100 bg-slate-50/95 px-4 py-2.5 backdrop-blur"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">{upcomingDateLabel(group.key)}</p></div>
+              <div className="divide-y divide-slate-100">{group.events.map(event => <article key={event.id} className="min-w-0 p-3"><AgendaEvent event={event} onClick={() => setEditor(event)} /></article>)}</div>
+            </section>)}</div> : <p className="p-10 text-center text-sm text-slate-500">Nenhum próximo compromisso neste mês.</p>}</div>
           : viewMode === 'week' ? <WeekView days={week.days} events={visibleEvents} todayKey={todayKey} onCreate={createAt} onEdit={setEditor} /> : <div>
           <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">{WEEKDAYS.map((day, index) => <div key={day} className={`px-2 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-400 ${index === 0 || index === 6 ? 'bg-slate-100/70' : ''}`}>{day}</div>)}</div>
           <div className="grid grid-cols-7">{grid.days.map(day => {
@@ -722,7 +752,7 @@ export default function CalendarPage() {
         </div>}
       </section>
 
-      <aside className="space-y-4">
+      <aside className="hidden space-y-4 lg:block">
         <section className="app-card p-4"><div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Clock3 className="h-4 w-4" /></span><div><h3 className="font-bold text-slate-900">Próximos compromissos</h3><p className="text-xs text-slate-500">A partir de agora</p></div></div><div className="mt-4 space-y-4">{upcomingGroups.length ? upcomingGroups.map(group => <div key={group.key}><p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">{upcomingDateLabel(group.key)}</p><div className="space-y-2">{group.events.map(event => <AgendaEvent key={event.id} event={event} onClick={() => setEditor(event)} />)}</div></div>) : <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-400">Agenda livre.</p>}</div></section>
       </aside>
     </div>

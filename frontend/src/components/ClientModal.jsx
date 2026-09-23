@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../hooks/useToast'; // Importar toast
-import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin } from 'lucide-react';
+import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin, Loader2 } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
 import FancySelect from './FancySelect';
+import { fetchProperties } from '../services/api';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
 const formatCPF = (cpf) => {
@@ -65,7 +66,43 @@ const parseCurrencyBR = (value) => {
     return result;
 };
 
+const cleanPropertyTitle = value => String(value || '')
+    .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
+    .replace(/\s*[-–]\s*\d+\s*(?:dorm(?:it[oó]rios?)?|quartos?).*$/i, '')
+    .replace(/\s*,?\s*R\$\s*[\d.\s]+(?:,\d{2})?\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const propertyLocation = property => {
+    const type = String(property?.propertyType || '').toLocaleLowerCase('pt-BR');
+    const condominium = cleanPropertyTitle(property?.title);
+    const neighborhood = String(property?.neighborhood || '').trim();
+    const condominiumClues = [property?.title, property?.address, property?.description, property?.additionalInformation]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('pt-BR');
+    const isCondominium = type.includes('apartamento') || type.includes('condom') || /condom[ií]nio|\bcond\b/.test(condominiumClues);
+    return isCondominium ? condominium || neighborhood : neighborhood || condominium;
+};
+
+const propertyPrice = value => Number.isFinite(Number(value))
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(Number(value))
+    : '';
+
+const propertyOptionLabel = property => [
+    property.code || property.propertyType || 'Imóvel',
+    propertyLocation(property) || 'Bairro/condomínio não informado',
+    String(property.ownerName || '').trim(),
+    propertyPrice(property.price),
+].filter(Boolean).join(' - ');
+
+const propertyClientLabel = property => [
+    property.code || property.propertyType || 'Imóvel',
+    propertyLocation(property),
+].filter(Boolean).join(' - ');
+
 const initialFormData = {
+    propertyId: null,
     nome: '',
     cpf: '',
     imovel: '',
@@ -82,6 +119,10 @@ const initialFormData = {
 
 const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const [formData, setFormData] = useState(initialFormData);
+    const [propertyMode, setPropertyMode] = useState('map');
+    const [properties, setProperties] = useState([]);
+    const [loadingProperties, setLoadingProperties] = useState(false);
+    const [propertiesError, setPropertiesError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const notify = useToast(); // Usar toast notifications
 
@@ -92,6 +133,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             if (clientToEdit) {
                 setFormData({
                     id: clientToEdit.id,
+                    propertyId: clientToEdit.propertyId || null,
                     nome: clientToEdit.nome || '',
                     cpf: clientToEdit.cpf ? formatCPF(clientToEdit.cpf) : '',
                     imovel: clientToEdit.imovel || '',
@@ -107,11 +149,31 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     // Mantém o status existente ao editar
                     status: clientToEdit.status 
                 });
+                setPropertyMode(clientToEdit.propertyId ? 'map' : 'manual');
             } else {
                 setFormData(initialFormData);
+                setPropertyMode('map');
             }
         }
     }, [isOpen, clientToEdit]);
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        let active = true;
+        setLoadingProperties(true);
+        setPropertiesError('');
+        fetchProperties()
+            .then(items => {
+                if (active) setProperties(Array.isArray(items) ? items : []);
+            })
+            .catch(error => {
+                if (active) setPropertiesError(error.message || 'Não foi possível carregar os imóveis do mapa.');
+            })
+            .finally(() => {
+                if (active) setLoadingProperties(false);
+            });
+        return () => { active = false; };
+    }, [isOpen]);
 
     // control modal entry animation mounted state (must be declared unconditionally)
     const [mounted, setMounted] = useState(false);
@@ -144,6 +206,21 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
 
     const handleModalidadeChange = (value) => {
         setFormData({ ...formData, modalidade: value });
+    };
+
+    const handlePropertyModeChange = (mode) => {
+        setPropertyMode(mode);
+        if (mode === 'manual') setFormData(current => ({ ...current, propertyId: null }));
+    };
+
+    const handlePropertyChange = (value) => {
+        const property = properties.find(item => String(item.id) === String(value));
+        setFormData(current => ({
+            ...current,
+            propertyId: property?.id || null,
+            imovel: property ? propertyClientLabel(property) : '',
+            cidade: property?.city || current.cidade,
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -195,7 +272,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
     const STATUS_OPTIONS = ["Documentação Recebida", "Aprovado", "Solicitando Engenharia", "Engenharia Solicitada", "Baixando FGTS", "Preenchendo Fichas", "Assinando Fichas", "Finalizando", "Aguardando Reserva", "Enviando para Conformidade", "Aguardando Conformidade", "Inconforme", "Conforme - Ag. Contrato", "Assinando Contrato"];
 
     return (
-        <div id="client-form-modal" className="mobile-safe-overlay fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div id="client-form-modal" className="mobile-safe-overlay fixed inset-0 z-[9700] flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className={`flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-200 ${mounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
                 <div className="flex items-center justify-between gap-3 p-4 sm:p-6">
                     <h3 id="form-title" className="text-2xl font-bold text-secondary">
@@ -225,7 +302,33 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                             </div>
                         )}
 
-                        <ModernInput id="imovel" label="Imóvel" Icon={Home} value={formData.imovel} onChange={handleInputChange} />
+                        <div className="md:col-span-3">
+                            <div className="mb-1 flex items-center justify-between gap-3">
+                                <span className="text-xs font-semibold text-gray-600">Imóvel</span>
+                                <div className="flex rounded-lg bg-gray-100 p-0.5" role="group" aria-label="Origem do imóvel">
+                                    <button type="button" onClick={() => handlePropertyModeChange('map')} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${propertyMode === 'map' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Do mapa</button>
+                                    <button type="button" onClick={() => handlePropertyModeChange('manual')} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${propertyMode === 'manual' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Digitar</button>
+                                </div>
+                            </div>
+                            {propertyMode === 'map' ? <>
+                                <FancySelect
+                                    searchable
+                                    ariaLabel="Imóvel vinculado ao cliente"
+                                    value={formData.propertyId ? String(formData.propertyId) : ''}
+                                    onChange={handlePropertyChange}
+                                    disabled={loadingProperties}
+                                    placeholder={loadingProperties ? 'Carregando imóveis...' : 'Selecione um imóvel do mapa'}
+                                    searchPlaceholder="Buscar por código, bairro, condomínio, proprietário ou valor..."
+                                    options={properties.map(property => ({
+                                        value: String(property.id),
+                                        label: propertyOptionLabel(property),
+                                        searchText: [property.code, property.title, property.neighborhood, property.address, property.ownerName, property.price].filter(Boolean).join(' '),
+                                    }))}
+                                />
+                                {loadingProperties && <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-400"><Loader2 className="h-3 w-3 animate-spin" />Carregando imóveis cadastrados no mapa</p>}
+                                {propertiesError && <p className="mt-1.5 text-[11px] text-red-500">{propertiesError} Você ainda pode usar a opção “Digitar”.</p>}
+                            </> : <ModernInput id="imovel" Icon={Home} value={formData.imovel} onChange={handleInputChange} placeholder="Digite o imóvel, condomínio ou endereço" />}
+                        </div>
                         <ModernInput id="corretor" label="Corretor" Icon={Briefcase} value={formData.corretor} onChange={handleInputChange} required />
                         <ModernInput id="responsavel" label="Responsável" Icon={User} value={formData.responsavel} onChange={handleInputChange} />
                         <ModernInput id="agencia" label="Agência (Nº)" Icon={Hash} value={formData.agencia} onChange={handleInputChange} placeholder="Apenas números" />
@@ -276,7 +379,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                         </div>
                     </div>
                     <div>
-                        <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={4} />
+                        <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={1} placeholder="Adicionar uma observação (opcional)" />
                     </div>
                     <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                         {/* Botão de excluir à esquerda (só aparece ao editar) */}
