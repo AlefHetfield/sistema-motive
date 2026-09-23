@@ -49,7 +49,7 @@ import { createProperty, deleteProperty, fetchProperties, fetchPropertyDrivePhot
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
-const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '', floorGroup: '', suite: '', landConfiguration: '' };
+const initialFilters = { search: '', status: '', city: '', propertyType: '', bedrooms: '', floorGroup: '', suite: '', landConfiguration: '', minPrice: '', maxPrice: '' };
 const initialListingRefresh = { running: false, complete: false, processed: 0, updated: 0, failed: [], cursor: 0, error: '' };
 const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
 
@@ -63,6 +63,24 @@ const formatWhatsapp = value => {
   return value || '';
 };
 const propertyCoverUrl = property => property?.photoUrl || (property?.driveCoverFileId ? propertyDriveImageUrl(property.driveCoverFileId) : '');
+const priceFilterNumber = value => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits ? Number(digits) : null;
+};
+const formatPriceFilterInput = value => {
+  const parsed = priceFilterNumber(value);
+  return parsed === null ? '' : parsed.toLocaleString('pt-BR');
+};
+
+function PriceRangeFilter({ minPrice, maxPrice, onChange }) {
+  return <div>
+    <span className="mb-1.5 block text-xs font-bold text-gray-600">Faixa de valor</span>
+    <div className="grid grid-cols-2 gap-2">
+      <label className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">R$</span><input type="text" inputMode="numeric" aria-label="Valor mínimo" value={minPrice} onChange={event => onChange('minPrice', formatPriceFilterInput(event.target.value))} placeholder="Mínimo" className={`${compactControlClass} pl-9`} /></label>
+      <label className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">R$</span><input type="text" inputMode="numeric" aria-label="Valor máximo" value={maxPrice} onChange={event => onChange('maxPrice', formatPriceFilterInput(event.target.value))} placeholder="Máximo" className={`${compactControlClass} pl-9`} /></label>
+    </div>
+  </div>;
+}
 
 const cleanPropertyTitle = value => String(value || '')
   .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
@@ -356,6 +374,8 @@ export default function PropertiesMap() {
   const filtered = useMemo(() => {
     const search = filters.search.trim().toLocaleLowerCase('pt-BR');
     const searchDigits = search.replace(/\D/g, '');
+    const minPrice = priceFilterNumber(filters.minPrice);
+    const maxPrice = priceFilterNumber(filters.maxPrice);
     return properties.filter(property => {
       const matchesText = [property.title, property.code, property.address, property.neighborhood, property.ownerName].some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(search));
       const matchesWhatsapp = searchDigits && whatsappDigits(property.ownerWhatsapp).includes(searchDigits);
@@ -371,9 +391,20 @@ export default function PropertiesMap() {
       if (filters.suite === 'no' && Number(property.suites || 0) > 0) return false;
       if (filters.landConfiguration === 'unknown' && property.landConfiguration) return false;
       if (filters.landConfiguration && filters.landConfiguration !== 'unknown' && property.landConfiguration !== filters.landConfiguration) return false;
+      const hasPrice = property.price !== null && property.price !== undefined && property.price !== '' && Number.isFinite(Number(property.price));
+      if ((minPrice !== null || maxPrice !== null) && !hasPrice) return false;
+      if (minPrice !== null && Number(property.price) < minPrice) return false;
+      if (maxPrice !== null && Number(property.price) > maxPrice) return false;
       return true;
     });
   }, [filters, properties]);
+  const minPriceFilter = priceFilterNumber(filters.minPrice);
+  const maxPriceFilter = priceFilterNumber(filters.maxPrice);
+  const priceFilterLabel = minPriceFilter !== null && maxPriceFilter !== null
+    ? `${currency.format(minPriceFilter)} a ${currency.format(maxPriceFilter)}`
+    : minPriceFilter !== null
+      ? `A partir de ${currency.format(minPriceFilter)}`
+      : maxPriceFilter !== null ? `Até ${currency.format(maxPriceFilter)}` : '';
   const activeFilterChips = useMemo(() => [
     filters.search.trim() ? { field: 'search', label: `Busca: ${filters.search.trim()}` } : null,
     filters.status ? { field: 'status', label: filters.status } : null,
@@ -383,7 +414,8 @@ export default function PropertiesMap() {
     filters.floorGroup ? { field: 'floorGroup', label: filters.floorGroup === 'ground' ? 'Andar: térreo' : filters.floorGroup === 'upper' ? 'Andar: 1º ou superior' : 'Andar: não informado' } : null,
     filters.suite ? { field: 'suite', label: filters.suite === 'yes' ? 'Suíte: sim' : 'Suíte: não' } : null,
     filters.landConfiguration ? { field: 'landConfiguration', label: filters.landConfiguration === 'unknown' ? 'Terreno: não informado' : `Terreno: ${filters.landConfiguration}` } : null,
-  ].filter(Boolean), [filters]);
+    priceFilterLabel ? { field: 'priceRange', label: priceFilterLabel } : null,
+  ].filter(Boolean), [filters, priceFilterLabel]);
   const mappedCount = filtered.filter(item => item.latitude !== null && item.longitude !== null).length;
   const listingRefreshTotal = useMemo(() => properties.filter(property => /https?:\/\/(?:www\.)?motiveimoveis\.com/i.test(property.sourceUrl || '')).length, [properties]);
   const cityGroups = useMemo(() => {
@@ -447,6 +479,13 @@ export default function PropertiesMap() {
     setEditingProperty(null);
   };
   const updateFilter = (field, value) => setFilters(current => ({ ...current, [field]: value }));
+  const clearFilter = field => {
+    if (field === 'priceRange') {
+      setFilters(current => ({ ...current, minPrice: '', maxPrice: '' }));
+      return;
+    }
+    updateFilter(field, '');
+  };
   const updatePropertyTypeFilter = value => setFilters(current => ({
     ...current,
     propertyType: value,
@@ -597,13 +636,14 @@ export default function PropertiesMap() {
           <details className="group relative z-30">
             <summary className={`${compactControlClass} flex cursor-pointer list-none items-center justify-between gap-2 font-bold text-gray-600 [&::-webkit-details-marker]:hidden`}><span className="inline-flex items-center gap-2"><SlidersHorizontal className="h-4 w-4" />Mais filtros</span><ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" /></summary>
             <div className="relative mt-2 w-full lg:absolute lg:right-0 lg:top-[calc(100%+6px)] lg:mt-0 lg:w-72 space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+              <PriceRangeFilter minPrice={filters.minPrice} maxPrice={filters.maxPrice} onChange={updateFilter} />
               <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Suíte</span><FancySelect size="compact" ariaLabel="Filtrar por suíte" value={filters.suite} onChange={value => updateFilter('suite', value)} placeholder="Todas" options={[{ value: '', label: 'Todas' }, { value: 'yes', label: 'Sim' }, { value: 'no', label: 'Não' }]} /></label>
               {(!filters.propertyType || filters.propertyType === 'Apartamento') && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Andar</span><FancySelect size="compact" ariaLabel="Filtrar por andar" value={filters.floorGroup} onChange={value => updateFilter('floorGroup', value)} placeholder="Todos" options={[{ value: '', label: 'Todos' }, { value: 'ground', label: 'Térreo' }, { value: 'upper', label: '1º andar ou superior' }, { value: 'unknown', label: 'Não informado' }]} /></label>}
               {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <label className="block"><span className="mb-1.5 block text-xs font-bold text-gray-600">Configuração do terreno</span><FancySelect size="compact" ariaLabel="Filtrar por configuração do terreno" value={filters.landConfiguration} onChange={value => updateFilter('landConfiguration', value)} placeholder="Todas" options={[{ value: '', label: 'Todas' }, ...LAND_CONFIGURATIONS.map(item => ({ value: item, label: item })), { value: 'unknown', label: 'Não informado' }]} /></label>}
             </div>
           </details>
         </div>
-        {activeFilterChips.length > 0 && <div className="mt-2 hidden flex-wrap items-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-2.5 py-2 lg:flex"><span className="mr-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">Filtros ativos</span>{activeFilterChips.map(chip => <button key={chip.field} type="button" onClick={() => updateFilter(chip.field, '')} aria-label={`Remover filtro ${chip.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary/5">{chip.label}<X className="h-3 w-3" /></button>)}<span className="ml-auto text-xs font-semibold text-gray-500">{filtered.length} resultado(s)</span><button type="button" onClick={() => setFilters(initialFilters)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-700"><FilterX className="h-3.5 w-3.5" />Limpar todos</button></div>}
+        {activeFilterChips.length > 0 && <div className="mt-2 hidden flex-wrap items-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-2.5 py-2 lg:flex"><span className="mr-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-primary">Filtros ativos</span>{activeFilterChips.map(chip => <button key={chip.field} type="button" onClick={() => clearFilter(chip.field)} aria-label={`Remover filtro ${chip.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary/5">{chip.label}<X className="h-3 w-3" /></button>)}<span className="ml-auto text-xs font-semibold text-gray-500">{filtered.length} resultado(s)</span><button type="button" onClick={() => setFilters(initialFilters)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-700"><FilterX className="h-3.5 w-3.5" />Limpar todos</button></div>}
       </header>
 
       {mobile && mobileFilters && <div className="fixed inset-0 z-[80] bg-gray-950/35 backdrop-blur-[1px]" role="presentation" onClick={() => setMobileFilters(false)}>
@@ -616,6 +656,7 @@ export default function PropertiesMap() {
               <FancySelect size="compact" ariaLabel="Filtrar por cidade" value={filters.city} onChange={value => updateFilter('city', value)} placeholder="Todas as cidades" options={[{ value: '', label: 'Todas as cidades' }, ...cities.map(item => ({ value: item, label: item }))]} />
               <FancySelect size="compact" ariaLabel="Filtrar por tipo" value={filters.propertyType} onChange={updatePropertyTypeFilter} placeholder="Todos os tipos" options={[{ value: '', label: 'Todos os tipos' }, ...propertyTypes.map(item => ({ value: item, label: item }))]} />
               <FancySelect size="compact" ariaLabel="Filtrar por dormitórios" value={filters.bedrooms} onChange={value => updateFilter('bedrooms', value)} placeholder="Dormitórios" options={[{ value: '', label: 'Dormitórios' }, ...[1, 2, 3, 4].map(item => ({ value: String(item), label: `${item}+` }))]} />
+              <div className="col-span-2"><PriceRangeFilter minPrice={filters.minPrice} maxPrice={filters.maxPrice} onChange={updateFilter} /></div>
               <FancySelect size="compact" ariaLabel="Filtrar por suíte" value={filters.suite} onChange={value => updateFilter('suite', value)} placeholder="Todas as suítes" options={[{ value: '', label: 'Todas as suítes' }, { value: 'yes', label: 'Com suíte' }, { value: 'no', label: 'Sem suíte' }]} />
               {(!filters.propertyType || filters.propertyType === 'Apartamento') && <FancySelect size="compact" ariaLabel="Filtrar por andar" value={filters.floorGroup} onChange={value => updateFilter('floorGroup', value)} placeholder="Todos os andares" options={[{ value: '', label: 'Todos os andares' }, { value: 'ground', label: 'Térreo' }, { value: 'upper', label: '1º andar ou superior' }, { value: 'unknown', label: 'Andar não informado' }]} />}
               {(!filters.propertyType || ['Casa', 'Sobrado'].includes(filters.propertyType)) && <FancySelect size="compact" className="col-span-2" ariaLabel="Filtrar por configuração do terreno" value={filters.landConfiguration} onChange={value => updateFilter('landConfiguration', value)} placeholder="Todos os terrenos" options={[{ value: '', label: 'Todos os terrenos' }, ...LAND_CONFIGURATIONS.map(item => ({ value: item, label: item })), { value: 'unknown', label: 'Não informado' }]} />}

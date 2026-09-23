@@ -93,13 +93,24 @@ const upcomingDateLabel = key => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} · ${calendarDate}`;
 };
 
-const eventTone = title => {
-  const normalized = String(title || '').toLocaleLowerCase('pt-BR');
-  if (normalized.includes('visita')) return 'border-sky-200 bg-sky-50 text-sky-800';
-  if (normalized.includes('engenharia')) return 'border-amber-200 bg-amber-50 text-amber-800';
-  if (normalized.includes('capta')) return 'border-emerald-200 bg-emerald-50 text-emerald-800';
-  if (normalized.includes('folga')) return 'border-violet-200 bg-violet-50 text-violet-800';
-  return 'border-slate-200 bg-slate-50 text-slate-700';
+const eventTone = event => {
+  const normalized = String(event.title || '').toLocaleLowerCase('pt-BR');
+  const past = isPastEvent(event);
+  if (normalized.includes('visita')) return past
+    ? 'border-sky-200 bg-sky-50 text-sky-800'
+    : 'border-[#C4D6E3] bg-[#DCE8F1] text-[#24465E]';
+  if (normalized.includes('engenharia')) return past
+    ? 'border-amber-200 bg-amber-50 text-amber-800'
+    : 'border-[#E2D2B2] bg-[#F0E5CE] text-[#654D23]';
+  if (normalized.includes('capta')) return past
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : 'border-[#C5D8CA] bg-[#DEEADF] text-[#315740]';
+  if (normalized.includes('folga')) return past
+    ? 'border-violet-200 bg-violet-50 text-violet-800'
+    : 'border-[#D5CCE5] bg-[#E9E3F2] text-[#53416F]';
+  return past
+    ? 'border-slate-200 bg-slate-50 text-slate-700'
+    : 'border-[#D5DCE2] bg-[#E9EDF0] text-[#455462]';
 };
 
 const EVENT_LEGEND = [
@@ -434,7 +445,7 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
 
 function AgendaEvent({ event, onClick, compact = false }) {
   const fullLabel = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : ''}`}>
+  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:shadow-md'}`}>
     <span className={`block truncate font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{!isAllDay(event) && <span className="mr-1 font-medium opacity-70">{eventTime(event)}</span>}{event.title}</span>
     {!compact && event.location && <span className="mt-1 flex items-center gap-1 truncate text-xs opacity-75"><MapPin className="h-3 w-3 shrink-0" />{event.location}</span>}
   </button>;
@@ -498,7 +509,7 @@ function WeekView({ days, events, todayKey, onCreate, onEdit }) {
               const height = Math.max(((end - start) / 60) * WEEK_HOUR_HEIGHT, 28);
               const conflict = dayEvents.some(other => other.id !== event.id && !isTimeExemptEvent(other) && Math.abs(eventStart(other) - eventStart(event)) < 90 * 60 * 1000);
               const label = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight shadow-sm transition hover:z-20 hover:brightness-95 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : ''} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
+              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight transition hover:z-20 hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:shadow-md'} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
             })}
             {today && nowMinutes >= rangeStart && nowMinutes <= rangeEnd && <div className="pointer-events-none absolute left-0 right-0 z-30 h-px bg-red-500" style={{ top: ((nowMinutes - rangeStart) / 60) * WEEK_HOUR_HEIGHT }}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" /></div>}
           </div>;
@@ -555,7 +566,7 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
         return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 overflow-hidden cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35' : ''}`}>
           <button type="button" onClick={event => { event.stopPropagation(); setSelectedKey(key); }} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ${today ? 'bg-primary text-white shadow-sm' : currentMonth ? 'text-slate-700' : 'text-slate-300'}`}>{day.getDate()}</button>
           <div className="space-y-0.5">
-            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event.title)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35]' : ''}`}>{event.title}</button>)}
+            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35]' : 'shadow-sm'}`}>{event.title}</button>)}
             {dayEvents.length > 2 && <span className="block px-1 text-[8px] font-extrabold text-primary">+{dayEvents.length - 2}</span>}
           </div>
         </div>;
@@ -744,7 +755,7 @@ export default function CalendarPage() {
             const currentMonth = day.getMonth() === cursor.getMonth();
             const today = dateKey(day) === todayKey;
             const weekend = day.getDay() === 0 || day.getDay() === 6;
-            return <div key={dateKey(day)} className={`group min-h-[118px] border-b border-r border-slate-100 p-1.5 ${today ? 'bg-sky-50/70 shadow-[inset_0_3px_0_0_rgb(14_165_233_/_0.45)]' : currentMonth ? weekend ? 'bg-slate-50/75' : 'bg-white' : 'bg-slate-100/60'}`}>
+            return <div key={dateKey(day)} className={`group min-h-[118px] border-b border-r border-slate-100 p-1.5 ${today ? 'bg-sky-100/70 shadow-[inset_0_4px_0_0_rgb(14_165_233_/_0.7)]' : currentMonth ? weekend ? 'bg-slate-50/75' : 'bg-white' : 'bg-slate-100/60'}`}>
               <button type="button" onClick={() => { setInitialDate(day); setEditor({ new: true }); }} aria-label={`Agendar em ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${today ? 'bg-primary text-white' : currentMonth ? 'text-slate-700 group-hover:bg-slate-100' : 'text-slate-300'}`}>{day.getDate()}</button>
               <div className="space-y-1">{dayEvents.slice(0, 3).map(event => <AgendaEvent key={event.id} event={event} compact onClick={() => setEditor(event)} />)}{dayEvents.length > 3 && <button type="button" onClick={() => setExpandedDay({ day, events: dayEvents })} className="px-1 text-[10px] font-bold text-primary">+ {dayEvents.length - 3} compromisso(s)</button>}</div>
             </div>;
