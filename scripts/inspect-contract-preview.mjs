@@ -21,6 +21,11 @@ for (let number = 1; number <= pdf.numPages; number++) {
   const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
   await writeFile(new URL(`page-${number}.png`, folder), canvas.toBuffer('image/png'));
+  if (number === 1) {
+    const footer = createCanvas(canvas.width, 100);
+    footer.getContext('2d').drawImage(canvas, 0, canvas.height - 100, canvas.width, 100, 0, 0, canvas.width, 100);
+    await writeFile(new URL('footer.png', folder), footer.toBuffer('image/png'));
+  }
 }
 console.log(`Rendered ${pdf.numPages} pages into .local/contract-preview-qa`);
 await pdf.destroy();
