@@ -9,6 +9,7 @@ import { dispatchReport } from './emailSender.js';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import { contractDownloadName, generateContractDocx, normalizeAndValidateContractData } from './contractGenerator.js';
+import { generateContractPreviewPdf } from './contractPreview.js';
 import { createPropertyRouter } from './propertyRoutes.js';
 import { createMatriculaRouter } from './matriculaRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
@@ -601,6 +602,20 @@ app.get('/api/clients/:id/contracts', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar contratos do cliente:', error);
     res.status(500).json({ error: 'Erro ao buscar contratos do cliente.' });
+  }
+});
+
+// Prévia transitória: não persiste contratos nem dados do formulário.
+app.post('/api/contracts/preview', requireAuth, async (req, res) => {
+  const controller = new AbortController();
+  res.on('close', () => controller.abort());
+  try {
+    const document = await generateContractPreviewPdf(req.body, { signal: controller.signal });
+    if (controller.signal.aborted) return;
+    res.set('Cache-Control', 'no-store');
+    res.type('application/pdf').send(document);
+  } catch (error) {
+    if (!controller.signal.aborted) res.status(error.status || 500).json({ error: error.status ? error.message : 'Não foi possível montar a prévia do contrato.' });
   }
 });
 

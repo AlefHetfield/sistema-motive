@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+import { emphasizeContract } from './contractEmphasis.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(moduleDir, '../assets/templates/contrato-motive-v1.docx');
@@ -119,10 +120,11 @@ const normalizePerson = (person) => ({
   endereco: cleanText(person?.endereco, 350),
 });
 
-export function normalizeAndValidateContractData(payload) {
+export function normalizeAndValidateContractData(payload, { preview = false } = {}) {
   const vendedores = Array.isArray(payload?.vendedores) ? payload.vendedores.slice(0, 2).map(normalizePerson) : [];
   const compradores = Array.isArray(payload?.compradores) ? payload.compradores.slice(0, 2).map(normalizePerson) : [];
   const imovel = {
+    ...(Number.isSafeInteger(Number(payload?.imovel?.propertyId)) && Number(payload?.imovel?.propertyId) > 0 ? { propertyId: Number(payload.imovel.propertyId) } : {}),
     categoria: cleanText(payload?.imovel?.categoria, 50),
     matricula: cleanText(payload?.imovel?.matricula, 80),
     cartorio: cleanText(payload?.imovel?.cartorio, 180),
@@ -170,7 +172,7 @@ export function normalizeAndValidateContractData(payload) {
   if (!contrato.cidade) errors.push('Informe a cidade do contrato.');
   if (!isValidIsoDate(contrato.data)) errors.push('Informe uma data válida para o contrato.');
 
-  if (errors.length) {
+  if (errors.length && !preview) {
     const error = new Error(errors[0]);
     error.details = errors;
     throw error;
@@ -225,13 +227,37 @@ const templateData = (data) => ({
 
 export function generateContractDocx(contractData) {
   const data = normalizeAndValidateContractData(contractData);
+  return renderContractDocx(data);
+}
+
+// Drafts never bypass validation on the final download path.
+export function generateContractPreview(contractData) {
+  const data = normalizeAndValidateContractData(contractData, { preview: true });
+  for (const group of ['vendedores', 'compradores']) {
+    if (!data[group].length) data[group].push(normalizePerson({}));
+    data[group] = data[group].map(person => Object.fromEntries(Object.entries(person).map(([key, value]) => [key, value || `[${key}]`])));
+  }
+  for (const key of ['categoria', 'matricula', 'cartorio', 'endereco']) data.imovel[key] ||= `[${key}]`;
+  for (const key of ['valorImovel', 'sinal', 'fgts', 'recursosProprios', 'financiamento', 'reservaDocumentacao']) {
+    data.valores[key] = Math.max(0, Math.min(MAX_CONTRACT_VALUE, data.valores[key] || 0));
+  }
+  data.valores.prazoDias = Math.max(1, Math.min(730, Math.trunc(data.valores.prazoDias) || 120));
+  data.valores.banco ||= '[banco]';
+  data.contrato.cidade ||= '[cidade]';
+  const fields = templateData({ ...data, contrato: { ...data.contrato, data: isValidIsoDate(data.contrato.data) ? data.contrato.data : '2000-01-01' } });
+  if (!isValidIsoDate(data.contrato.data)) fields.DATA_ATUAL = `${data.contrato.cidade}, [data do contrato].`;
+  return renderContractDocx(data, fields);
+}
+
+function renderContractDocx(data, fields = templateData(data)) {
   const zip = new PizZip(fs.readFileSync(TEMPLATE_PATH));
   const document = new Docxtemplater(zip, {
     paragraphLoop: true,
     linebreaks: true,
     nullGetter: () => '',
   });
-  document.render(templateData(data));
+  document.render(fields);
+  emphasizeContract(document.getZip(), data, fields);
   const result = document.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
   const renderedZip = new PizZip(result);
   const unresolved = Object.keys(renderedZip.files)

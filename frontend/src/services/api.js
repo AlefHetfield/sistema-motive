@@ -5,6 +5,20 @@
  */
 import { API_BASE_URL } from '../config/api';
 
+export async function previewContract(data, signal) {
+    const response = await fetch(`${API_BASE_URL}/api/contracts/preview`, {
+        method: 'POST', credentials: 'include', signal,
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const error = await apiError(response, 'Não foi possível carregar a prévia.');
+        error.status = response.status;
+        throw error;
+    }
+    if (!response.headers.get('content-type')?.includes('application/pdf')) throw new Error('A API da prévia precisa ser atualizada para gerar PDF.');
+    return response.blob();
+}
+
 export async function taskApi(path = '', { method = 'GET', body, signal } = {}) {
     const response = await fetch(`${API_BASE_URL}/api/tasks${path}`, {
         method, credentials: 'include', signal,
