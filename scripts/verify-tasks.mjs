@@ -178,6 +178,24 @@ test('API com PostgreSQL: isolamento por perfil, clientes, listas, versões e de
     await request(admin, '', 'POST', { title: 'Já concluída', assigneeId: vanessa.id, status: 'DONE' });
     assert.equal((await request(vanessa, '/notifications')).data.items.length, 0);
     // Pagination and bounded read-all preserve notifications arriving after the displayed page.
+    let unreadTask = (await request(admin, '', 'POST', { title: 'Concluir sem abrir aviso', assigneeId: vanessa.id })).data;
+    const unreadNotice = (await request(vanessa, '/notifications?view=new')).data.items[0];
+    assert.equal(unreadNotice.taskId, unreadTask.id);
+    unreadTask = (await request(vanessa, `/${unreadTask.id}`, 'PATCH', { version: unreadTask.version, status: 'DONE' })).data;
+    // Acknowledgement belongs to completion, not a later notification fetch.
+    assert.ok((await prisma.taskNotification.findUnique({ where: { id: unreadNotice.id } })).readAt);
+    assert.equal((await request(vanessa, '/notifications?view=new')).data.unreadCount, 0);
+    assert.equal((await request(vanessa, '/notifications?view=new')).data.items.length, 0);
+    assert.equal((await request(vanessa, '/notifications?view=history')).data.items[0].task.status, 'DONE');
+    assert.equal((await request(other, '/notifications?view=history')).data.items.some(item => item.id === unreadNotice.id), false);
+    unreadTask = (await request(vanessa, `/${unreadTask.id}`, 'PATCH', { version: unreadTask.version, status: 'TODO' })).data;
+    assert.equal((await request(vanessa, '/notifications?view=new')).data.items.length, 0);
+    // Legacy completed tasks are reconciled without deleting their alerts.
+    await prisma.task.update({ where: { id: unreadTask.id }, data: { status: 'DONE' } });
+    await prisma.taskNotification.update({ where: { id: unreadNotice.id }, data: { readAt: null } });
+    assert.equal((await request(vanessa, '/notifications?view=new')).data.unreadAssignedCount, 0);
+    assert.ok((await request(vanessa, '/notifications?view=history')).data.items.find(item => item.id === unreadNotice.id).readAt);
+    assert.equal((await request(vanessa, '/notifications?view=invalid')).status, 400);
     await prisma.taskNotification.createMany({ data: Array.from({ length: 35 }, () => ({ taskId: foreign.id, recipientId: other.id, actorName: 'Admin' })) });
     const notices = (await request(other, '/notifications')).data;
     const olderNotices = (await request(other, `/notifications?before=${notices.nextCursor}`)).data;

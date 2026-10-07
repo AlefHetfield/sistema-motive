@@ -192,6 +192,7 @@ export default function Tasks() {
     setOptimisticChanges(new Map(pendingChanges.current));
     try {
       const saved = await taskApi(`/${task.id}`, { method:'PATCH', body:{...patch,version:task.version} });
+      window.dispatchEvent(new Event('motive:task-notifications-changed'));
       if (!mounted.current) return;
       setSummaryRevision(value => value + 1);
       if (startedQueryKey === queryKeyRef.current) reconcileTask(saved);

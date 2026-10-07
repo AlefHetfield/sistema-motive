@@ -89,12 +89,18 @@ export function createTaskRouter(prisma, requireAuth) {
   }
   router.get('/notifications', async (req, res) => {
     const scope = notificationScope(req.taskUser);
+    const view = req.query.view;
+    if (view && !['new', 'history'].includes(view)) throw fail('Visualização inválida.');
+    const viewScope = view === 'new' ? { readAt: null, NOT: { kind: 'ASSIGNED', task: { status: 'DONE' } } } : view === 'history' ? { readAt: { not: null } } : {};
     const before = req.query.before ? id(req.query.before) : null;
+    // Reconcile legacy assignment alerts too; completion already acknowledges them
+    // in the task transaction for all recipients.
+    await prisma.taskNotification.updateMany({ where: { recipientId: req.taskUser.id, kind: 'ASSIGNED', readAt: null, task: { status: 'DONE' } }, data: { readAt: new Date() } });
     const [items, unreadCount, unreadAssignedCount] = await prisma.$transaction([
-      prisma.taskNotification.findMany({ where: { ...scope, ...(before ? { id: { lt: before } } : {}) }, orderBy: { id: 'desc' }, take: 31,
-        include: { task: { select: { id: true, title: true, dueDate: true, client: { select: { id: true, nome: true } } } } } }),
-      prisma.taskNotification.count({ where: { ...scope, readAt: null } }),
-      prisma.taskNotification.count({ where: { recipientId: req.taskUser.id, kind: 'ASSIGNED', readAt: null, task: { assigneeId: req.taskUser.id, deletedAt: null } } }),
+      prisma.taskNotification.findMany({ where: { ...scope, ...viewScope, ...(before ? { id: { lt: before } } : {}) }, orderBy: { id: 'desc' }, take: 31,
+        include: { task: { select: { id: true, title: true, status: true, dueDate: true, client: { select: { id: true, nome: true } } } } } }),
+      prisma.taskNotification.count({ where: { ...scope, readAt: null, NOT: { kind: 'ASSIGNED', task: { status: 'DONE' } } } }),
+      prisma.taskNotification.count({ where: { recipientId: req.taskUser.id, kind: 'ASSIGNED', readAt: null, task: { assigneeId: req.taskUser.id, deletedAt: null, status: { not: 'DONE' } } } }),
     ]);
     const page = items.slice(0, 30).map(item => ({ ...item, task: { ...item.task, client: canReadClients(req.taskUser) ? item.task.client : null } }));
     res.json({ items: page, unreadCount, unreadAssignedCount, nextCursor: items.length > 30 ? page.at(-1).id : null });
@@ -323,7 +329,10 @@ export function createTaskRouter(prisma, requireAuth) {
       if (previous.status === 'DONE' && task.status !== 'DONE') {
         await tx.taskNotification.deleteMany({ where: { taskId, kind: 'COMPLETED' } });
       }
-      if (previous.status !== 'DONE' && task.status === 'DONE') await notifyCompletion(tx, task, req.taskUser);
+      if (task.status === 'DONE') {
+        await tx.taskNotification.updateMany({ where: { taskId, kind: 'ASSIGNED', readAt: null }, data: { readAt: new Date() } });
+        if (previous.status !== 'DONE') await notifyCompletion(tx, task, req.taskUser);
+      }
       return task;
     });
     res.json(present(updated, req.taskUser));

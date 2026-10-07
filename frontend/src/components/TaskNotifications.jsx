@@ -12,6 +12,8 @@ export default function TaskNotifications({ userId }) {
   const buttonRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [data, setData] = useState(null);
+  const [view, setView] = useState('new');
+  const [history, setHistory] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,7 +32,7 @@ export default function TaskNotifications({ userId }) {
       fetching = true;
       controller = new AbortController();
       try {
-        const result = await taskApi('/notifications', { signal: controller.signal });
+        const result = await taskApi('/notifications?view=new', { signal: controller.signal });
         if (disposed) return;
         const newest = result.items[0]?.id || 0;
         if (latest.current === null) {
@@ -61,6 +63,7 @@ export default function TaskNotifications({ userId }) {
         }
         latest.current = Math.max(latest.current || 0, newest);
         setData(result);
+        setLoginPrompt(current => current && result.unreadAssignedCount > 0 ? { count: result.unreadAssignedCount, items: result.items.filter(item => item.kind === 'ASSIGNED').slice(0, 3) } : null);
         setError('');
       } catch (err) {
         if (!disposed && err.name !== 'AbortError') setError('Não foi possível atualizar as notificações.');
@@ -72,6 +75,16 @@ export default function TaskNotifications({ userId }) {
     window.addEventListener('focus', load);
     return () => { disposed = true; clearInterval(timer); controller?.abort(); document.removeEventListener('visibilitychange', load); window.removeEventListener('focus', load); };
   }, [navigate, revision, userId]);
+
+  useEffect(() => {
+    if (!open || view !== 'history') return;
+    const controller = new AbortController();
+    setHistory(null);
+    taskApi('/notifications?view=history', { signal: controller.signal }).then(setHistory).catch(err => {
+      if (err.name !== 'AbortError') setError('Não foi possível carregar o histórico.');
+    });
+    return () => controller.abort();
+  }, [open, view, revision]);
 
   useEffect(() => {
     const changed = () => refresh();
@@ -105,16 +118,19 @@ export default function TaskNotifications({ userId }) {
     catch (err) { toast.error(err.message); } finally { setBusy(false); }
   };
   const more = async () => {
-    if (!data?.nextCursor || loadingMore) return;
+    const currentPage = view === 'history' ? history : data;
+    if (!currentPage?.nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const result = await taskApi(`/notifications?before=${data.nextCursor}`);
-      setData(current => ({ ...result, items: [...new Map([...current.items, ...result.items].map(item => [item.id, item])).values()] }));
+      const result = await taskApi(`/notifications?view=${view}&before=${currentPage.nextCursor}`);
+      const setter = view === 'history' ? setHistory : setData;
+      setter(current => current === currentPage ? ({ ...result, items: [...new Map([...current.items, ...result.items].map(item => [item.id, item])).values()] }) : current);
     } catch (err) { toast.error(err.message); } finally { setLoadingMore(false); }
   };
+  const page = view === 'history' ? history : data;
   return <div ref={rootRef} className="relative shrink-0">
     <button ref={buttonRef} type="button" aria-label={`Notificações${data?.unreadCount ? `: ${data.unreadCount} não lidas` : ''}`} aria-expanded={open} aria-controls="task-notifications"
-      onClick={() => { setOpen(value => !value); if (!open) refresh(); }} className="relative rounded-xl p-3 text-gray-500 hover:bg-primary/5 hover:text-primary">
+      onClick={() => { setOpen(value => !value); if (!open) { setView('new'); refresh(); } }} className="relative rounded-xl p-3 text-gray-500 hover:bg-primary/5 hover:text-primary">
       <Bell size={21} />{data?.unreadCount > 0 && <span className="absolute -right-1 top-0 min-w-5 rounded-full bg-red-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{data.unreadCount > 99 ? '99+' : data.unreadCount}</span>}
     </button>
     {loginPrompt && <section role="status" aria-label="Novas tarefas recebidas" className="fixed right-3 top-[76px] z-[90] w-[min(25rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-2xl">
@@ -124,21 +140,22 @@ export default function TaskNotifications({ userId }) {
     </section>}
     {open && <section id="task-notifications" aria-label="Notificações" className="fixed right-3 top-[72px] z-[90] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl lg:right-5">
       <header className="flex items-center justify-between border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Notificações</h2><button type="button" aria-label="Fechar notificações" onClick={() => { setOpen(false); buttonRef.current?.focus(); }} className="rounded-lg p-1 text-gray-400"><X size={18} /></button></header>
-      <p className="px-4 py-3 text-xs text-gray-500">O contador mostra avisos não lidos. Ler um aviso não conclui a tarefa; acompanhe as pendências em Tarefas.</p>
-      {data?.unreadCount > 0 && <button type="button" disabled={busy} onClick={readAll} className="px-4 py-2 text-xs font-semibold text-primary disabled:opacity-50">Marcar todas como lidas</button>}
+      <div className="flex gap-1 border-b px-4 py-2" aria-label="Visualização das notificações">{[['new', 'Novas'], ['history', 'Histórico']].map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => { setView(key); setError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold ${view === key ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}>{label}{key === 'new' && data?.unreadCount > 0 ? ` (${data.unreadCount})` : ''}</button>)}</div>
+      <p className="px-4 py-3 text-xs text-gray-500">Ler um aviso não conclui a tarefa. Ao concluir, o aviso de atribuição vai para o histórico.</p>
+      {view === 'new' && data?.unreadCount > 0 && <button type="button" disabled={busy} onClick={readAll} className="px-4 py-2 text-xs font-semibold text-primary disabled:opacity-50">Marcar todas como lidas</button>}
       {error && <p role="alert" className="px-4 py-3 text-sm text-red-600">{error} <button type="button" onClick={refresh} className="underline">Tentar novamente</button></p>}
       <div className="max-h-[52vh] overflow-y-auto">
-        {!data && !error && <p role="status" className="p-5 text-sm text-gray-500">Carregando…</p>}
-        {data && !data.items.length && <p className="p-5 text-sm text-gray-500">Nenhuma notificação por enquanto. As atribuições e conclusões das tarefas que você delegou aparecerão aqui.</p>}
-        {data?.items.map(item => <button key={item.id} type="button" disabled={busy} onClick={() => read(item)} className={`block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-50 ${!item.readAt ? 'bg-primary/5' : ''}`}>
-          <span className={`block text-xs font-semibold ${!item.readAt ? 'text-primary' : 'text-gray-500'}`}>{item.kind === 'COMPLETED' ? 'Tarefa concluída' : 'Tarefa atribuída'} · {item.readAt ? 'Lida' : '● Não lida'}</span>
+        {!page && !error && <p role="status" className="p-5 text-sm text-gray-500">Carregando…</p>}
+        {page && !page.items.length && <p className="p-5 text-sm text-gray-500">{view === 'new' ? 'Tudo em dia. Nenhum aviso novo.' : 'Nenhuma notificação no histórico por enquanto.'}</p>}
+        {page?.items.map(item => <button key={item.id} type="button" disabled={busy} onClick={() => read(item)} className={`block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-50 ${!item.readAt ? 'bg-primary/5' : ''}`}>
+          <span className={`block text-xs font-semibold ${!item.readAt ? 'text-primary' : 'text-gray-500'}`}>{item.kind === 'COMPLETED' ? 'Tarefa concluída' : 'Tarefa atribuída'} · {item.kind === 'ASSIGNED' && item.task.status === 'DONE' ? 'Resolvida' : item.readAt ? 'Lida' : '● Não lida'}</span>
           <span className="mt-1 block break-words text-sm font-semibold text-gray-800">{item.task.title}</span>
           <span className="mt-1 block text-xs text-gray-500">{item.kind === 'COMPLETED' ? 'Concluída' : 'Atribuída'} por {item.actorName}</span>
           {item.task.client && <span className="mt-1 block break-words text-xs text-gray-500">Cliente: {item.task.client.nome}</span>}
           {item.task.dueDate && <span className="mt-1 block text-xs text-gray-500">Prazo: {taskDateLabel(item.task.dueDate)}</span>}
           <time dateTime={item.createdAt} className="mt-2 block text-[11px] text-gray-400">{new Date(item.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}</time>
         </button>)}
-        {data?.nextCursor && <button type="button" disabled={loadingMore} onClick={more} className="w-full p-3 text-sm text-primary">{loadingMore ? 'Carregando…' : 'Ver anteriores'}</button>}
+        {page?.nextCursor && <button type="button" disabled={loadingMore} onClick={more} className="w-full p-3 text-sm text-primary">{loadingMore ? 'Carregando…' : 'Ver anteriores'}</button>}
       </div>
     </section>}
   </div>;
