@@ -361,7 +361,6 @@ export default function PropertyFormModal({ property, initialLocation, propertie
                   <div className="flex h-28 items-center justify-center gap-2 px-4 text-center text-xs text-gray-400"><ImageIcon className="h-5 w-5" />A prévia da foto principal aparecerá aqui.</div>
                 )}
               </div>
-              <label className="block sm:col-span-2"><span className={formLabelClass}>Descrição</span><textarea rows={6} value={form.description || ''} onChange={event => update('description', event.target.value)} placeholder="Condições, diferenciais e observações do imóvel..." className={textAreaClass} /></label>
               <label className="block sm:col-span-2"><span className={formLabelClass}>Informações complementares</span><textarea rows={5} value={form.additionalInformation || ''} onChange={event => update('additionalInformation', event.target.value)} placeholder="Informações internas, negociações, observações e detalhes que não serão publicados no site..." className={textAreaClass} /><span className="mt-1.5 block text-xs text-gray-400">Uso interno: este conteúdo não faz parte da descrição do anúncio.</span></label>
             </div>
           </section>
