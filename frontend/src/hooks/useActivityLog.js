@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 const useActivityLog = () => {
-  const [activities, setActivities] = useState([]);
-
-  useEffect(() => {
-    const storedActivities = JSON.parse(localStorage.getItem('activityLog')) || [];
-    setActivities(storedActivities);
-  }, []);
+  const [activities, setActivities] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('activityLog'));
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
 
   const logActivity = useCallback((description) => {
     setActivities(prevActivities => {

@@ -15,7 +15,7 @@ const AnimatedNumber = ({ value = 0, prefix = '', suffix = '' }) => {
     useEffect(() => {
         // update target
         motionVal.set(numeric);
-    }, [numeric]);
+    }, [numeric, motionVal]);
 
     useEffect(() => {
         const unsubscribe = spring.on('change', (v) => {

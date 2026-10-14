@@ -62,10 +62,14 @@ export const AuthProvider = ({ children }) => {
 
     // Inicia keep-alive quando usuário está autenticado
     useEffect(() => {
-        if (isAuthenticated) {
-            const id = startKeepAlive();
-            return () => clearInterval(id);
-        }
+        if (!isAuthenticated) return;
+        const id = setInterval(() => {
+            fetch(`${API_BASE_URL}/api/health`, {
+                credentials: 'include',
+                signal: AbortSignal.timeout(3000),
+            }).catch(() => {});
+        }, KEEP_ALIVE_INTERVAL);
+        return () => clearInterval(id);
     }, [isAuthenticated]);
 
     const checkAuth = async () => {
@@ -102,20 +106,6 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    // Keep-alive: mantém o servidor acordado
-    const startKeepAlive = () => {
-        const intervalId = setInterval(() => {
-            if (isAuthenticated) {
-                // Faz uma chamada leve a cada 10 minutos para manter a conexão
-                fetch(`${API_BASE_URL}/api/health`, {
-                    credentials: 'include',
-                    signal: AbortSignal.timeout(3000)
-                }).catch(() => {}); // Ignora erros silenciosamente
-            }
-        }, KEEP_ALIVE_INTERVAL);
-        return intervalId;
     };
 
     const login = async (email, password) => {

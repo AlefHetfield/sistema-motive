@@ -1,16 +1,10 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { formatarMoeda, SALARIO_MINIMO_2025 } from '../utils/taxCalculations';
+import { motion as Motion } from 'framer-motion';
 import AnimatedNumber from './AnimatedNumber';
 
 const ReceiptPreview = ({
     empresaNome,
-    empresaCnpj,
-    empresaEndereco,
-    empresaCidade,
-    empresaCep,
     socioNome,
-    socioFuncao,
     mesReferencia,
     calculatedTaxes,
     prolaboreBruto,
@@ -21,10 +15,8 @@ const ReceiptPreview = ({
     const totalDescontos = inss.valor + ir.valor;
     const liquido = calculatedTaxes.liquido;
 
-    const salariosMinimos = (brutoProlaboreNum / SALARIO_MINIMO_2025).toFixed(1);
-
     return (
-        <motion.div
+        <Motion.div
             layout
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -69,7 +61,7 @@ const ReceiptPreview = ({
             <div className="pointer-events-none absolute right-4 bottom-4 opacity-10 text-[10px] font-bold tracking-wider text-gray-400 select-none transform rotate-12">
                 MOTIVE ORIGINAL
             </div>
-        </motion.div>
+        </Motion.div>
     );
 };
 

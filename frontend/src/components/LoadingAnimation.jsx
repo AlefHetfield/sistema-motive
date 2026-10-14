@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 /**
  * Componente de loading animado baseado no formato do logo
  * Apresenta barras diagonais animadas que simulam o design do logo
@@ -10,12 +8,6 @@ const LoadingAnimation = ({
   fullScreen = false,
   showMessage = true 
 }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Tamanhos predefinidos
   const sizes = {
     sm: { container: 60, bar: 40, thickness: 6 },
@@ -39,9 +31,7 @@ const LoadingAnimation = ({
           style={{ 
             width: dimensions.container,
             height: dimensions.container,
-            transform: mounted ? 'scale(1)' : 'scale(0.8)',
-            opacity: mounted ? 1 : 0,
-            transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            animation: 'loading-logo-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both'
           }}
         >
           {/* Barra 1 - Azul claro */}
@@ -110,9 +100,7 @@ const LoadingAnimation = ({
           <div 
             className="text-center"
             style={{
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(10px)',
-              transition: 'all 0.5s ease-out 0.2s'
+              animation: 'loading-message-enter 0.5s ease-out 0.2s both'
             }}
           >
             <p className="text-lg font-medium text-gray-700 dark:text-gray-200 animate-pulse">
@@ -128,6 +116,16 @@ const LoadingAnimation = ({
       </div>
 
       <style>{`
+        @keyframes loading-logo-enter {
+          from { transform: scale(0.8); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes loading-message-enter {
+          from { transform: translateY(10px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
         @keyframes slide-diagonal-1 {
           0%, 100% {
             transform: rotate(-45deg) translateX(-120%);

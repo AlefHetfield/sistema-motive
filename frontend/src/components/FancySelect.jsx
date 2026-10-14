@@ -55,11 +55,7 @@ export default function FancySelect({
   }, [open, value]);
 
   useEffect(() => {
-    if (!open) {
-      setSearchQuery('');
-      return undefined;
-    }
-    if (!searchable) return undefined;
+    if (!open || !searchable) return undefined;
     const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [open, searchable]);
@@ -77,6 +73,7 @@ export default function FancySelect({
 
   const toggleOpen = () => {
     if (!open) {
+      setSearchQuery('');
       const rect = containerRef.current?.getBoundingClientRect();
       setDropUp(Boolean(rect && window.innerHeight - rect.bottom < 280 && rect.top > 280));
     }

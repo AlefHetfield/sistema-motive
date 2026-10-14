@@ -10,7 +10,6 @@ import { useEffect } from 'react';
 export const usePerformanceMonitor = (componentName = 'Component') => {
   useEffect(() => {
     // Mede o tempo de render
-    const startTime = performance.now();
     const markName = `${componentName}-render`;
     
     performance.mark(`${markName}-start`);
@@ -22,10 +21,10 @@ export const usePerformanceMonitor = (componentName = 'Component') => {
         performance.measure(markName, `${markName}-start`, `${markName}-end`);
         const measure = performance.getEntriesByName(markName)[0];
         
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           console.log(`📊 [${componentName}] Render time: ${measure.duration.toFixed(2)}ms`);
         }
-      } catch (e) {
+      } catch {
         // Ignorar erros de performance API
       }
     };
@@ -42,14 +41,13 @@ export const usePerformanceMonitor = (componentName = 'Component') => {
 export const useRequestPerformance = () => {
   const measureFetch = async (url, options = {}) => {
     const startTime = performance.now();
-    const requestId = `request-${Date.now()}`;
     
     try {
       const response = await fetch(url, options);
       const endTime = performance.now();
       const duration = endTime - startTime;
       
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         console.log(`⏱️ [${url}] Time: ${duration.toFixed(2)}ms | Status: ${response.status}`);
       }
       
@@ -81,14 +79,14 @@ export const useWebVitals = () => {
         const observer = new PerformanceObserver((list) => {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
-          if (process.env.NODE_ENV === 'development') {
+          if (import.meta.env.DEV) {
             console.log(`📊 [LCP] ${lastEntry.renderTime || lastEntry.loadTime}ms`);
           }
         });
         observer.observe({ entryTypes: ['largest-contentful-paint'] });
         
         return () => observer.disconnect();
-      } catch (e) {
+      } catch {
         console.debug('PerformanceObserver não disponível');
       }
     }

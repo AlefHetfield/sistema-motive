@@ -537,12 +537,6 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
     : dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
   const [selectedKey, setSelectedKey] = useState(defaultSelectedKey);
 
-  useEffect(() => {
-    setSelectedKey(cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear()
-      ? todayKey
-      : dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1)));
-  }, [cursor, todayKey]);
-
   if (loading) return <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p>;
 
   const selectedDay = days.find(day => dateKey(day) === selectedKey) || parseDateKey(selectedKey);
@@ -743,7 +737,7 @@ export default function CalendarPage() {
         {mobile ? viewMode === 'week'
           ? <MobileWeekView days={week.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
           : viewMode === 'calendar'
-            ? <MobileMonthCalendar cursor={cursor} days={grid.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
+            ? <MobileMonthCalendar key={`${cursor.getFullYear()}-${cursor.getMonth()}-${todayKey}`} cursor={cursor} days={grid.days} events={visibleEvents} todayKey={todayKey} loading={loading} onCreate={createAt} onEdit={setEditor} />
             : <div className="min-w-0">{loading ? <p className="p-10 text-center text-sm text-slate-500"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Atualizando agenda...</p> : mobileUpcomingGroups.length ? <div className="space-y-1 pb-2">{mobileUpcomingGroups.map(group => <section key={group.key}>
               <div className="sticky top-0 z-10 border-y border-slate-100 bg-slate-50/95 px-4 py-2.5 backdrop-blur"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">{upcomingDateLabel(group.key)}</p></div>
               <div className="divide-y divide-slate-100">{group.events.map(event => <article key={event.id} className="min-w-0 p-3"><AgendaEvent event={event} onClick={() => setEditor(event)} /></article>)}</div>

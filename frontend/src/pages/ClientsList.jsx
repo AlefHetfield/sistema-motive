@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import FancySelect from '../components/FancySelect';
@@ -254,17 +254,42 @@ const SortableHeader = ({ label, column, sortDescriptor, onSort, align = 'left' 
 
 const ClientActionsMenu = ({ client, activeTab, onDelete, onRestore, onPause, onResume }) => {
     const [open, setOpen] = useState(false);
-    const [position, setPosition] = useState({ top: 0, right: 0 });
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
     const toggleMenu = () => {
-        if (!open && buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            setPosition({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
-        }
         setOpen(current => !current);
     };
+
+    useLayoutEffect(() => {
+        if (!open) return;
+        const updatePosition = (event) => {
+            const menu = menuRef.current;
+            const button = buttonRef.current;
+            if (!menu || !button || (event?.type === 'scroll' && menu.contains(event.target))) return;
+
+            const rect = button.getBoundingClientRect();
+            const menuRect = menu.getBoundingClientRect();
+            const margin = 8;
+            const gap = 6;
+            const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
+            const spaceAbove = rect.top - gap - margin;
+            const openUpwards = spaceBelow < menuRect.height && spaceAbove > spaceBelow;
+            const preferredTop = openUpwards ? rect.top - menuRect.height - gap : rect.bottom + gap;
+
+            menu.style.top = `${Math.max(margin, Math.min(preferredTop, window.innerHeight - menuRect.height - margin))}px`;
+            menu.style.left = `${Math.max(margin, Math.min(rect.right - menuRect.width, window.innerWidth - menuRect.width - margin))}px`;
+            menu.style.visibility = 'visible';
+        };
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [open, activeTab, client.emEspera]);
 
     useEffect(() => {
         if (!open) return;
@@ -297,8 +322,8 @@ const ClientActionsMenu = ({ client, activeTab, onDelete, onRestore, onPause, on
                 <div
                     ref={menuRef}
                     role="menu"
-                    style={{ top: position.top, right: position.right }}
-                    className="fixed z-[9999] w-56 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl"
+                    style={{ visibility: 'hidden', width: 'min(14rem, calc(100vw - 16px))', maxHeight: 'calc(100dvh - 16px)' }}
+                    className="fixed z-[9999] overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl"
                 >
                     {activeTab === 'signed' && (
                         <button

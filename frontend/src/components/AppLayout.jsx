@@ -7,6 +7,8 @@ import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Ca
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
+import { Suspense } from 'react';
+import LoadingAnimation from './LoadingAnimation';
 
 const corretorNavItems = [
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
@@ -358,7 +360,9 @@ const AppLayout = () => {
                 
                 <div className="workspace-canvas no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                     {/* O conteúdo da página será renderizado aqui */}
-                    <Outlet />
+                        <Suspense fallback={<LoadingAnimation message="Carregando página..." />}>
+                            <Outlet />
+                        </Suspense>
                 </div>
             </main>
 

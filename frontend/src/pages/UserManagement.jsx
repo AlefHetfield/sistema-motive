@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Users, Plus, Edit2, Trash2, Shield, ShieldOff, AlertCircle, CheckCircle } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
@@ -21,13 +21,14 @@ const UserManagement = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, user: null, action: null });
     const [notification, setNotification] = useState(null);
 
-    useEffect(() => {
-        if (isAdmin()) {
-            fetchUsers();
-        }
+    const admin = currentUser?.role === 'ADM';
+
+    const showNotification = useCallback((message, type = 'success') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 4000);
     }, []);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             setIsLoading(true);
             const response = await fetch(`${API_BASE_URL}/api/users`, {
@@ -46,12 +47,11 @@ const UserManagement = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [showNotification]);
 
-    const showNotification = (message, type = 'success') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 4000);
-    };
+    useEffect(() => {
+        if (admin) fetchUsers();
+    }, [admin, fetchUsers]);
 
     const handleCreateUser = () => {
         setSelectedUser(null);

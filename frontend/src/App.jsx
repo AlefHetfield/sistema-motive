@@ -1,24 +1,27 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 
 import PrivateRoute from './components/PrivateRoute';
-import AppLayout from './components/AppLayout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import ClientsList from './pages/ClientsList';
-import PdfEditor from './pages/PdfEditor';
-import ReceiptGenerator from './pages/ReceiptGenerator';
-import CepSearch from './pages/CepSearch';
-import MatriculaSearch from './pages/MatriculaSearch';
-import Settings from './pages/Settings';
-import UserManagement from './pages/UserManagement';
-import HousingSimulator from './pages/HousingSimulator';
-import ContractGenerator from './pages/ContractGenerator';
-import PropertiesMap from './pages/PropertiesMap';
-import Tasks from './pages/Tasks';
-import CalendarPage from './pages/Calendar';
+import LoadingAnimation from './components/LoadingAnimation';
 import useMobileLayout from './hooks/useMobileLayout';
+
+const AppLayout = lazy(() => import('./components/AppLayout'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ClientsList = lazy(() => import('./pages/ClientsList'));
+const PdfEditor = lazy(() => import('./pages/PdfEditor'));
+const ReceiptGenerator = lazy(() => import('./pages/ReceiptGenerator'));
+const CepSearch = lazy(() => import('./pages/CepSearch'));
+const MatriculaSearch = lazy(() => import('./pages/MatriculaSearch'));
+const Settings = lazy(() => import('./pages/Settings'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const HousingSimulator = lazy(() => import('./pages/HousingSimulator'));
+const ContractGenerator = lazy(() => import('./pages/ContractGenerator'));
+const PropertiesMap = lazy(() => import('./pages/PropertiesMap'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const CalendarPage = lazy(() => import('./pages/Calendar'));
 
 function App() {
   const mobile = useMobileLayout();
@@ -34,6 +37,7 @@ function App() {
           closeButton
           duration={3000}
         />
+        <Suspense fallback={<LoadingAnimation fullScreen message="Carregando página..." />}>
         <Routes>
           <Route path="/login" element={<Login />} />
           
@@ -89,6 +93,7 @@ function App() {
           {/* Fallback para rotas não encontradas */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );
