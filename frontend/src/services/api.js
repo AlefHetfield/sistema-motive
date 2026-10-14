@@ -440,6 +440,7 @@ export async function saveClient(clientData) {
     }
     
     const { id, ...data } = clientData;
+    delete data.statusSince; // Informação calculada pelo servidor, não é um campo editável.
     const url = id ? `${API_BASE_URL}/api/clients/${id}` : `${API_BASE_URL}/api/clients`;
     const method = id ? 'PUT' : 'POST';
 

@@ -15,6 +15,7 @@ import { createMatriculaRouter } from './matriculaRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
 import { createCalendarRouter } from './calendarRoutes.js';
 import { encodeSession, decodeSession } from './session.js';
+import { withClientStatusSince } from './clientStatusAge.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -725,7 +726,7 @@ app.post('/api/contracts/from-new-client', requireAuth, async (req, res) => {
       });
       await tx.activityLog.createMany({
         data: [
-          { clientId: client.id, clientNome: buyer.nome, action: 'created', userName: req.user.nome },
+          { clientId: client.id, clientNome: buyer.nome, action: 'created', statusDepois: client.status, userName: req.user.nome },
           { clientId: client.id, clientNome: buyer.nome, action: 'contract_created', userName: req.user.nome },
         ],
       });
@@ -855,7 +856,7 @@ app.get('/api/clients', async (req, res) => {
         createdAt: 'desc', // Ordena os mais recentes primeiro
       },
     });
-    res.json(clients);
+    res.json(await withClientStatusSince(prisma, clients));
   } catch (error) {
     res.status(500).json({ error: 'Não foi possível buscar os clientes.' });
   }
@@ -871,7 +872,7 @@ app.get('/api/clients/:id', async (req, res) => {
     if (!client) {
       return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
-    res.json(client);
+    res.json((await withClientStatusSince(prisma, [client]))[0]);
   } catch (error) {
     res.status(500).json({ error: 'Não foi possível buscar o cliente.' });
   }
@@ -910,7 +911,7 @@ app.post('/api/clients', requireAuth, async (req, res) => {
     
     // Log para confirmar a criação no terminal
     console.log('Novo cliente criado com sucesso:', newClient);
-    res.status(201).json(newClient);
+    res.status(201).json((await withClientStatusSince(prisma, [newClient]))[0]);
   } catch (error) {
     // Log detalhado do erro no servidor (Vercel Logs ou terminal local)
     console.error("Erro ao criar cliente:", error);
@@ -994,7 +995,7 @@ app.put('/api/clients/:id', requireAuth, async (req, res) => {
     });
     
     console.log('Cliente atualizado com sucesso:', updatedClient);
-    res.json(updatedClient);
+    res.json((await withClientStatusSince(prisma, [updatedClient]))[0]);
   } catch (error) {
     console.error("Erro ao atualizar cliente:", error);
     res.status(400).json({ 

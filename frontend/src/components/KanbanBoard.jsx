@@ -208,7 +208,7 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
     // 1. ATUALIZAÇÃO OTIMISTA: Atualiza UI imediatamente
     setOptimisticClients(prevClients =>
       prevClients.map(c =>
-        c.id === client.id ? { ...c, status: newStatus } : c
+        c.id === client.id ? { ...c, status: newStatus, statusSince: newStatus === c.status ? c.statusSince : new Date().toISOString() } : c
       )
     );
     
@@ -218,7 +218,8 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
     try {
       // 2. SINCRONIZAÇÃO: Salva no backend em background
       const updatedClient = { ...client, status: newStatus };
-      await saveClient(updatedClient);
+      const savedClient = await saveClient(updatedClient);
+      setOptimisticClients(current => current.map(c => c.id === client.id ? { ...c, ...savedClient } : c));
       
       // Log de atividade
       await logActivity({
@@ -229,15 +230,15 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
         statusDepois: newStatus,
       });
       
-      // ✅ NÃO chama onUpdate() aqui - a atualização otimista já fez o trabalho!
-      // A UI já está correta e sincronizada com o backend
+      // Atualiza também os filtros e indicadores da lista após a mudança de etapa.
+      onUpdate?.();
     } catch (error) {
       console.error('Erro ao mover cliente:', error);
       
       // 3. REVERSÃO: Reverte apenas em caso de erro
       setOptimisticClients(prevClients =>
         prevClients.map(c =>
-          c.id === client.id ? { ...c, status: statusAntes } : c
+          c.id === client.id ? { ...c, status: statusAntes, statusSince: client.statusSince } : c
         )
       );
       

@@ -16,6 +16,9 @@ import PauseClientModal from '../components/PauseClientModal';
 import { ModernInput } from '../components/ModernInput';
 import StatusBadge from '../components/ui/StatusBadge';
 import useMobileLayout from '../hooks/useMobileLayout';
+import ClientStatusAge from '../components/ClientStatusAge';
+import ClientAgeAvatar from '../components/ClientAgeAvatar';
+import { isStalledClient, STALLED_CLIENT_DAYS } from '../utils/clientStatusAge';
 
 // Constantes e helpers replicados do main.js
 const STATUS_OPTIONS = [
@@ -388,6 +391,7 @@ const ClientsList = () => {
     const [detailsClientId, setDetailsClientId] = useState(null);
     const [pauseClient, setPauseClient] = useState(null);
     const [waitingOnly, setWaitingOnly] = useState(false);
+    const [stalledOnly, setStalledOnly] = useState(false);
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
     
@@ -766,11 +770,13 @@ const ClientsList = () => {
     const handleClearFilters = () => {
         setFilters({ agencia: '', responsavel: '', status: '', venda: '', modalidade: '' });
         setWaitingOnly(false);
+        setStalledOnly(false);
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length
         + (monthYearFilter && activeTab !== 'active' ? 1 : 0)
-        + (waitingOnly && activeTab === 'active' ? 1 : 0);
+        + (waitingOnly && activeTab === 'active' ? 1 : 0)
+        + (stalledOnly && activeTab === 'active' ? 1 : 0);
 
     const activeFilterChips = useMemo(() => {
         const labels = {
@@ -797,11 +803,18 @@ const ClientsList = () => {
         if (waitingOnly && activeTab === 'active') {
             chips.push({ key: 'waiting', label: 'Situação', value: 'Em espera' });
         }
+        if (stalledOnly && activeTab === 'active') {
+            chips.push({ key: 'stalled', label: 'Sem mudança de status', value: `${STALLED_CLIENT_DAYS}+ dias` });
+        }
 
         return chips;
-    }, [activeTab, filters, monthYearFilter, uniqueMonthYears, waitingOnly]);
+    }, [activeTab, filters, monthYearFilter, uniqueMonthYears, waitingOnly, stalledOnly]);
 
     const handleRemoveFilter = (key) => {
+        if (key === 'stalled') {
+            setStalledOnly(false);
+            return;
+        }
         if (key === 'monthYear') {
             setMonthYearFilter('');
             return;
@@ -842,6 +855,7 @@ const ClientsList = () => {
             const vendaMatch = filters.venda === '' || (filters.venda === 'sim' ? client.venda : !client.venda);
             const modalidadeMatch = filters.modalidade === '' || client.modalidade === filters.modalidade;
             const waitingMatch = !waitingOnly || client.emEspera;
+            const stalledMatch = activeTab !== 'active' || !stalledOnly || isStalledClient(client);
             
             // Filtro de mês/ano de assinatura (apenas para abas signed e archived)
             let monthYearMatch = true;
@@ -857,7 +871,7 @@ const ClientsList = () => {
             
             // Se não há busca, retorna apenas filtros
             if (search === '') {
-                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && waitingMatch && monthYearMatch;
+                return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && waitingMatch && stalledMatch && monthYearMatch;
             }
             
             // Busca em nome
@@ -872,7 +886,7 @@ const ClientsList = () => {
             
             const textMatch = nomeMatch || cpfMatch || imovelMatch;
 
-            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && waitingMatch && monthYearMatch && textMatch;
+            return tabMatch && agenciaMatch && responsavelMatch && statusMatch && vendaMatch && modalidadeMatch && waitingMatch && stalledMatch && monthYearMatch && textMatch;
         });
 
         // Aplicar ordenação se sortDescriptor estiver definido
@@ -917,7 +931,7 @@ const ClientsList = () => {
         }
 
         return filtered;
-    }, [allClients, searchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly]);
+    }, [allClients, searchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly, stalledOnly]);
 
     // Calcular estatísticas financeiras
     const financialStats = useMemo(() => {
@@ -1108,16 +1122,17 @@ const ClientsList = () => {
         setUpdatingStatusMap(m => ({ ...m, [clientId]: true }));
 
         // atualização otimista no estado local
-        setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: newStatus } : c));
+        setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: newStatus, statusSince: newStatus === c.status ? c.statusSince : new Date().toISOString() } : c));
 
         try {
-            await saveClient({ id: clientId, status: newStatus });
+            const savedClient = await saveClient({ id: clientId, status: newStatus });
+            setAllClients(list => list.map(c => c.id === clientId ? savedClient : c));
             logActivity && logActivity(`Status do cliente ${clientId} alterado para ${newStatus}`);
             addToast('Status atualizado com sucesso.', 'success');
         } catch (error) {
             // reverte para o estado anterior em caso de falha
             console.error('Erro ao atualizar status:', error);
-            setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: prevStatus } : c));
+            setAllClients(list => list.map(c => c.id === clientId ? { ...c, status: prevStatus, statusSince: prevClient?.statusSince } : c));
             addToast('Erro ao atualizar status.', 'error');
         } finally {
             setUpdatingStatusMap(m => {
@@ -1193,8 +1208,20 @@ const ClientsList = () => {
                         {activeTab === 'active' && (
                             <button
                                 type="button"
+                                aria-pressed={stalledOnly}
+                                onClick={() => { setStalledOnly(current => !current); setWaitingOnly(false); }}
+                                title={`Clientes ativos há ${STALLED_CLIENT_DAYS} ou mais dias no mesmo status, fora de espera`}
+                                className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${stalledOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                <AlertTriangle size={16} />
+                                Parados {STALLED_CLIENT_DAYS}+ dias
+                            </button>
+                        )}
+                        {activeTab === 'active' && (
+                            <button
+                                type="button"
                                 aria-pressed={waitingOnly}
-                                onClick={() => setWaitingOnly(current => !current)}
+                                onClick={() => { setWaitingOnly(current => !current); setStalledOnly(false); }}
                                 className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${waitingOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
                                 title="Mostrar clientes em espera"
                             >
@@ -1427,7 +1454,11 @@ const ClientsList = () => {
                                         <tr key={client.id} className={`group transition-all ${client.emEspera ? 'bg-slate-50/90 opacity-70 hover:opacity-90' : 'bg-white hover:bg-gray-50/80'}`}>
                                             <td className={`border-l-2 px-4 py-3 ${needsAttention ? 'border-l-amber-400' : 'border-l-transparent'}`}>
                                                 <div className="flex min-w-[200px] items-center gap-3">
-                                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${palette}`}>{initials}</div>
+                                                    {activeTab === 'active' ? (
+                                                        <ClientAgeAvatar createdAt={client.createdAt} />
+                                                    ) : (
+                                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${palette}`}>{initials}</div>
+                                                    )}
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <button type="button" onClick={() => setDetailsClientId(client.id)} className="truncate text-left text-sm font-semibold text-gray-900 hover:text-primary" title="Ver detalhes do cliente">{client.nome}</button>
@@ -1454,6 +1485,7 @@ const ClientsList = () => {
                                                 {activeTab === 'active' ? (
                                                     <div>
                                                         <StatusSelect currentStatus={client.status} clientId={client.id} onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} disabled={client.emEspera || !!updatingStatusMap[client.id]} loading={!!updatingStatusMap[client.id]} />
+                                                        <ClientStatusAge client={client} />
                                                         {client.emEspera && <p className={`mt-1 text-[11px] font-medium ${client.dataRetomada && new Date(client.dataRetomada).toISOString().slice(0, 10) <= new Date().toISOString().slice(0, 10) ? 'text-amber-700' : 'text-gray-500'}`}>{getWaitResumeLabel(client.dataRetomada)}</p>}
                                                     </div>
                                                 ) : <StatusBadge status={client.status} />}
@@ -1523,9 +1555,13 @@ const ClientsList = () => {
                                     <div className="p-3 border-b border-gray-100">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className={`w-11 h-11 rounded-full flex items-center justify-center ${palette} font-semibold text-sm shrink-0 shadow-sm`}>
-                                                    {initials}
-                                                </div>
+                                                {activeTab === 'active' ? (
+                                                    <ClientAgeAvatar createdAt={client.createdAt} large />
+                                                ) : (
+                                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center ${palette} font-semibold text-sm shrink-0 shadow-sm`}>
+                                                        {initials}
+                                                    </div>
+                                                )}
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         <button type="button" onClick={() => setDetailsClientId(client.id)} className="block max-w-full truncate text-left text-sm font-semibold text-gray-900 hover:text-primary">{client.nome}</button>
@@ -1614,6 +1650,7 @@ const ClientsList = () => {
                                                     disabled={client.emEspera || !!updatingStatusMap[client.id]}
                                                     loading={!!updatingStatusMap[client.id]} 
                                                 />
+                                                <ClientStatusAge client={client} />
                                                 {client.emEspera && <p className="mt-2 text-xs font-medium text-amber-700">{getWaitResumeLabel(client.dataRetomada)}</p>}
                                             </div>
                                         ) : (

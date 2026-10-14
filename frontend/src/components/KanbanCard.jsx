@@ -5,6 +5,8 @@ import { Edit, Trash2, Home, Copy, Check, CheckCircle2, FileText, PauseCircle, P
 import { useState } from 'react';
 import StatusBadge from './ui/StatusBadge';
 import FancySelect from './FancySelect';
+import ClientStatusAge from './ClientStatusAge';
+import ClientAgeAvatar from './ClientAgeAvatar';
 
 const compactCurrency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -12,27 +14,6 @@ const compactCurrency = new Intl.NumberFormat('pt-BR', {
   notation: 'compact',
   maximumFractionDigits: 1,
 });
-
-const AVATAR_PALETTES = [
-  'bg-indigo-50 text-indigo-700',
-  'bg-green-50 text-green-700',
-  'bg-rose-50 text-rose-700',
-  'bg-amber-50 text-amber-700',
-  'bg-sky-50 text-sky-700',
-];
-
-const getInitials = (name) => {
-  if (!name) return '';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-
-const getAvatarStyle = (name) => {
-  if (!name) return AVATAR_PALETTES[0];
-  const charCode = name.charCodeAt(0);
-  return AVATAR_PALETTES[charCode % AVATAR_PALETTES.length];
-};
 
 export default function KanbanCard({
   client,
@@ -111,9 +92,7 @@ export default function KanbanCard({
     >
       {/* Nome do cliente */}
       <div className="mb-2 flex items-start gap-2">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarStyle(client.nome)}`}>
-          {getInitials(client.nome)}
-        </div>
+        <ClientAgeAvatar createdAt={client.createdAt} compact />
         <div className="flex-1 min-w-0">
           <h4 className="truncate pr-12 text-sm font-bold text-gray-900">
             {client.nome}
@@ -144,6 +123,8 @@ export default function KanbanCard({
           </div>
         )}
       </div>
+
+      <div className="mb-2"><ClientStatusAge client={client} /></div>
 
       {/* Propriedade */}
       {client.nomePropriedade && (
