@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
-import { noteContentText } from '../../../shared/noteContent';
+import { noteContentText } from '../utils/noteContent.js';
 import { notesApi } from '../services/api';
 import { hasNoteContent, normalizeNoteForm, noteDraftKey, noteFormSignature, readNoteDraft, removeNoteDraft, writeNoteDraft } from '../utils/noteDrafts';
 

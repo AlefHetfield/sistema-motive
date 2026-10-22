@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 import { createNoteRouter, createNoteLabelRouter } from '../api/noteRoutes.js';
 import { encodeSession, decodeSession } from '../api/session.js';
-import { encodeNoteDocument, plainNoteDocument } from '../shared/noteContent.js';
+import { encodeNoteDocument, plainNoteDocument } from '../frontend/src/utils/noteContent.js';
 
 // This integration suite owns every record it creates and refuses remote databases.
 test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', { timeout: 120_000 }, async () => {

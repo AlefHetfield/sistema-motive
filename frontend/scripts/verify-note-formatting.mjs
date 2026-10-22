@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { NoteTaskList, NoteTaskItem } from '../src/components/notes/noteTaskExtensions.js';
-import { encodeNoteDocument, noteContentText, parseNoteDocument, plainNoteDocument, NOTE_DOCUMENT_PREFIX } from '../../shared/noteContent.js';
+import { encodeNoteDocument, noteContentText, parseNoteDocument, plainNoteDocument, NOTE_DOCUMENT_PREFIX } from '../src/utils/noteContent.js';
 import { noteData } from '../../api/noteAccess.js';
 
 test('texto antigo preserva linhas e caracteres literais sem interpretar HTML', () => {

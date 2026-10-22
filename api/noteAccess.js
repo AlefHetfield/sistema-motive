@@ -1,4 +1,4 @@
-import { noteContentText } from '../shared/noteContent.js';
+import { noteContentText } from '../frontend/src/utils/noteContent.js';
 // Notes have their own access boundary. An administrator never bypasses it.
 export const NOTE_COLORS = ['default', 'yellow', 'green', 'blue', 'pink', 'purple'];
 export const noteFail = (message, status = 400, code = 'VALIDATION_ERROR') => Object.assign(new Error(message), { status, code });

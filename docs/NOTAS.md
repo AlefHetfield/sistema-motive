@@ -48,6 +48,7 @@ Não há novo segredo de ambiente. As mutações verificam a origem do navegador
 
 - `api/noteRoutes.js`: roteadores de `/api/notes` e `/api/note-labels`.
 - `api/noteAccess.js`: validações, escopo, apresentação e bloqueios transacionais.
+- `frontend/src/utils/noteContent.js`: formato e validação do texto, usados também pela API. O arquivo fica dentro do frontend para permitir seu build isolado na Vercel.
 - `Note.version`: conteúdo, compartilhamento e lixeira global.
 - `NoteUserState.version`: preferências individuais, independente do conteúdo.
 - `clientMutationId`: UUID por criação, evitando duplicatas em uma repetição da requisição.

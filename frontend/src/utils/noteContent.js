@@ -1,3 +1,4 @@
+// Dependency-free document format shared by the frontend and API.
 export const NOTE_DOCUMENT_PREFIX = '\u001eMOTIVE_NOTE_V1:';
 const types = new Set(['doc', 'paragraph', 'text', 'hardBreak', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem']);
 const marks = new Set(['bold', 'italic', 'strike', 'underline']);

@@ -6,7 +6,7 @@ import useNoteAutosave from '../../hooks/useNoteAutosave';
 import NoteDialog from './NoteDialog';
 import NoteChecklist from './NoteChecklist';
 import NoteRichText from './NoteRichText';
-import { noteContentText } from '../../../../shared/noteContent';
+import { noteContentText } from '../../utils/noteContent.js';
 import NoteShareDialog from './NoteShareDialog';
 import { noteBackground, noteColors } from './noteColors';
 

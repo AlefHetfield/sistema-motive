@@ -1,4 +1,4 @@
-import { noteContentText } from '../../../shared/noteContent.js';
+import { noteContentText } from './noteContent.js';
 const PREFIX = 'motive.note-draft.v1.';
 const USER_KEY = 'motive.note-draft-user';
 const TTL = 30 * 60 * 1000;

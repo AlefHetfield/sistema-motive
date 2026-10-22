@@ -3,7 +3,7 @@ import { Copy, FileClock, Trash2, X } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { removeNoteDraft } from '../../utils/noteDrafts';
 import NoteDialog from './NoteDialog';
-import { noteContentText } from '../../../../shared/noteContent';
+import { noteContentText } from '../../utils/noteContent.js';
 
 const draftText = form => [form.title, noteContentText(form.content), ...(form.items || []).map(item => `${item.checked ? '[x]' : '[ ]'} ${item.text}`)].filter(Boolean).join('\n');
 

@@ -1,4 +1,4 @@
-import { parseNoteDocument } from '../../../../shared/noteContent';
+import { parseNoteDocument } from '../../utils/noteContent.js';
 
 export default function NoteFormattedText({ value }) {
   const document = parseNoteDocument(value);

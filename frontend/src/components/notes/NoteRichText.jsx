@@ -4,7 +4,7 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { NoteTaskList, NoteTaskItem } from './noteTaskExtensions';
 import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListChecks, Undo2, Redo2 } from 'lucide-react';
-import { encodeNoteDocument, noteContentText, plainNoteDocument } from '../../../../shared/noteContent';
+import { encodeNoteDocument, noteContentText, plainNoteDocument } from '../../utils/noteContent.js';
 
 const extensions = [StarterKit.configure({ heading: false, code: false, codeBlock: false, blockquote: false, horizontalRule: false, link: false }), NoteTaskList, NoteTaskItem];
 
