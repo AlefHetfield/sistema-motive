@@ -51,9 +51,8 @@ Tem acesso total ao sistema:
 - ✅ Gerenciar Clientes
 - ✅ Editor de PDF
 - ✅ Gerador de Recibos
-- ✅ Buscador de CEP
 - ✅ Configurações
-- ✅ **Gerenciar Usuários** (exclusivo)
+- ✅ **Configurações → Usuários** (exclusivo)
 
 ### 🔸 CORRETOR
 Acesso limitado:
@@ -61,8 +60,7 @@ Acesso limitado:
 - ✅ Gerenciar Clientes
 - ✅ Editor de PDF
 - ✅ Gerador de Recibos
-- ✅ Buscador de CEP
-- ❌ Gerenciar Usuários (bloqueado)
+- ❌ Configurações → Usuários (bloqueado)
 - ❌ Algumas configurações sensíveis (bloqueado)
 
 ---
@@ -71,7 +69,7 @@ Acesso limitado:
 
 ### Criar um Novo Usuário (Como Admin)
 1. Faça login como admin
-2. Clique em "Gerenciar Usuários" no menu lateral
+2. Clique em "Configurações" no menu lateral e abra a aba "Usuários"
 3. Clique em "Novo Usuário"
 4. Preencha:
    - Nome completo
@@ -84,7 +82,7 @@ Acesso limitado:
 1. Crie um usuário com função "CORRETOR"
 2. Faça logout
 3. Faça login com o novo usuário
-4. Observe que "Gerenciar Usuários" não aparece no menu
+4. Observe que a aba "Usuários" não aparece em "Configurações"
 5. Tente acessar `/users` manualmente - será bloqueado
 
 ### Gerenciar Usuários Existentes

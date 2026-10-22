@@ -13,6 +13,7 @@ import { generateContractPreviewPdf } from './contractPreview.js';
 import { createPropertyRouter } from './propertyRoutes.js';
 import { createMatriculaRouter } from './matriculaRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
+import { createNoteRouter, createNoteLabelRouter } from './noteRoutes.js';
 import { createCalendarRouter } from './calendarRoutes.js';
 import { encodeSession, decodeSession } from './session.js';
 import { withClientStatusSince } from './clientStatusAge.js';
@@ -112,6 +113,8 @@ function requireRole(...allowedRoles) {
 app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
 app.use('/api/matriculas', createMatriculaRouter(requireAuth));
 app.use('/api/tasks', createTaskRouter(prisma, requireAuth));
+app.use('/api/notes', createNoteRouter(prisma, requireAuth));
+app.use('/api/note-labels', createNoteLabelRouter(prisma, requireAuth));
 app.use('/api/calendar', createCalendarRouter(requireAuth));
 
 async function getUsersTableColumns() {
@@ -1238,6 +1241,9 @@ app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
       return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
     }
 
+    if (await prisma.note.count({ where: { ownerId: userId } })) {
+      return res.status(409).json({ error: 'Este usuário possui notas. Desative o usuário para preservar suas anotações.' });
+    }
     if (await prisma.task.count({ where: { assigneeId: userId } })) {
       return res.status(409).json({ error: 'Este usuário possui tarefas. Desative o usuário para preservar o histórico ou transfira suas tarefas antes de excluí-lo.' });
     }

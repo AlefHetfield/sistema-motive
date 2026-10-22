@@ -3,7 +3,7 @@ import { Menu, X } from 'lucide-react';
 import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPin, MapPinned, ListTodo, FileSearch, Pin, PinOff, Settings as SettingsIcon, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
@@ -12,6 +12,7 @@ import LoadingAnimation from './LoadingAnimation';
 
 const corretorNavItems = [
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
@@ -19,13 +20,13 @@ const corretorNavItems = [
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
     { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
-    { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
 ];
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
@@ -33,7 +34,6 @@ const assistenteNavItems = [
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
     { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
-    { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
 ];
 
@@ -41,6 +41,7 @@ const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operação' },
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
+    { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
     { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
@@ -48,15 +49,14 @@ const adminNavItems = [
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
     { to: '/pdf-editor', label: 'Editor de PDF', icon: FileText, group: 'Documentos' },
     { to: '/matriculas', label: 'Buscador de Matrículas', icon: FileSearch, group: 'Documentos' },
-    { to: '/cep-search', label: 'Buscador de CEP', icon: MapPin, group: 'Documentos' },
     { to: '/settings', label: 'Configurações', icon: SettingsIcon, group: 'Administração' },
-    { to: '/users', label: 'Gerenciar Usuários', icon: UserCog, group: 'Administração' },
 ];
 
 const pageDescriptions = {
     '/dashboard': 'Acompanhe os principais indicadores e atividades da operação.',
     '/clients': 'Visualize e gerencie o progresso dos financiamentos em tempo real.',
     '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
+    '/notes': 'Guarde ideias, organize anotações e compartilhe com sua equipe.',
     '/agenda': 'Organize visitas e compromissos sincronizados com o Google Agenda.',
     '/properties-map': 'Localize, organize e atualize os imóveis disponíveis no mapa.',
     '/simulador': 'Compare condições de financiamento e gere propostas para seus clientes.',
@@ -64,9 +64,7 @@ const pageDescriptions = {
     '/contract-generator': 'Preencha, revise e gere contratos de compra e venda em Word.',
     '/pdf-editor': 'Edite e prepare documentos em PDF para os seus processos.',
     '/matriculas': 'Encontre matrículas por rua, número, bairro, lote e quadra.',
-    '/cep-search': 'Consulte endereços completos a partir do CEP.',
     '/settings': 'Ajuste as preferências e configurações do sistema.',
-    '/users': 'Cadastre usuários e controle os acessos da equipe.',
 };
 
 const GROUP_TONES = {

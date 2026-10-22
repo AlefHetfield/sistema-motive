@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../config/api';
+import { clearNoteDrafts, prepareNoteDraftUser } from '../utils/noteDrafts';
 
 const AuthContext = createContext(null);
 
@@ -44,6 +45,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const logoutPending = useRef(false);
 
     // Verifica a sessão ao carregar a aplicação
     useEffect(() => {
@@ -52,6 +54,7 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const handleUnauthorized = () => {
+            window.dispatchEvent(new Event('motive:preserve-note-draft'));
             clearCachedSession();
             setUser(null);
             setIsAuthenticated(false);
@@ -90,6 +93,7 @@ export const AuthProvider = ({ children }) => {
 
             if (response.ok) {
                 const userData = await response.json();
+                prepareNoteDraftUser(userData.id);
                 setUser(userData);
                 setIsAuthenticated(true);
                 clearCachedSession();
@@ -121,6 +125,7 @@ export const AuthProvider = ({ children }) => {
 
             if (response.ok) {
                 const userData = await response.json();
+                prepareNoteDraftUser(userData.id);
                 setUser(userData);
                 setIsAuthenticated(true);
                 clearCachedSession();
@@ -139,6 +144,24 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
+        if (logoutPending.current) return;
+        logoutPending.current = true;
+        const pending = [];
+        window.dispatchEvent(new CustomEvent('motive:before-logout', {
+            detail: { waitUntil: result => pending.push(Promise.resolve(result)) },
+        }));
+        try {
+            if ((await Promise.all(pending)).some(result => !result)) {
+                logoutPending.current = false;
+                window.dispatchEvent(new Event('motive:logout-cancelled'));
+                return;
+            }
+        } catch {
+            logoutPending.current = false;
+            window.dispatchEvent(new Event('motive:logout-cancelled'));
+            return;
+        }
+        clearNoteDrafts();
         try {
             // Marca a intenção de logout ANTES de tudo
             setLogoutIntent();

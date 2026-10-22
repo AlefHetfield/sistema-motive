@@ -1,18 +1,30 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, FileText, Send, Download, DatabaseBackup, CalendarDays, ExternalLink } from 'lucide-react';
+import { User, UserCog, Mail, Lock, Shield, Eye, EyeOff, CheckCircle, AlertCircle, FileText, Send, Download, DatabaseBackup, CalendarDays, ExternalLink } from 'lucide-react';
 import ModernInput from '../components/ModernInput';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { downloadPropertiesBackup, fetchCalendarStatus } from '../services/api';
 
 import { API_BASE_URL } from '../config/api';
 
+const UserManagement = lazy(() => import('./UserManagement'));
+
 const Settings = () => {
     const { user } = useAuth();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const requestedTab = searchParams.get('tab');
-    const [activeTab, setActiveTab] = useState(requestedTab === 'integrations' ? 'integrations' : 'profile');
+    const allowedTabs = user?.role === 'ADM'
+        ? ['profile', 'security', 'users', 'integrations', 'reports']
+        : ['profile', 'security'];
+    const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : 'profile';
+    const setActiveTab = (tab) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set('tab', tab);
+            return next;
+        });
+    };
     const [notification, setNotification] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -164,6 +176,7 @@ const Settings = () => {
     const tabs = [
         { id: 'profile', label: 'Perfil', icon: User },
         { id: 'security', label: 'Segurança', icon: Lock },
+        ...(user?.role === 'ADM' ? [{ id: 'users', label: 'Usuários', icon: UserCog }] : []),
         ...(user?.role === 'ADM' ? [{ id: 'integrations', label: 'Integrações', icon: CalendarDays }] : []),
         ...(user?.role === 'ADM' ? [{ id: 'reports', label: 'Relatórios', icon: FileText }] : []),
     ];
@@ -202,6 +215,7 @@ const Settings = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
+                            aria-pressed={activeTab === tab.id}
                             className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-all duration-200 sm:px-4 sm:text-base ${
                                 activeTab === tab.id
                                     ? 'border-primary text-primary'
@@ -217,6 +231,11 @@ const Settings = () => {
 
             {/* Conteúdo */}
             <div className="app-card rounded-2xl border bg-white p-4 sm:p-6">
+                {activeTab === 'users' && user?.role === 'ADM' && (
+                    <Suspense fallback={<div className="flex items-center justify-center gap-3 py-8" role="status"><LoadingSpinner />Carregando usuários...</div>}>
+                        <UserManagement embedded />
+                    </Suspense>
+                )}
                 {activeTab === 'profile' && (
                     <div className="max-w-2xl">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações do Perfil</h2>

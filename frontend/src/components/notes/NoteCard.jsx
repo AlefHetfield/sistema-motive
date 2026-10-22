@@ -1,0 +1,23 @@
+import { Pin, Archive, ArchiveRestore, Eye, EyeOff, Trash2, RotateCcw, Users, LockKeyhole, Check, Square, Tag } from 'lucide-react';
+import { noteBackground } from './noteColors';
+import NoteFormattedText from './NoteFormattedText';
+
+export default function NoteCard({ note, layout, onOpen, onState, onTrash, onRestore, onDelete, busy }) {
+  const state = note.state || {};
+  const shared = note.role !== 'OWNER' || note.access?.length > 0;
+  return <article className={`note-card ${layout === 'list' ? 'sm:flex sm:items-start' : ''}`} style={{ background: noteBackground(state.color) }}>
+    <button type="button" onClick={() => onOpen(note)} className="text-left block w-full min-w-0 p-4 sm:p-5 outline-none rounded-t-[17px]" aria-label={`Abrir nota: ${note.title || 'Sem título'}`}>
+      <div className="flex items-start gap-3"><h3 className="font-semibold text-[15px] break-words flex-1 leading-6">{note.title || <span className="font-normal text-slate-500">Sem título</span>}</h3>{state.isPinned && <Pin size={14} className="shrink-0 mt-1 text-[#315b78]" />}</div>
+      {note.kind === 'CHECKLIST' ? <div className="mt-3 space-y-2">{note.content && <div className="line-clamp-2 text-sm leading-6 text-[#526575] whitespace-pre-wrap break-words mb-3"><NoteFormattedText value={note.content} /></div>}{(note.items || []).slice(0, layout === 'list' ? 3 : 6).map(item => <div className="flex gap-2 text-sm text-slate-600" key={item.id}>{item.checked ? <Check size={15} className="mt-0.5 shrink-0" /> : <Square size={14} className="mt-0.5 shrink-0" />}<span className={`line-clamp-2 break-words ${item.checked ? 'line-through opacity-60' : ''}`}>{item.text || 'Item vazio'}</span></div>)}{note.items?.length > (layout === 'list' ? 3 : 6) && <span className="block text-xs text-slate-400">+{note.items.length - (layout === 'list' ? 3 : 6)} itens</span>}</div> : note.content && <div className={`note-card-preview text-sm leading-6 text-[#526575] mt-2 ${layout === 'list' ? '![-webkit-line-clamp:2]' : ''}`}><NoteFormattedText value={note.content} /></div>}
+      {!!note.labels?.length && <div className="flex flex-wrap gap-1.5 mt-4">{note.labels.map(label => <span key={label.id} className="note-label"><Tag size={10} /><span className="truncate">{label.name}</span></span>)}</div>}
+      <div className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-500">{shared ? <Users size={12} /> : <LockKeyhole size={12} />}<span>{shared ? note.role === 'OWNER' ? 'Compartilhada por você' : `${note.owner?.nome || 'Equipe'} · ${note.role === 'EDITOR' ? 'Pode editar' : 'Pode visualizar'}` : 'Pessoal'}</span></div>
+    </button>
+    <div className={`flex items-center border-t border-[#172f430a] px-2 py-1 ${layout === 'list' ? 'sm:border-t-0 sm:pt-3 sm:shrink-0' : ''}`}>
+      {note.deletedAt ? <><button className="note-icon" onClick={() => onRestore(note)} disabled={busy} title="Restaurar nota" aria-label="Restaurar nota"><RotateCcw size={16} /></button><button className="note-icon hover:!text-red-600" onClick={() => onDelete(note)} disabled={busy} title="Excluir definitivamente" aria-label="Excluir definitivamente"><Trash2 size={16} /></button><span className="text-[11px] text-slate-400 px-2">Na lixeira</span></> : <>
+        <button className="note-icon" onClick={() => onState(note, { isPinned: !state.isPinned })} disabled={busy} aria-label={state.isPinned ? 'Desafixar nota' : 'Fixar nota'} title={state.isPinned ? 'Desafixar' : 'Fixar'} aria-pressed={Boolean(state.isPinned)}><Pin size={16} /></button>
+        <button className="note-icon" onClick={() => onState(note, { archived: !state.archivedAt })} disabled={busy} aria-label={state.archivedAt ? 'Desarquivar nota' : 'Arquivar nota'} title={state.archivedAt ? 'Desarquivar' : 'Arquivar'}>{state.archivedAt ? <ArchiveRestore size={16} /> : <Archive size={16} />}</button>
+        {note.role === 'OWNER' ? <button className="note-icon" onClick={() => onTrash(note)} disabled={busy} aria-label="Mover nota para a lixeira" title="Mover para lixeira"><Trash2 size={16} /></button> : <button className="note-icon" onClick={() => onState(note, { hidden: !state.hiddenAt })} disabled={busy} aria-label={state.hiddenAt ? 'Mostrar nota novamente' : 'Ocultar nota para mim'} title={state.hiddenAt ? 'Mostrar novamente' : 'Ocultar para mim'}>{state.hiddenAt ? <Eye size={16} /> : <EyeOff size={16} />}</button>}
+      </>}
+    </div>
+  </article>;
+}

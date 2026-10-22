@@ -69,6 +69,10 @@ model User {
   delegatedTasks Task[] @relation("DelegatedTasks")
   taskLists TaskList[]
   taskNotifications TaskNotification[]
+  notes Note[]
+  noteAccess NoteAccess[]
+  noteStates NoteUserState[]
+  noteLabels NoteLabel[]
 
   @@map("users")
 }
@@ -246,4 +250,93 @@ model TaskNotification {
   @@index([recipientId, readAt])
   @@index([taskId])
   @@map("task_notifications")
+}
+
+enum NoteKind {
+  TEXT
+  CHECKLIST
+}
+
+enum NoteAccessRole {
+  VIEWER
+  EDITOR
+}
+
+model Note {
+  id               Int                   @id @default(autoincrement())
+  ownerId          Int
+  clientMutationId String                @db.Uuid
+  title            String                @default("")
+  content          String                @default("")
+  kind             NoteKind              @default(TEXT)
+  items            Json                  @default("[]")
+  searchText       String                @default("")
+  version          Int                   @default(1)
+  deletedAt        DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  owner            User                  @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  access           NoteAccess[]
+  states           NoteUserState[]
+  labelAssignments NoteLabelAssignment[]
+
+  @@unique([ownerId, clientMutationId])
+  @@index([ownerId, deletedAt, updatedAt])
+  @@map("notes")
+}
+
+model NoteAccess {
+  noteId    Int
+  userId    Int
+  role      NoteAccessRole @default(VIEWER)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  note      Note           @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, userId])
+  @@index([userId, noteId])
+  @@map("note_access")
+}
+
+model NoteUserState {
+  noteId     Int
+  userId     Int
+  color      String    @default("default")
+  isPinned   Boolean   @default(false)
+  archivedAt DateTime?
+  hiddenAt   DateTime?
+  version    Int       @default(1)
+  updatedAt  DateTime  @updatedAt
+  note       Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, userId])
+  @@index([userId, archivedAt, hiddenAt, isPinned])
+  @@map("note_user_states")
+}
+
+model NoteLabel {
+  id             Int                   @id @default(autoincrement())
+  ownerId        Int
+  name           String
+  normalizedName String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  owner          User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  assignments    NoteLabelAssignment[]
+
+  @@unique([ownerId, normalizedName])
+  @@map("note_labels")
+}
+
+model NoteLabelAssignment {
+  noteId  Int
+  labelId Int
+  note    Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  label   NoteLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, labelId])
+  @@index([labelId, noteId])
+  @@map("note_label_assignments")
 }

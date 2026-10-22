@@ -10,7 +10,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 
 import { API_BASE_URL } from '../config/api';
 
-const UserManagement = () => {
+const UserManagement = ({ embedded = false }) => {
     const { user: currentUser, isAdmin } = useAuth();
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -197,15 +197,15 @@ const UserManagement = () => {
     const getStatusBadge = isActive => <StatusBadge status={isActive ? 'Ativo' : 'Inativo'} />;
 
     if (!isAdmin()) {
-        return null; // O PrivateRoute já vai bloquear, mas por segurança
+        return null;
     }
 
     if (isLoading) {
-        return <LoadingAnimation fullScreen size="lg" message="Carregando usuários..." />;
+        return <LoadingAnimation fullScreen={!embedded} size={embedded ? 'md' : 'lg'} message="Carregando usuários..." />;
     }
 
     return (
-        <div className="space-y-5 p-3 sm:space-y-6 sm:p-6">
+        <div className={embedded ? 'space-y-5 sm:space-y-6' : 'space-y-5 p-3 sm:space-y-6 sm:p-6'}>
             {/* Notificação */}
             {notification && (
                 <div
@@ -227,7 +227,11 @@ const UserManagement = () => {
             {/* Header */}
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="app-page-title text-2xl">Gerenciamento de Usuários</h1>
+                    {embedded ? (
+                        <h2 className="app-page-title text-lg">Gerenciamento de Usuários</h2>
+                    ) : (
+                        <h1 className="app-page-title text-2xl">Gerenciamento de Usuários</h1>
+                    )}
                     <p className="app-page-description mt-1">Gerencie usuários e permissões do sistema</p>
                 </div>
                 <button
