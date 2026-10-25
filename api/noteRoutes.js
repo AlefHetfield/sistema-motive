@@ -22,7 +22,15 @@ function allowedOrigin(req) {
 
 function privateRouter(prisma, requireAuth) {
   const router = express.Router();
-  router.use((_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
+  router.use((_req, res, next) => {
+    const started = performance.now();
+    const writeHead = res.writeHead;
+    res.writeHead = function (...args) {
+      this.setHeader('Server-Timing', `notes;dur=${(performance.now() - started).toFixed(1)}`);
+      return writeHead.apply(this, args);
+    };
+    res.set('Cache-Control', 'private, no-store'); next();
+  });
   router.use(requireAuth);
   router.use(async (req, _res, next) => {
     try {
@@ -55,11 +63,24 @@ async function readNote(tx, noteId, userId, permission = 'read') {
   return note;
 }
 
-async function mutateNote(prisma, noteId, userId, callback, { labels = false } = {}) {
+async function readForMutation(tx, noteId, userId, kind, permission = 'read') {
+  // Authorization still runs after the shared row lock. Presentation relations
+  // are loaded only once, after the write, rather than twice per action.
+  const note = await tx.note.findUnique({ where: { id: noteId }, select: {
+    id: true, ownerId: true, version: true, deletedAt: true,
+    access: { ...(kind === 'access' ? {} : { where: { userId } }), select: { userId: true, role: true } },
+    ...(kind === 'content' ? { title: true, content: true, items: true, kind: true } : {}),
+    ...(kind === 'state' ? { states: { where: { userId }, select: { version: true, archivedAt: true, hiddenAt: true } } } : {}),
+  } });
+  assertNoteAccess(note, userId, permission);
+  return note;
+}
+
+async function mutateNote(prisma, noteId, userId, callback, { labels = false, kind = 'content' } = {}) {
   return prisma.$transaction(async tx => {
     if (labels) await lockNoteLabels(tx, userId);
     await lockNote(tx, noteId);
-    const note = await readNote(tx, noteId, userId);
+    const note = await readForMutation(tx, noteId, userId, kind);
     await callback(tx, note);
     return presentNote(await readNote(tx, noteId, userId), userId);
   }, { maxWait: 10000, timeout: 15000 });
@@ -129,8 +150,8 @@ export function createNoteRouter(prisma, requireAuth) {
       const note = await tx.note.create({
         data: {
           ...data, ownerId: userId,
-          access: { create: team.map(user => ({ userId: user.id, role: 'EDITOR' })) },
-          states: { create: [userId, ...team.map(user => user.id)].map(id => ({ userId: id })) },
+          ...(team.length ? { access: { createMany: { data: team.map(user => ({ userId: user.id, role: 'EDITOR' })) } } } : {}),
+          states: { createMany: { data: [userId, ...team.map(user => user.id)].map(id => ({ userId: id })) } },
         },
         include: noteInclude(userId),
       });
@@ -190,7 +211,7 @@ export function createNoteRouter(prisma, requireAuth) {
         if (labelIds.length) await tx.noteLabelAssignment.createMany({ data: labelIds.map(labelId => ({ noteId: note.id, labelId })) });
       }
       await tx.noteUserState.update({ where: { noteId_userId: { noteId: note.id, userId } }, data: { ...data, version: { increment: 1 } } });
-    }, { labels: labelIds !== undefined }));
+    }, { labels: labelIds !== undefined, kind: 'state' }));
   });
 
   router.put('/:id/access', async (req, res) => {
@@ -224,7 +245,7 @@ export function createNoteRouter(prisma, requireAuth) {
         await tx.noteUserState.upsert({ where: { noteId_userId: { noteId: note.id, userId: entry.userId } }, create: { noteId: note.id, userId: entry.userId }, update: {} });
       }
       await tx.note.update({ where: { id: note.id }, data: { version: { increment: 1 } } });
-    }));
+    }, { kind: 'access' }));
   });
 
   for (const action of ['trash', 'restore']) {
@@ -237,7 +258,7 @@ export function createNoteRouter(prisma, requireAuth) {
         if (action === 'trash' && note.deletedAt) throw fail('A nota já está na lixeira.', 409, 'NOTE_IN_TRASH');
         if (action === 'restore' && !note.deletedAt) throw fail('A nota já foi restaurada.', 409, 'NOTE_NOT_IN_TRASH');
         await tx.note.update({ where: { id: note.id }, data: { deletedAt: action === 'trash' ? new Date() : null, version: { increment: 1 } } });
-      }));
+      }, { kind: 'lifecycle' }));
     });
   }
 
@@ -246,7 +267,7 @@ export function createNoteRouter(prisma, requireAuth) {
     const version = id(req.body.version), userId = req.noteUser.id, noteId = id(req.params.id);
     await prisma.$transaction(async tx => {
       await lockNote(tx, noteId);
-      const note = await readNote(tx, noteId, userId, 'owner');
+      const note = await readForMutation(tx, noteId, userId, 'lifecycle', 'owner');
       assertNoteVersion(note.version, version);
       if (!note.deletedAt) throw fail('Envie a nota para a lixeira antes de excluir definitivamente.', 409, 'NOTE_NOT_IN_TRASH');
       await tx.note.delete({ where: { id: noteId } });

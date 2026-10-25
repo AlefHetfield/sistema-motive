@@ -64,6 +64,7 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       });
       const data = await response.json().catch(() => null);
+      assert.match(response.headers.get('server-timing') || '', /^notes;dur=\d+(?:\.\d+)?$/);
       return { status: response.status, data, headers: response.headers };
     };
     const expect = async (status, user, path, method, body, headers) => {

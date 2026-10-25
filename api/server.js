@@ -1259,11 +1259,6 @@ app.delete('/api/users/:id', requireRole('ADM'), async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 // Diagnóstico completo do sistema (sem autenticação para debugging)
 app.get('/api/debug/status', async (req, res) => {
   try {

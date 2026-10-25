@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import { noteContentText } from '../utils/noteContent.js';
+import { mergeNoteSnapshot } from '../utils/noteSnapshots.js';
 import { notesApi } from '../services/api';
 import { hasNoteContent, normalizeNoteForm, noteDraftKey, noteFormSignature, readNoteDraft, removeNoteDraft, writeNoteDraft } from '../utils/noteDrafts';
 
@@ -33,6 +34,7 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
   const leavingRef = useRef(false);
   const inFlightRef = useRef(null);
   const readSequenceRef = useRef(0);
+  const remoteReadRef = useRef(null);
   const editRevisionRef = useRef(0);
   const mountedRef = useRef(true);
   const onSavedRef = useRef(onSaved);
@@ -80,13 +82,8 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
     onSavedRef.current?.(remote);
   }, []);
 
-  const checkRemote = useCallback(async () => {
-    if (!noteRef.current?.id || inFlightRef.current) return null;
-    const sequence = ++readSequenceRef.current;
-    const readingBase = baseVersionRef.current;
-    try {
-      const remote = await notesApi(`/${noteRef.current.id}`);
-      if (!mountedRef.current || sequence !== readSequenceRef.current || inFlightRef.current || readingBase !== baseVersionRef.current) return null;
+  const receiveRemote = useCallback(incoming => {
+      const remote = mergeNoteSnapshot(noteRef.current, incoming);
       if (!dirtyRef.current) adoptClean(remote);
       else {
         // Keep the version on which the pending text was based until the user resolves it.
@@ -105,8 +102,34 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
           pausedRef.current = true;
           setError(Object.assign(new Error('Seu acesso de edição mudou. Copie o rascunho antes de sair.'), { status: 403 }));
         }
+        onSavedRef.current?.(remote);
       }
       return remote;
+  }, [adoptClean, persist]);
+
+  const acceptMutation = useCallback(remote => {
+    readSequenceRef.current++;
+    if (!mountedRef.current) return null;
+    // A state/share response may arrive while a newer content save is pending.
+    // Keep both independent versions without confirming the in-flight text.
+    if (inFlightRef.current) {
+      const merged = mergeNoteSnapshot(noteRef.current, remote);
+      noteRef.current = merged; setNote(merged); onSavedRef.current?.(merged);
+      return merged;
+    }
+    return receiveRemote(remote);
+  }, [receiveRemote]);
+
+  const checkRemote = useCallback(() => {
+    if (!noteRef.current?.id || inFlightRef.current) return Promise.resolve(null);
+    if (remoteReadRef.current?.sequence === readSequenceRef.current) return remoteReadRef.current.promise;
+    const sequence = ++readSequenceRef.current;
+    const readingBase = baseVersionRef.current;
+    const request = (async () => {
+    try {
+      const remote = await notesApi(`/${noteRef.current.id}`);
+      if (!mountedRef.current || sequence !== readSequenceRef.current || inFlightRef.current || readingBase !== baseVersionRef.current) return null;
+      return receiveRemote(remote);
     } catch (cause) {
       if (sequence !== readSequenceRef.current || readingBase !== baseVersionRef.current || inFlightRef.current) return null;
       if (mountedRef.current && [401, 403, 404].includes(cause.status)) {
@@ -114,8 +137,13 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
         setAccessLost(true); setError(cause); setStatus('readonly'); persist();
       }
       return null;
+    } finally {
+      if (remoteReadRef.current?.sequence === sequence) remoteReadRef.current = null;
     }
-  }, [adoptClean, persist]);
+    })();
+    remoteReadRef.current = { sequence, promise: request };
+    return request;
+  }, [receiveRemote, persist]);
 
   const flush = useCallback(async () => {
     if (inFlightRef.current) return inFlightRef.current;
@@ -131,12 +159,13 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
           const snapshot = normalizeNoteForm(formRef.current);
           if (!hasNoteContent(snapshot)) return false;
           const creating = !noteRef.current;
-          const remote = await notesApi(creating ? '' : `/${noteRef.current.id}`, {
+          const response = await notesApi(creating ? '' : `/${noteRef.current.id}`, {
             method: creating ? 'POST' : 'PATCH',
             body: creating
               ? { ...snapshot, kind, clientMutationId: initial.mutationId }
               : { ...snapshot, version: baseVersionRef.current },
           });
+          const remote = mergeNoteSnapshot(noteRef.current, response);
           noteRef.current = remote;
           const nextKey = noteDraftKey(userId, remote.id, remote.kind);
           if (nextKey !== keyRef.current) { removeNoteDraft(keyRef.current); keyRef.current = nextKey; }
@@ -269,6 +298,6 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
   }, []);
 
   return { note, form, setField, setItems, status, error, dirty, saving, conflict, remoteChanged, canEdit,
-    flush, discard, reload, checkRemote, copyDraftText, retry, draftWarning,
+    flush, discard, reload, checkRemote, acceptMutation, copyDraftText, retry, draftWarning, accessLost,
     navigationBlocked: blocker.state === 'blocked', saveAndLeave, discardAndLeave, stay, leaving };
 }

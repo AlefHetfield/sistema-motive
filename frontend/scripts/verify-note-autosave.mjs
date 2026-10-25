@@ -146,6 +146,76 @@ test('autosave serializa respostas atrasadas e salva a digitação nova com a ve
   assert.equal(readStored(), null);
 });
 
+test('resposta da organização atualiza o editor sem GET e invalida polling antigo', async () => {
+  const calls = fakeHttp();
+  const editor = await mount();
+  const read = await editor.start('checkRemote');
+  const organized = note({ state: { color: 'blue', isPinned: true, version: 2 } });
+  await act(async () => { editor.current.acceptMutation(organized); });
+  assert.equal(editor.current.note.state.isPinned, true);
+  assert.equal(calls.length, 1, 'Adotar o PATCH não deve disparar outro GET.');
+  await finish(calls[0], note());
+  await read.promise;
+  assert.equal(editor.current.note.state.color, 'blue');
+  assert.equal(editor.current.note.state.version, 2);
+});
+
+test('revalidações simultâneas compartilham uma consulta', async () => {
+  const calls = fakeHttp();
+  const editor = await mount();
+  const first = await editor.start('checkRemote');
+  const second = await editor.start('checkRemote');
+  assert.equal(calls.length, 1);
+  await finish(calls[0], note());
+  await Promise.all([first.promise, second.promise]);
+  await editor.start('checkRemote');
+  assert.equal(calls.length, 2, 'Uma consulta terminada não deve impedir revalidações futuras.');
+  await finish(calls[1], note());
+});
+
+test('resposta de compartilhamento preserva texto digitado e avança somente a base compatível', async () => {
+  const calls = fakeHttp();
+  const editor = await mount();
+  await editor.edit('content', 'Texto local ainda pendente');
+  await act(async () => { editor.current.acceptMutation(note({ version: 2 })); });
+  assert.equal(editor.current.form.content, 'Texto local ainda pendente');
+  assert.equal(editor.current.dirty, true);
+  const work = await editor.start('flush');
+  assert.equal(calls[0].body.version, 2);
+  await finish(calls[0], note({ version: 3, content: 'Texto local ainda pendente' }));
+  await work.promise;
+  assert.equal(editor.current.dirty, false);
+});
+
+test('salvamento de conteúdo não regride uma organização confirmada durante a requisição', async () => {
+  const calls = fakeHttp();
+  const editor = await mount();
+  await editor.edit('content', 'Texto em trânsito');
+  const work = await editor.start('flush');
+  await act(async () => { editor.current.acceptMutation(note({ state: { color: 'green', version: 2 } })); });
+  assert.equal(editor.current.dirty, true);
+  await finish(calls[0], note({ version: 2, content: 'Texto em trânsito' }));
+  await work.promise;
+  assert.equal(editor.current.form.content, 'Texto em trânsito');
+  assert.equal(editor.current.note.state.color, 'green');
+  assert.equal(editor.current.note.state.version, 2);
+  assert.equal(editor.current.dirty, false);
+});
+
+test('revalidar acesso revogado preserva o rascunho e bloqueia gravações', async () => {
+  const calls = fakeHttp();
+  const editor = await mount();
+  await editor.edit('content', 'Edição antes de descobrir a revogação');
+  const read = await editor.start('checkRemote');
+  await finish(calls[0], { error: 'Nota não encontrada.' }, 404);
+  await read.promise;
+  assert.equal(editor.current.accessLost, true);
+  assert.equal(editor.current.canEdit, false);
+  assert.equal(readStored().form.content, 'Edição antes de descobrir a revogação');
+  assert.equal(await editor.call('flush'), false);
+  assert.equal(calls.length, 1);
+});
+
 test('conflito409 mantém rascunho/base e bloqueia retry até carregar a versão atual conscientemente', async () => {
   const calls = fakeHttp();
   const editor = await mount();

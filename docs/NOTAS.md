@@ -26,6 +26,8 @@ A API consulta o usuário ativo e revalida o acesso em todas as operações. Rev
 
 O editor serializa gravações e preserva alterações digitadas durante uma requisição. Uma edição concorrente gera aviso de conflito: compare/copie o rascunho antes de carregar a versão atual. A API não sobrescreve silenciosamente uma versão nova.
 
+O editor abre com os dados da lista e revalida a nota em segundo plano. Respostas antigas não substituem texto novo nem organização pessoal mais recente. Criar, fixar, arquivar, restaurar e mover à lixeira atualizam os cartões assim que a API confirma; uma nova consulta à lista só é necessária para conciliar uma consulta concorrente ou preencher páginas incompletas. As respostas das mutações atualizam diretamente o editor, sem GET obrigatório depois da gravação.
+
 O conteúdo compartilhado é consultado ao retornar à janela e a cada 30 segundos enquanto a aba estiver visível. A consulta não substitui um formulário com alterações pendentes. Links e o botão Voltar do navegador permitem resolver alterações antes de sair; fechar ou recarregar a aba usa o aviso nativo quando necessário.
 
 Rascunhos temporários ficam em `sessionStorage`, separados por usuário, com validade de 30 minutos. Permitem recuperação na mesma aba após recarga ou expiração da sessão; reautenticar a mesma conta e revalidar o acesso é necessário para retomar a edição. O painel de recuperação também permite copiar um rascunho local cuja nota deixou de estar acessível. Logout explícito resolve as alterações pendentes e limpa os rascunhos; entrar com outra conta remove os anteriores. Armazenamento bloqueado pelo navegador é indicado no editor.
@@ -57,6 +59,8 @@ Não há novo segredo de ambiente. As mutações verificam a origem do navegador
 
 Erros incluem `status` HTTP e `code`; conflito de versão usa 409 `VERSION_CONFLICT`. Dados pessoais de organização nunca concedem acesso. Respostas são privadas e não armazenáveis em cache. O conteúdo das notas não é escrito em logs de diagnóstico.
 
+O cabeçalho `Server-Timing: notes;dur=...` mede o tempo na API até começar a enviar a resposta, incluindo autenticação e operações do banco, sem expor conteúdo ou sessão. Não mede o trajeto de rede. Antes de gravar, a API consulta somente os campos necessários para a operação; a resposta completa é montada após a alteração, mantendo os bloqueios de autorização e de versão.
+
 Limites: título de 250 caracteres; corpo de 20.000; 100 itens de 500 caracteres; 50 marcadores por usuário, com nome de até 50 caracteres; até 10 marcadores por nota para cada usuário; até 100 participantes por nota.
 
 ## Verificação
@@ -68,6 +72,7 @@ cd frontend
 npm run build
 npm run lint
 npm run test:notes-ui
+npm run test:auth
 ```
 
 Os testes de integração recusam bancos fora de localhost/127.0.0.1 e criam/removem somente registros temporários próprios. Incluem autenticação, autorização, busca, idempotência, preferências, concorrência, revogação e lixeira. Os testes de rascunhos verificam normalização, isolamento por conta, expiração e armazenamento indisponível. Os testes do autosave executam React e React Router com DOM simulado, cobrindo requisições atrasadas, conflitos, recuperação, navegação e respostas antigas.

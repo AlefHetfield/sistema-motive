@@ -13,7 +13,7 @@ import { noteBackground, noteColors } from './noteColors';
 export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels, onSaved, onClose, onTrash, onRestore, onDelete }) {
   const notify = useToast();
   const autosave = useNoteAutosave({ initialNote, kind, userId, onSaved });
-  const { note, form, setField, setItems, error, dirty, saving, conflict, remoteChanged, canEdit, flush, discard, reload, checkRemote, copyDraftText, retry, draftWarning, navigationBlocked, saveAndLeave, discardAndLeave, stay, leaving } = autosave;
+  const { note, form, setField, setItems, error, dirty, saving, conflict, remoteChanged, canEdit, flush, discard, reload, checkRemote, acceptMutation, copyDraftText, retry, draftWarning, navigationBlocked, saveAndLeave, discardAndLeave, stay, leaving, accessLost } = autosave;
   const [shareNote, setShareNote] = useState(null);
   const [showLabels, setShowLabels] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -25,8 +25,13 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
   const [actionBusy, setBusy] = useState(false);
   const busy = actionBusy || leaving;
   const [actionError, setActionError] = useState('');
+  const lastRemoteCheck = useRef(0);
+  useEffect(() => { if (initialNote?.id) void checkRemote(); }, [checkRemote, initialNote?.id]);
   useEffect(() => {
-    const update = () => { if (!document.hidden) void checkRemote(); };
+    const update = () => {
+      if (document.hidden || Date.now() - lastRemoteCheck.current < 1000) return;
+      lastRemoteCheck.current = Date.now(); void checkRemote();
+    };
     const timer = setInterval(update, 30000);
     window.addEventListener('focus', update); document.addEventListener('visibilitychange', update);
     return () => { clearInterval(timer); window.removeEventListener('focus', update); document.removeEventListener('visibilitychange', update); };
@@ -35,7 +40,7 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
   const hasContent = Boolean(form.title?.trim() || form.content?.trim() || form.items?.some(item => item.text?.trim()));
   const safeClose = async () => {
     if (busy) return;
-    if (!dirty && !saving) { onClose(); return; }
+    if (!dirty && !saving) { onClose({ refresh: accessLost }); return; }
     if (!note?.id && !hasContent && !saving && discard()) { onClose(); return; }
     const saved = await flush();
     if (saved) onClose(); else setShowClose(true);
@@ -47,7 +52,7 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
       const current = canEdit ? await flush() : note;
       if (!current?.id) { setActionError('Escreva e salve sua nota antes de organizá-la.'); return; }
       const updated = await notesApi(`/${current.id}/state`, { method: 'PATCH', body: { version: current.state.version, ...changes } });
-      onSaved(updated); await checkRemote();
+      acceptMutation(updated);
     } catch (err) { setActionError(err.status === 409 ? 'Sua organização mudou em outra aba. Atualize a nota antes de tentar novamente.' : err.message); }
     finally { setBusy(false); }
   };
@@ -94,7 +99,7 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
         <div className="flex-1" /><button className="note-button note-button-primary" onClick={safeClose} disabled={busy || saving}>{saving ? 'Salvando…' : canEdit ? 'Concluir' : 'Fechar'}</button>
       </footer>
     </NoteDialog>
-    {shareNote && <NoteShareDialog note={shareNote} onClose={() => setShareNote(null)} onSaved={async updated => { onSaved(updated); await checkRemote(); }} />}
+    {shareNote && <NoteShareDialog note={shareNote} onClose={() => setShareNote(null)} onSaved={acceptMutation} />}
     {showCompare && <NoteDialog titleId="note-conflict-title" onClose={() => setShowCompare(false)}><div className="p-5 border-b flex items-center"><h2 id="note-conflict-title" className="font-semibold flex-1">Compare antes de continuar</h2><button className="note-icon" onClick={() => setShowCompare(false)} aria-label="Fechar comparação"><X size={20} /></button></div><div className="p-5 space-y-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Seu rascunho</p><textarea readOnly aria-label="Seu rascunho para copiar" value={copyDraftText()} className="note-input min-h-36 text-sm" /></div><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Versão atual recebida</p>{conflict?.title !== undefined ? <div className="p-4 bg-slate-50 rounded-xl text-sm whitespace-pre-wrap break-words max-h-48 overflow-auto"><strong>{conflict.title || 'Sem título'}</strong><p className="mt-2">{conflict.kind === 'CHECKLIST' ? conflict.items?.map(item => `${item.checked ? '☑' : '☐'} ${item.text}`).join('\n') : noteContentText(conflict.content)}</p></div> : <p className="text-sm text-slate-500">Carregue a versão atual para consultar as alterações. Copie seu rascunho antes de continuar.</p>}</div><p className="text-xs text-amber-700">Carregar a versão atual substitui o rascunho aberto. Copie o que deseja preservar.</p><div className="flex flex-wrap justify-end gap-2"><button className="note-button" onClick={copy}><Copy size={15} />Copiar rascunho</button><button className="note-button note-button-primary" disabled={busy} onClick={reloadCurrent}>Carregar versão atual</button></div></div></NoteDialog>}
     {(showClose || navigationBlocked) && <NoteDialog compact titleId="note-pending-title" onClose={() => { setShowClose(false); stay?.(); }}><div className="p-6"><h2 id="note-pending-title" className="font-semibold text-lg">Há alterações pendentes</h2><p className="text-sm text-slate-500 mt-2 leading-6">Você pode tentar salvar, continuar editando ou descartar o rascunho desta nota.</p><div className="flex flex-col gap-2 mt-5"><button className="note-button note-button-primary" disabled={saving || Boolean(conflict)} onClick={async () => { if (navigationBlocked) await saveAndLeave(); else if (await flush()) onClose(); }}>Salvar e sair</button><button className="note-button" disabled={saving} onClick={() => { if (navigationBlocked) discardAndLeave(); else if (discard()) onClose(); }}>Descartar e sair</button><button className="note-button !border-transparent" onClick={() => { setShowClose(false); stay?.(); }}>Continuar editando</button></div></div></NoteDialog>}
   </>;

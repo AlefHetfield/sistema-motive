@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [authError, setAuthError] = useState('');
     const logoutPending = useRef(false);
 
     // Verifica a sessão ao carregar a aplicação
@@ -58,6 +59,7 @@ export const AuthProvider = ({ children }) => {
             clearCachedSession();
             setUser(null);
             setIsAuthenticated(false);
+            setAuthError('');
         };
         window.addEventListener('motive:unauthorized', handleUnauthorized);
         return () => window.removeEventListener('motive:unauthorized', handleUnauthorized);
@@ -76,6 +78,8 @@ export const AuthProvider = ({ children }) => {
     }, [isAuthenticated]);
 
     const checkAuth = async () => {
+        setIsLoading(true);
+        setAuthError('');
         try {
             // Se foi deslogado intencionalmente, não tenta restaurar sessão
             if (getLogoutIntent()) {
@@ -89,6 +93,7 @@ export const AuthProvider = ({ children }) => {
             // A API é a fonte de verdade. O cache local nunca autentica sozinho.
             const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
                 credentials: 'include',
+                signal: AbortSignal.timeout(15000),
             });
 
             if (response.ok) {
@@ -97,16 +102,21 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setIsAuthenticated(true);
                 clearCachedSession();
-            } else {
+            } else if (response.status === 401 || response.status === 403) {
                 setUser(null);
                 setIsAuthenticated(false);
                 clearCachedSession();
+            } else {
+                throw new Error('Serviço de autenticação indisponível.');
             }
         } catch (error) {
             console.error('Erro ao verificar autenticação:', error);
             setUser(null);
             setIsAuthenticated(false);
             clearCachedSession();
+            setAuthError(error.name === 'TimeoutError'
+                ? 'A verificação da sessão demorou demais. Tente novamente.'
+                : 'Não foi possível verificar sua sessão. Verifique a conexão e tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -126,6 +136,7 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 const userData = await response.json();
                 prepareNoteDraftUser(userData.id);
+                setAuthError('');
                 setUser(userData);
                 setIsAuthenticated(true);
                 clearCachedSession();
@@ -200,6 +211,7 @@ export const AuthProvider = ({ children }) => {
         user,
         isAuthenticated,
         isLoading,
+        authError,
         login,
         logout,
         checkAuth,

@@ -9,7 +9,8 @@
     "vercel-build": "vite build",
     "lint": "eslint .",
     "test:simulator": "node scripts/verify-housing-simulator.mjs",
-    "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs",
+    "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs",
+    "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

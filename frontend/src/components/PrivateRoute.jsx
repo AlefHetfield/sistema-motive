@@ -3,12 +3,22 @@ import { useAuth } from '../context/AuthContext';
 import LoadingAnimation from './LoadingAnimation';
 
 const PrivateRoute = ({ children, requiredRole }) => {
-    const { isAuthenticated, isLoading, user } = useAuth();
+    const { isAuthenticated, isLoading, user, authError, checkAuth } = useAuth();
     const location = useLocation();
 
     // Mostra loading enquanto verifica autenticação
     if (isLoading) {
         return <LoadingAnimation fullScreen size="lg" message="Verificando permissões..." />;
+    }
+
+    if (authError) {
+        return <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+            <div className="app-card max-w-md rounded-2xl bg-white p-6 text-center" role="alert">
+                <h1 className="text-lg font-semibold text-slate-900">Não foi possível abrir o sistema</h1>
+                <p className="mt-3 text-sm text-slate-600">{authError}</p>
+                <button className="mt-5 rounded-xl bg-primary px-4 py-2 text-white" onClick={checkAuth}>Tentar novamente</button>
+            </div>
+        </div>;
     }
 
     // Se não estiver autenticado, redireciona para login
