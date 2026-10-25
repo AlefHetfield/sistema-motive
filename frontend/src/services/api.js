@@ -28,10 +28,11 @@ export async function taskApi(path = '', { method = 'GET', body, signal } = {}) 
     return response.status === 204 ? null : response.json();
 }
 
-async function noteRequest(base, path, { method = 'GET', body, signal } = {}) {
+async function noteRequest(base, path, { method = 'GET', body, signal, expectedUserId } = {}) {
     const response = await fetch(`${API_BASE_URL}/api/${base}${path}`, {
         method, credentials: 'include', signal,
-        ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+        headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(expectedUserId ? { 'X-Note-User': String(expectedUserId) } : {}) },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     if (!response.ok) throw await apiError(response, 'Não foi possível acessar as notas.');
     return response.status === 204 ? null : response.json();
@@ -55,7 +56,7 @@ export async function searchMatriculas(filters, signal) {
 
 const apiError = async (response, fallback) => {
     const data = await response.json().catch(() => ({}));
-    if (response.status === 401 && typeof window !== 'undefined') {
+    if ((response.status === 401 || data.code === 'SESSION_CHANGED') && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('motive:preserve-note-draft'));
         window.dispatchEvent(new Event('motive:unauthorized'));
     }

@@ -6,6 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
+import { IDBFactory } from 'fake-indexeddb';
+import { createNoteQueue } from '../src/utils/noteQueue.js';
+import { createNoteQueueStore } from '../src/utils/noteQueueStore.js';
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost:5173/notes', pretendToBeVisual: true });
 const descriptors = new Map();
@@ -19,7 +22,7 @@ for (const [key, value] of Object.entries({ window: dom.window, document: dom.wi
 const originalFetch = globalThis.fetch;
 const bundlePath = fileURLToPath(new URL(`.verify-workspace-${randomUUID()}.mjs`, import.meta.url));
 const output = await build({
-  entryPoints: [fileURLToPath(new URL('../src/pages/Notes.jsx', import.meta.url))], bundle: true, write: false,
+  stdin: { contents: 'export { default } from "./src/pages/Notes.jsx"; export { NoteSyncProvider } from "./src/context/NoteSyncContext.jsx"; export { notesApi } from "./src/services/api.js";', resolveDir: fileURLToPath(new URL('../', import.meta.url)), loader: 'jsx' }, bundle: true, write: false,
   platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' },
   define: { 'import.meta.env.PROD': 'false', 'import.meta.env.VITE_API_URL': '"http://localhost:3000"' },
   plugins: [{ name: 'workspace-fixtures', setup(builder) {
@@ -31,7 +34,7 @@ const output = await build({
   } }],
 });
 await writeFile(bundlePath, output.outputFiles[0].text);
-const { default: Notes } = await import(pathToFileURL(bundlePath).href);
+const { default: Notes, NoteSyncProvider, notesApi } = await import(pathToFileURL(bundlePath).href);
 const { createRoot } = await import('react-dom/client');
 const { createMemoryRouter, RouterProvider } = await import('react-router-dom');
 const mounted = new Set();
@@ -42,17 +45,20 @@ const finish = async (call, payload, status = 200) => {
   assert.ok(call, 'Requisição esperada não foi enviada.');
   await act(async () => { call.resolve(new Response(JSON.stringify(payload), { status, headers: { 'Content-Type': 'application/json' } })); await nextTurn(); });
 };
-const mount = async (initial = [note()], extra = {}) => {
+const mount = async (initial = [note()], extra = {}, queued = false) => {
   const calls = [];
-  globalThis.fetch = (url, options = {}) => new Promise(resolve => calls.push({ url: String(url), method: options.method || 'GET', body: options.body && JSON.parse(options.body), signal: options.signal, resolve }));
+  globalThis.fetch = (url, options = {}) => new Promise(resolve => calls.push({ url: String(url), method: options.method || 'GET', body: options.body && JSON.parse(options.body), signal: options.signal, headers: options.headers, resolve }));
   const container = document.createElement('div'); document.body.append(container);
   const root = createRoot(container);
-  const router = createMemoryRouter([{ path: '/notes', element: React.createElement(Notes) }], { initialEntries: ['/notes'] });
-  await act(async () => { root.render(React.createElement(RouterProvider, { router })); });
+  const router = createMemoryRouter([{ path: '/notes', element: React.createElement(Notes) }, { path: '/away', element: React.createElement('p', null, 'Outra página') }], { initialEntries: ['/notes'] });
+  const store = queued ? (queued.store || createNoteQueueStore(new IDBFactory())) : null;
+  const queue = queued ? createNoteQueue({ store, request: notesApi, withLock: async (_name, work) => work(), auto: false }) : null;
+  await act(async () => { root.render(queue ? React.createElement(NoteSyncProvider, { userId: 1, queue }, React.createElement(RouterProvider, { router })) : React.createElement(RouterProvider, { router })); });
   await finish(calls.find(call => call.url.endsWith('/note-labels')), []);
   await finish(calls.find(call => call.url.includes('/notes?')), { notes: initial, total: initial.length, page: 1, pageSize: 40, ...extra });
+  if (queue) for (let attempt = 0; attempt < 50 && !queue.getSnapshot().ready; attempt++) await act(nextTurn);
   const harness = {
-    calls, container,
+    calls, container, queue, router,
     listCalls: () => calls.filter(call => call.url.includes('/notes?')),
     button(label) {
       const found = [...document.querySelectorAll('button')].filter(button => button.getAttribute('aria-label') === label || button.textContent.trim() === label);
@@ -64,7 +70,7 @@ const mount = async (initial = [note()], extra = {}) => {
       assert.ok(input);
       await act(async () => { Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(input, value); input.dispatchEvent(new dom.window.Event('input', { bubbles: true })); await nextTurn(); });
     },
-    async unmount() { await act(async () => { root.unmount(); }); router.dispose(); container.remove(); mounted.delete(harness); },
+    async unmount() { await act(async () => { root.unmount(); }); queue?.destroy(); await store?.close(); router.dispose(); container.remove(); mounted.delete(harness); },
   };
   mounted.add(harness); return harness;
 };
@@ -172,4 +178,130 @@ test('fixação atualiza imediatamente e reconcilia a posição global quando h�
   assert.equal(app.listCalls().length, 2);
   await finish(app.listCalls()[1], { notes: [updated], total: 2, page: 1, pageSize: 1 });
   assert.equal(app.listCalls().length, 2, 'A conciliação paginada deve terminar sem loop.');
+});
+
+const waitStored = async app => {
+  for (let attempt = 0; attempt < 100 && !app.queue.getSnapshot().entries.length; attempt++) await act(nextTurn);
+  assert.equal(app.queue.getSnapshot().entries.length, 1);
+};
+const waitRequest = async (app, method) => {
+  for (let attempt = 0; attempt < 100 && !app.calls.some(call => call.method === method); attempt++) await act(nextTurn);
+  const call = app.calls.find(value => value.method === method); assert.ok(call); return call;
+};
+
+test('fila persistente permite concluir e navegar antes de a API responder', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Fechar sem esperar a rede'); await waitStored(app);
+  let sending; await act(async () => { sending = app.queue.run(true); });
+  const post = await waitRequest(app, 'POST');
+  assert.equal(post.headers['X-Note-User'], '1');
+  await app.click('Concluir');
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.ok(app.button('Abrir nota: Fechar sem esperar a rede'));
+  assert.match(app.container.textContent, /Sincronizando/);
+  await act(async () => { await app.router.navigate('/away'); });
+  assert.equal(app.router.state.location.pathname, '/away');
+  await finish(post, note({ title: 'Fechar sem esperar a rede', content: '' }), 201);
+  await act(async () => { await sending; });
+  assert.equal(app.queue.getSnapshot().entries[0].status, 'synced');
+});
+
+test('nota guardada localmente aparece pendente antes de qualquer POST', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Minha cópia local'); await waitStored(app); await app.click('Concluir');
+  assert.ok(app.button('Abrir nota: Minha cópia local'));
+  assert.match(app.container.textContent, /Pendente · cópia local guardada/);
+  assert.equal(app.calls.filter(call => call.method === 'POST').length, 0);
+  await app.click('Abrir nota: Minha cópia local');
+  assert.equal(document.querySelector('input[aria-label="Título da nota, opcional"]').value, 'Minha cópia local');
+  await app.click('Concluir'); assert.equal(document.querySelector('[role="dialog"]'), null);
+});
+
+test('fixar e arquivar respondem antes da API e uma falha restaura o cartão', async () => {
+  const app = await mount();
+  await app.click('Fixar nota');
+  assert.ok(app.button('Desafixar nota')); assert.match(app.container.textContent, /Confirmando alteração/);
+  await finish(app.calls.find(call => call.method === 'PATCH'), { error: 'Falha temporária' }, 500);
+  assert.ok(app.button('Fixar nota'));
+  await finish(app.listCalls()[1], { notes: [note()], total: 1, page: 1, pageSize: 40 });
+  await app.click('Arquivar nota');
+  assert.equal(app.container.querySelector('button[aria-label="Abrir nota: Nota original"]'), null);
+  await finish(app.calls.filter(call => call.method === 'PATCH')[1], { error: 'Sem conexão' }, 503);
+  assert.ok(app.button('Abrir nota: Nota original'));
+  await finish(app.listCalls()[2], { notes: [note()], total: 1, page: 1, pageSize: 40 });
+});
+
+test('excluir responde antes da API e uma falha conserva o cartão original', async () => {
+  const app = await mount();
+  await app.click('Mover nota para a lixeira'); await app.click('Mover para a lixeira');
+  assert.equal(app.container.querySelector('button[aria-label="Abrir nota: Nota original"]'), null);
+  await finish(app.calls.find(call => call.method === 'POST'), { error: 'Falha temporária' }, 500);
+  assert.ok(app.button('Abrir nota: Nota original'));
+  await finish(app.listCalls()[1], { notes: [note()], total: 1, page: 1, pageSize: 40 });
+});
+
+test('falha ao preservar no navegador impede fechar e mantém o texto no editor', async () => {
+  const store = { list: async () => [], update: async () => { throw new DOMException('Armazenamento cheio', 'QuotaExceededError'); }, close: async () => {} };
+  const app = await mount([], {}, { store });
+  await app.click('Criar uma nota…'); await app.title('Texto que não pode desaparecer');
+  await app.click('Concluir');
+  assert.match(document.body.textContent, /Há alterações pendentes/);
+  assert.equal(document.querySelector('input[aria-label="Título da nota, opcional"]').value, 'Texto que não pode desaparecer');
+  assert.equal(app.calls.filter(call => call.method === 'POST').length, 0);
+});
+
+test('navegação durante a preservação aguarda apenas a cópia local e não a API', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Ir para outra página');
+  await act(async () => { void app.router.navigate('/away'); await nextTurn(); });
+  for (let attempt = 0; attempt < 100 && app.router.state.location.pathname !== '/away'; attempt++) await act(nextTurn);
+  assert.equal(app.router.state.location.pathname, '/away');
+  assert.equal(app.queue.getSnapshot().entries[0].form.title, 'Ir para outra página');
+  assert.equal(app.calls.filter(call => call.method === 'POST').length, 0);
+});
+
+test('novo rascunho apagado antes do envio não deixa cartão pendente', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Apagar'); await waitStored(app);
+  await app.title(''); await app.click('Concluir');
+  for (let attempt = 0; attempt < 100 && document.querySelector('[role="dialog"]'); attempt++) await act(nextTurn);
+  assert.equal(Boolean(document.querySelector('[role="dialog"]')), false, 'Fechar aguarda a transação local de descarte, sem aguardar a rede.');
+  assert.equal(app.queue.getSnapshot().entries.length, 0);
+  assert.equal(app.calls.filter(call => call.method === 'POST').length, 0);
+});
+
+test('logout cancelado conserva cópias e libera novamente a edição', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Texto antes de sair'); await waitStored(app);
+  const decisions = [], originalConfirm = window.confirm;
+  window.confirm = () => false;
+  try {
+    await act(async () => { window.dispatchEvent(new window.CustomEvent('motive:before-logout', { detail: { waitUntil: value => decisions.push(value) } })); await nextTurn(); });
+    assert.equal(await decisions[0], false);
+    await act(async () => { window.dispatchEvent(new window.Event('motive:logout-cancelled')); await nextTurn(); });
+    assert.equal(document.querySelector('input[aria-label="Título da nota, opcional"]').disabled, false);
+    assert.equal(app.queue.getSnapshot().entries[0].form.title, 'Texto antes de sair');
+    assert.equal(app.calls.filter(call => call.method === 'POST').length, 0);
+  } finally { window.confirm = originalConfirm; }
+});
+
+test('recarga não é bloqueada depois que a cópia local foi confirmada', async () => {
+  const app = await mount([], {}, true);
+  await app.click('Criar uma nota…'); await app.title('Guardada para recarregar'); await waitStored(app); await act(nextTurn);
+  const event = new window.Event('beforeunload', { cancelable: true });
+  await act(async () => { window.dispatchEvent(event); });
+  assert.equal(event.defaultPrevented, false);
+  assert.equal(app.queue.getSnapshot().entries[0].form.title, 'Guardada para recarregar');
+});
+
+test('a resposta de uma exclusão anterior não fecha a confirmação de outra nota', async () => {
+  const app = await mount([note(), note({ id: 2, title: 'Segunda' })]);
+  const first = app.container.querySelector('article button[aria-label="Mover nota para a lixeira"]');
+  await act(async () => { first.click(); await nextTurn(); });
+  await app.click('Mover para a lixeira');
+  await app.click('Mover nota para a lixeira');
+  await finish(app.calls.find(call => call.method === 'POST'), note({ version: 2, deletedAt: 'agora' }));
+  assert.match(document.querySelector('[role="dialog"]').textContent, /Mover esta nota para a lixeira/);
+  await app.click('Cancelar');
+  assert.ok(app.button('Abrir nota: Segunda'));
 });

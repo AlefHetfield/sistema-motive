@@ -11,6 +11,8 @@ import NoteDraftsDialog from '../components/notes/NoteDraftsDialog';
 import { noteColors } from '../components/notes/noteColors';
 import { listNoteDrafts } from '../utils/noteDrafts';
 import { mergeNoteSnapshot, reconcileNotePage } from '../utils/noteSnapshots';
+import { useNoteSync } from '../context/NoteSyncContext';
+import { projectNoteQueue } from '../utils/noteQueueProjection';
 import '../components/notes/noteStyles.css';
 
 const views = [
@@ -22,6 +24,8 @@ const views = [
 
 export default function Notes() {
   const { user } = useAuth();
+  const sync = useNoteSync();
+  const syncEntries = sync?.entries;
   const notify = useToast();
   const [view, setView] = useState('active');
   const [scope, setScope] = useState('all');
@@ -44,6 +48,7 @@ export default function Notes() {
   const [showFilters, setShowFilters] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [pending, setPending] = useState(new Set());
+  const [optimistic, setOptimistic] = useState(new Map());
   const [confirmation, setConfirmation] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState('');
@@ -53,7 +58,7 @@ export default function Notes() {
   const lastRefresh = useRef(0);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const refreshDrafts = useCallback(() => setDrafts(user?.id ? listNoteDrafts(user.id) : []), [user?.id]);
-  const loadLabels = useCallback(async () => { try { const result = await noteLabelsApi(); setLabels(result); setLabelsError(''); return result; } catch (err) { setLabelsError(err.message); return []; } }, []);
+  const loadLabels = useCallback(async () => { try { const result = await noteLabelsApi('', { expectedUserId: user?.id }); setLabels(result); setLabelsError(''); return result; } catch (err) { setLabelsError(err.message); return []; } }, [user?.id]);
   useEffect(() => { loadLabels(); }, [loadLabels]);
   useEffect(() => {
     refreshDrafts();
@@ -68,7 +73,7 @@ export default function Notes() {
     const sequence = ++fetchSequence.current;
     setLoading(true); setError('');
     const params = new URLSearchParams(Object.entries({ scope: view === 'trash' ? 'mine' : scope, view, q: search, color, labelId, page: String(page), pageSize: '40' }).filter(([, value]) => value !== ''));
-    notesApi(`?${params}`, { signal: controller.signal }).then(result => {
+    notesApi(`?${params}`, { signal: controller.signal, expectedUserId: user?.id }).then(result => {
       if (controller.signal.aborted || sequence !== fetchSequence.current) return;
       if (!result.notes.length && result.total > 0 && page > 1) { setPage(value => value - 1); return; }
       for (const note of result.notes) noteCache.current.set(note.id, mergeNoteSnapshot(noteCache.current.get(note.id), note));
@@ -78,7 +83,7 @@ export default function Notes() {
       if (!controller.signal.aborted && sequence === fetchSequence.current) setLoading(false);
     });
     return () => { controller.abort(); if (listRequest.current === controller) listRequest.current = null; };
-  }, [scope, view, search, color, labelId, page, revision]);
+  }, [scope, view, search, color, labelId, page, revision, user?.id]);
   useEffect(() => {
     const update = () => {
       if (document.hidden || editor || listRequest.current || Date.now() - lastRefresh.current < 1000) return;
@@ -102,6 +107,7 @@ export default function Notes() {
     setData(current => current ? reconcileNotePage(current, previous, next, current.criteria, user?.id) : current);
   }, [refresh, user?.id]);
   const saved = useCallback(note => applyChange(note), [applyChange]);
+  useEffect(() => { for (const entry of syncEntries || []) if (entry.status === 'synced' && entry.remoteNote) saved(entry.remoteNote); }, [syncEntries, saved]);
   useEffect(() => {
     if (!data || loading || error || listRequest.current) return;
     const lastPage = Math.max(1, Math.ceil(data.total / data.pageSize));
@@ -115,15 +121,18 @@ export default function Notes() {
   const closeEditor = (options = {}) => { setEditor(null); if (options.refresh) refresh(); refreshDrafts(); };
   const changeLayout = value => { setLayout(value); try { localStorage.setItem('motive-notes-layout', value); } catch { /* Preference can remain in memory. */ } };
   const markPending = (id, value) => setPending(current => { const next = new Set(current); if (value) next.add(id); else next.delete(id); return next; });
+  const showOptimistic = (note, changes) => setOptimistic(current => new Map(current).set(note.id, { note, changes }));
+  const clearOptimistic = id => setOptimistic(current => { const next = new Map(current); next.delete(id); return next; });
   const changeState = async (note, changes) => {
     markPending(note.id, true);
-    try { saved(await notesApi(`/${note.id}/state`, { method: 'PATCH', body: { version: note.state.version, ...changes } })); }
+    showOptimistic(note, changes);
+    try { saved(await notesApi(`/${note.id}/state`, { method: 'PATCH', expectedUserId: user?.id, body: { version: note.state.version, ...changes } })); }
     catch (err) { notify.error(err.status === 409 ? 'Esta nota mudou em outra aba. Atualizamos a lista; tente novamente.' : err.message); refresh(); }
-    finally { markPending(note.id, false); }
+    finally { clearOptimistic(note.id); markPending(note.id, false); }
   };
   const restore = async note => {
     markPending(note.id, true);
-    try { saved(await notesApi(`/${note.id}/restore`, { method: 'POST', body: { version: note.version } })); notify.success('Nota restaurada.'); return true; }
+    try { saved(await notesApi(`/${note.id}/restore`, { method: 'POST', expectedUserId: user?.id, body: { version: note.version } })); notify.success('Nota restaurada.'); return true; }
     catch (err) { notify.error(err.message); refresh(); return false; }
     finally { markPending(note.id, false); }
   };
@@ -131,24 +140,33 @@ export default function Notes() {
   const cancelConfirmation = () => { if (confirmBusy) return; confirmation?.resolve(false); setConfirmation(null); };
   const confirmAction = async () => {
     const { note, permanent, resolve } = confirmation;
-    setConfirmBusy(true); setConfirmError(''); markPending(note.id, true);
+    setConfirmBusy(permanent); setConfirmError(''); markPending(note.id, true);
+    if (!permanent) {
+      showOptimistic(note, { trash: true }); setConfirmation(null); resolve(true);
+    }
     try {
-      const moved = await notesApi(`/${note.id}${permanent ? '' : '/trash'}`, { method: permanent ? 'DELETE' : 'POST', body: { version: note.version } });
+      const moved = await notesApi(`/${note.id}${permanent ? '' : '/trash'}`, { method: permanent ? 'DELETE' : 'POST', expectedUserId: user?.id, body: { version: note.version } });
       applyChange(permanent ? note : moved, permanent);
-      setConfirmation(null); resolve(true);
+      if (permanent) { setConfirmation(null); resolve(true); }
       if (permanent) notify.success('Nota excluída definitivamente.');
       else notify.info('Nota movida para a lixeira.', { action: { label: 'Desfazer', onClick: () => restore(moved) }, duration: 8000 });
-    } catch (err) { setConfirmError(err.status === 409 ? 'A nota foi alterada. Cancele e abra a versão atual antes de tentar novamente.' : err.message); refresh(); }
-    finally { setConfirmBusy(false); markPending(note.id, false); }
+    } catch (err) {
+      if (permanent) setConfirmError(err.status === 409 ? 'A nota foi alterada. Cancele e abra a versão atual antes de tentar novamente.' : err.message);
+      else notify.error(`Não foi possível confirmar a exclusão. Estamos atualizando a lista. ${err.message}`);
+      refresh();
+    }
+    finally { clearOptimistic(note.id); if (permanent) setConfirmBusy(false); markPending(note.id, false); }
   };
-  const pageSize = data?.pageSize || 40;
-  const pages = Math.max(1, Math.ceil((data?.total || 0) / pageSize));
-  const notes = data?.notes || [];
+  const localPending = (syncEntries || []).filter(entry => entry.status !== 'synced');
+  const displayed = projectNoteQueue(data, syncEntries || [], optimistic, { scope, view, search, color, labelId }, user);
+  const pageSize = displayed.pageSize || 40;
+  const pages = Math.max(1, Math.ceil(displayed.total / pageSize));
+  const notes = displayed.notes;
   const pinned = view === 'active' ? notes.filter(note => note.state?.isPinned) : [];
   const other = view === 'active' ? notes.filter(note => !note.state?.isPinned) : notes;
   const filterActive = Boolean(query || color || labelId || scope !== 'all');
   const viewName = views.find(item => item.id === view)?.name;
-  const renderCards = items => <div className={layout === 'grid' ? 'note-grid' : 'note-list'}>{items.map(note => <NoteCard key={note.id} note={note} layout={layout} onOpen={open} onState={changeState} onTrash={item => requestConfirmation(item, false)} onRestore={restore} onDelete={item => requestConfirmation(item, true)} busy={pending.has(note.id)} />)}</div>;
+  const renderCards = items => <div className={layout === 'grid' ? 'note-grid' : 'note-list'}>{items.map(note => <NoteCard key={note.id} note={note} layout={layout} onOpen={open} onState={changeState} onTrash={item => requestConfirmation(item, false)} onRestore={restore} onDelete={item => requestConfirmation(item, true)} busy={pending.has(note.id) || Boolean(note._queueId)} />)}</div>;
   return <div className="notes-workspace mx-auto max-w-[1600px] p-3 sm:p-5 lg:p-7">
     <div className="flex items-center gap-4 justify-between mb-6"><div><div className="hidden sm:flex items-center gap-2 text-[10px] font-semibold tracking-[.18em] uppercase text-[#315b78] mb-2"><span className="w-5 h-px bg-[#D99A35]" />Seu espaço de ideias</div><h1 className="text-2xl lg:text-[30px] font-semibold tracking-tight">Uma ideia merece espaço.</h1><p className="hidden sm:block text-sm text-slate-500 mt-2">Guarde o que importa. Conecte ideias com sua equipe.</p></div><button className="note-button note-button-primary !px-3 sm:!px-4 !py-2.5 shrink-0" onClick={() => create('TEXT')}><Plus size={18} /><span className="hidden sm:inline">Nova nota</span><span className="sm:hidden">Nova</span></button></div>
     <div className="grid lg:grid-cols-[192px_minmax(0,1fr)] xl:grid-cols-[208px_minmax(0,1fr)] gap-5 lg:gap-8">
@@ -157,12 +175,12 @@ export default function Notes() {
         <div className="flex flex-wrap gap-3 items-center mb-5"><div className="relative flex-1 min-w-[180px]"><Search size={18} className="absolute left-3.5 top-3 text-slate-400" /><input className="note-input !pl-10 !pr-10 shadow-sm" placeholder="Buscar nas suas notas…" aria-label="Buscar em títulos, texto e itens" value={query} onChange={event => setQuery(event.target.value)} />{query && <button className="absolute right-1 top-0.5 note-icon" onClick={() => setQuery('')} aria-label="Limpar busca"><X size={16} /></button>}</div><button className="note-icon !bg-white border border-[#dde4e8]" onClick={() => setShowFilters(!showFilters)} aria-label="Mostrar filtros de notas" title="Filtros" aria-expanded={showFilters} aria-pressed={showFilters}><SlidersHorizontal size={18} /></button><div className="flex rounded-xl border border-[#dde4e8] bg-white p-0.5" role="group" aria-label="Layout das notas"><button className="note-icon !min-h-9 !h-9 !w-9 !min-w-9" onClick={() => changeLayout('grid')} aria-label="Visualizar em grade" title="Grade" aria-pressed={layout === 'grid'}><LayoutGrid size={17} /></button><button className="note-icon !min-h-9 !h-9 !w-9 !min-w-9" onClick={() => changeLayout('list')} aria-label="Visualizar em lista" title="Lista" aria-pressed={layout === 'list'}><LayoutList size={18} /></button></div></div>
         {showFilters && <div className="rounded-2xl border border-[#dde4e8] bg-white p-4 mb-5 flex flex-wrap gap-4 items-end"><label className="flex-1 min-w-36 text-xs text-slate-500">Cor<select className="note-input mt-1.5 !text-sm" value={color} onChange={event => { setColor(event.target.value); setPage(1); }}><option value="">Todas as cores</option>{noteColors.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="flex-1 min-w-36 text-xs text-slate-500">Marcador<select className="note-input mt-1.5 !text-sm" value={labelId} onChange={event => { setLabelId(event.target.value); setPage(1); }}><option value="">Todos os marcadores</option>{labels.map(label => <option value={label.id} key={label.id}>{label.name}</option>)}</select></label><button className="note-button" onClick={() => { setColor(''); setLabelId(''); setQuery(''); setScope('all'); setPage(1); }}>Limpar filtros</button></div>}
         {view === 'active' && !search && <div className="rounded-2xl bg-white border border-[#d9e2e8] shadow-sm flex items-center gap-2 p-2 sm:p-3 mb-6"><button className="flex items-center gap-3 text-left flex-1 min-w-0 px-2 sm:px-3 text-sm text-slate-400 py-2" onClick={() => create('TEXT')}><Plus size={20} className="text-[#315b78] shrink-0" /><span className="truncate">Criar uma nota…</span></button><span className="w-px bg-slate-200 h-6" /><button className="note-button !border-0 !text-xs !bg-[#f5f8fa] shrink-0" onClick={() => create('CHECKLIST')}><CheckSquare size={17} /><span className="hidden sm:inline">Nova lista</span><span className="sm:hidden">Lista</span></button></div>}
-        <div className="flex flex-wrap items-center gap-3 justify-between mb-5"><div className="flex gap-1 rounded-xl bg-[#eaf0f4] p-1" role="group" aria-label="Origem das notas">{[['all', 'Todas'], ['mine', 'Minhas'], ['shared', 'Compartilhadas']].map(([id, name]) => <button key={id} disabled={view === 'trash' && id !== 'mine'} className={`rounded-lg text-xs px-3 sm:px-4 py-2 transition ${(view === 'trash' ? 'mine' : scope) === id ? 'bg-white text-[#315b78] shadow-sm font-semibold' : 'text-slate-500 disabled:opacity-40'}`} aria-pressed={(view === 'trash' ? 'mine' : scope) === id} onClick={() => { setScope(id); setPage(1); }}>{name}</button>)}</div><p className="text-xs text-slate-400 flex items-center gap-2">{loading && <LoaderCircle size={13} className="animate-spin" />}{data ? `${data.total} ${data.total === 1 ? 'nota' : 'notas'}` : 'Carregando…'}</p></div>
+        <div className="flex flex-wrap items-center gap-3 justify-between mb-5"><div className="flex gap-1 rounded-xl bg-[#eaf0f4] p-1" role="group" aria-label="Origem das notas">{[['all', 'Todas'], ['mine', 'Minhas'], ['shared', 'Compartilhadas']].map(([id, name]) => <button key={id} disabled={view === 'trash' && id !== 'mine'} className={`rounded-lg text-xs px-3 sm:px-4 py-2 transition ${(view === 'trash' ? 'mine' : scope) === id ? 'bg-white text-[#315b78] shadow-sm font-semibold' : 'text-slate-500 disabled:opacity-40'}`} aria-pressed={(view === 'trash' ? 'mine' : scope) === id} onClick={() => { setScope(id); setPage(1); }}>{name}</button>)}</div><p className="text-xs text-slate-400 flex items-center gap-2">{loading && <LoaderCircle size={13} className="animate-spin" />}{(data || localPending.length) ? `${displayed.total} ${displayed.total === 1 ? 'nota' : 'notas'}` : 'Carregando…'}</p></div>
         {view === 'trash' && <div className="rounded-xl bg-[#fff7e5] border border-[#eee3c8] p-3 text-xs leading-5 text-[#856a38] mb-5">A lixeira contém apenas notas criadas por você. Restaurar recupera o acesso dos participantes; a exclusão definitiva é manual.</div>}
         {view === 'hidden' && <p className="text-sm text-slate-500 mb-5">Notas compartilhadas que você ocultou. Mostre novamente quando precisar delas.</p>}
         {view === 'archived' && <p className="text-sm text-slate-500 mb-5">Suas notas arquivadas continuam disponíveis para os outros participantes.</p>}
         {error && <div role="alert" className="border border-red-100 bg-red-50 text-red-700 p-4 rounded-xl mb-5 flex flex-wrap gap-3 items-center"><p className="text-sm flex-1">{error}</p><button className="note-button" onClick={refresh}><RotateCcw size={15} />Tentar novamente</button></div>}
-        {loading && !data ? <div className="note-grid" aria-label="Carregando notas">{[1, 2, 3].map(id => <div key={id} className="rounded-2xl border border-slate-200 p-5 bg-white animate-pulse h-48"><div className="bg-slate-100 rounded h-4 w-2/3" /><div className="bg-slate-100 rounded h-3 mt-5" /><div className="bg-slate-100 rounded h-3 mt-3 w-4/5" /></div>)}</div> : !error && <>
+        {loading && !data && !localPending.length ? <div className="note-grid" aria-label="Carregando notas">{[1, 2, 3].map(id => <div key={id} className="rounded-2xl border border-slate-200 p-5 bg-white animate-pulse h-48"><div className="bg-slate-100 rounded h-4 w-2/3" /><div className="bg-slate-100 rounded h-3 mt-5" /><div className="bg-slate-100 rounded h-3 mt-3 w-4/5" /></div>)}</div> : (!error || data || localPending.length > 0) && <>
           {pinned.length > 0 && <section aria-labelledby="notes-pinned-title" className="mb-7"><h2 id="notes-pinned-title" className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.15em] text-slate-400 mb-3"><Pin size={12} />Fixadas</h2>{renderCards(pinned)}</section>}
           {other.length > 0 && <section aria-label={pinned.length ? 'Outras notas' : viewName}>{pinned.length > 0 && <h2 className="text-[10px] font-semibold uppercase tracking-[.15em] text-slate-400 mb-3">Outras notas</h2>}{renderCards(other)}</section>}
           {!notes.length && <div className="text-center py-16 sm:py-20 rounded-2xl border border-dashed border-[#d5dfe6] bg-white/50"><div className="bg-[#edf2f6] rounded-2xl w-16 h-16 mx-auto flex items-center justify-center mb-5"><StickyNote size={28} strokeWidth={1.4} className="text-[#315b78]" /></div><h2 className="text-lg font-medium">{filterActive ? 'Nenhuma nota por aqui' : view === 'active' ? 'Dê espaço à sua primeira ideia' : view === 'trash' ? 'Sua lixeira está vazia' : view === 'hidden' ? 'Nenhuma nota oculta' : 'Nenhuma nota arquivada'}</h2><p className="text-sm text-slate-500 mt-2 px-5">{filterActive ? 'Experimente outra busca ou ajuste os filtros.' : view === 'active' ? 'Uma inspiração, um lembrete ou uma lista. Comece por aqui.' : 'As notas desta visualização aparecerão aqui.'}</p>{view === 'active' && !filterActive && <button className="note-button note-button-primary mt-5" onClick={() => create('TEXT')}><Plus size={16} />Criar minha primeira nota</button>}</div>}

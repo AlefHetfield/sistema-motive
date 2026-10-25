@@ -9,7 +9,7 @@
     "vercel-build": "vite build",
     "lint": "eslint .",
     "test:simulator": "node scripts/verify-housing-simulator.mjs",
-    "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs",
+    "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs scripts/verify-note-queue.mjs",
     "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "preview": "vite preview"
   },
@@ -46,6 +46,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "fake-indexeddb": "^6.2.6",
     "globals": "^16.5.0",
     "jsdom": "^30.1.3",
     "postcss": "^8.5.6",

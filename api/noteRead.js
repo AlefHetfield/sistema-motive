@@ -37,3 +37,28 @@ export async function readNoteSnapshot(tx, noteId, userId) {
   `;
   return notes[0] || null;
 }
+
+// Called only AFTER the row lock in a separate statement, so a revocation
+// that waited on that lock cannot be checked against an old SQL snapshot.
+export async function readNoteMutationSnapshot(tx, noteId, userId, kind) {
+  const notes = await tx.$queryRaw`
+    SELECT n."id", n."ownerId", n."version", n."deletedAt",
+      CASE WHEN ${kind === 'content'} THEN n."title" ELSE NULL END AS "title",
+      CASE WHEN ${kind === 'content'} THEN n."content" ELSE NULL END AS "content",
+      CASE WHEN ${kind === 'content'} THEN n."items" ELSE NULL END AS "items",
+      n."kind"::text AS "kind",
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object('userId', a."userId", 'role', a."role"::text))
+        FROM "public"."note_access" a WHERE a."noteId" = n."id"
+          AND (${kind === 'access'} OR a."userId" = ${userId})
+      ), '[]'::jsonb) AS "access",
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object('version', s."version",
+          'archivedAt', to_char(s."archivedAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+          'hiddenAt', to_char(s."hiddenAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')))
+        FROM "public"."note_user_states" s WHERE ${kind === 'state'} AND s."noteId" = n."id" AND s."userId" = ${userId}
+      ), '[]'::jsonb) AS "states"
+    FROM "public"."notes" n WHERE n."id" = ${noteId}
+  `;
+  return notes[0] || null;
+}

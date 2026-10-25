@@ -94,6 +94,7 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
 
     // A cookie claim of ADM cannot grant access: the router revalidates the user.
     await expect(401, null, '/notes');
+    assert.deepEqual(await expect(200, owner, '/notes/sync-session'), { userId: owner.id, persistentQueue: 1 });
     await expect(401, null, '/note-labels');
     await expect(401, inactive, '/notes');
     await expect(401, inactive, '/note-labels');
@@ -155,6 +156,8 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
 
     // Both mutation guards are exercised with an otherwise valid signed cookie.
     const beforeOriginTest = await prisma.note.count({ where: { ownerId: owner.id } });
+    const wrongAccount = await expect(409, owner, '/notes', 'POST', { ...creation, clientMutationId: randomUUID() }, { 'X-Note-User': String(editor.id) });
+    assert.equal(wrongAccount.code, 'SESSION_CHANGED');
     await expect(403, owner, '/notes', 'POST', { ...creation, clientMutationId: randomUUID() }, { Origin: 'https://attacker.example.test' });
     await expect(403, owner, '/notes', 'POST', { ...creation, clientMutationId: randomUUID() }, { Origin: null });
     await expect(403, owner, `/notes/${privateNote.id}`, 'PATCH', { version: privateNote.version, title: 'CSRF' }, { Origin: 'https://attacker.example.test' });

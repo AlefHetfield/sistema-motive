@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
 import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import NoteSyncStatus from './notes/NoteSyncStatus';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
@@ -359,6 +360,7 @@ const AppLayout = () => {
                 <div className="workspace-canvas no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                     {/* O conteúdo da página será renderizado aqui */}
                         <Suspense fallback={<LoadingAnimation message="Carregando página..." />}>
+                            <NoteSyncStatus />
                             <Outlet />
                         </Suspense>
                 </div>

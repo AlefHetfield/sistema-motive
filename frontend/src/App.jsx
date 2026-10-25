@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import LoadingAnimation from './components/LoadingAnimation';
 import useMobileLayout from './hooks/useMobileLayout';
+import NoteSyncBoundary from './components/notes/NoteSyncBoundary';
 
 const AppLayout = lazy(() => import('./components/AppLayout'));
 const Login = lazy(() => import('./pages/Login'));
@@ -60,7 +61,7 @@ function App() {
           duration={3000}
         />
         <Suspense fallback={<LoadingAnimation fullScreen message="Carregando página..." />}>
-          <RouterProvider router={router} />
+          <NoteSyncBoundary><RouterProvider router={router} /></NoteSyncBoundary>
         </Suspense>
     </AuthProvider>
   );

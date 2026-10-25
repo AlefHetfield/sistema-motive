@@ -6,7 +6,7 @@ O módulo fica em `/notes`, no menu Operação de ADM, ASSISTENTE e CORRETOR. No
 
 Use **Nova nota** para texto ou **Nova lista** para checklist. O título é opcional: preencha algum texto ou item para criar a nota. O salvamento ocorre após uma pausa na digitação; **Todas as alterações salvas** significa que a API confirmou a gravação.
 
-Cada salvamento automático envia uma fotografia do texto. Se você continuar digitando durante a resposta, o rascunho fica preservado e as novas alterações são agrupadas na próxima pausa, em vez de manter uma sequência contínua de gravações. **Concluir** continua disponível durante o autosave: ao acioná-lo, o editor aguarda a gravação em andamento e salva a última digitação antes de fechar. A indicação **Concluindo…** aparece somente nessa saída solicitada.
+Cada salvamento automático envia uma fotografia do texto. Se você continuar digitando durante a resposta, a última edição fica na fila e é enviada em seguida, sem substituir a fotografia em andamento. Em navegadores com IndexedDB e Web Locks, **Concluir** aguarda somente a confirmação da cópia local e fecha sem esperar a rede; o envio continua mesmo ao navegar para outra página. Se a cópia local falhar, o editor permanece aberto. Nos navegadores sem esse suporte, o editor mantém o fluxo anterior e aguarda a confirmação da API.
 
 O botão **A** no rodapé abre as opções de negrito, itálico, sublinhado, tachado, listas com marcadores, listas numeradas e caixas de seleção no mesmo conteúdo. Selecione um trecho e escolha a formatação; Ctrl+B, Ctrl+I e Ctrl+U também funcionam. Clique novamente no botão ou pressione Escape nas opções para recolhê-las. A formatação permanece ao reabrir e aparece nos cartões. A pesquisa considera o texto, sem códigos de formatação. Notas anteriores continuam editáveis sem conversão em lote.
 
@@ -28,13 +28,23 @@ A API consulta o usuário ativo e revalida o acesso em todas as operações. Rev
 
 O editor serializa gravações e preserva alterações digitadas durante uma requisição. Uma edição concorrente gera aviso de conflito: compare/copie o rascunho antes de carregar a versão atual. A API não sobrescreve silenciosamente uma versão nova.
 
-O editor abre com os dados da lista e revalida a nota em segundo plano. Respostas antigas não substituem texto novo nem organização pessoal mais recente. Criar, fixar, arquivar, restaurar e mover à lixeira atualizam os cartões assim que a API confirma; uma nova consulta à lista só é necessária para conciliar uma consulta concorrente ou preencher páginas incompletas. As respostas das mutações atualizam diretamente o editor, sem GET obrigatório depois da gravação.
+O editor abre com os dados da lista e revalida a nota em segundo plano. Respostas antigas não substituem texto novo nem organização pessoal mais recente. Fixar, arquivar, ocultar e mover à lixeira têm resposta visual imediata; se a API falhar, a projeção é retirada e a lista é conciliada com o servidor. A exclusão definitiva continua aguardando confirmação. Notas ainda não sincronizadas aparecem como cópias pendentes, sem disponibilizar ações de organização baseadas em uma versão ainda não confirmada. Uma nova consulta à lista só é necessária para conciliar uma consulta concorrente ou preencher páginas incompletas.
 
-O conteúdo compartilhado é consultado ao retornar à janela e a cada 30 segundos enquanto a aba estiver visível. A consulta não substitui um formulário com alterações pendentes. Links e o botão Voltar do navegador permitem resolver alterações antes de sair; fechar ou recarregar a aba usa o aviso nativo quando necessário.
+O conteúdo compartilhado é consultado ao retornar à janela e a cada 30 segundos enquanto a aba estiver visível. A consulta não substitui um formulário com alterações pendentes. Links e Voltar aguardam somente a cópia local quando a fila está disponível. Fechar ou recarregar a aba usa o aviso nativo se ainda houver texto não preservado.
 
-Rascunhos temporários ficam em `sessionStorage`, separados por usuário, com validade de 30 minutos. Permitem recuperação na mesma aba após recarga ou expiração da sessão; reautenticar a mesma conta e revalidar o acesso é necessário para retomar a edição. O painel de recuperação também permite copiar um rascunho local cuja nota deixou de estar acessível. Logout explícito resolve as alterações pendentes e limpa os rascunhos; entrar com outra conta remove os anteriores. Armazenamento bloqueado pelo navegador é indicado no editor.
+## Fila persistente e recuperação
 
-Isso não implementa uso offline completo nem garante recuperação depois de encerrar o navegador. A fonte principal continua sendo a API e o PostgreSQL.
+As cópias pendentes ficam no IndexedDB deste navegador, separadas por conta, e não expiram enquanto não forem resolvidas. A fila é retomada após recarga e depois de entrar na mesma conta. O aviso global **Ver pendentes** mostra estado, texto para copiar, nova tentativa e descarte confirmado da cópia local. O descarte não exclui dados do servidor nem desfaz uma requisição que ele já recebeu. Cópias concluídas de sessões anteriores não são reapresentadas como notas atuais; registros locais já sincronizados são limpos depois de sete dias na próxima ativação.
+
+**Pendente** significa cópia local confirmada; **Sincronizando** indica envio em andamento; **Salva** exige confirmação da API. Falhas transitórias têm repetição com intervalo progressivo de até 30 segundos e retomada quando a conexão volta. Permissões revogadas, sessão trocada e conflitos não são sobrescritos automaticamente. Para resolver conflito, abra o cartão pendente, compare/copie o texto e escolha conscientemente carregar a versão do servidor.
+
+Uma criação usa a mesma chave idempotente e a mesma fotografia ao repetir uma requisição cuja resposta se perdeu. Uma repetição de edição com conflito só é reconhecida como confirmada se o texto atual corresponder à fotografia enviada. Alterações novas ficam preservadas até essa resolução. Duas abas coordenam os envios com Web Locks e protegem as edições com versões transacionais no IndexedDB.
+
+Ao sair da conta com pendências, o sistema pede confirmação para manter as cópias neste navegador. A sincronização é interrompida e só retoma na conta correspondente. Não são armazenados cookies ou credenciais na fila. O servidor verifica `X-Note-User` contra a sessão autenticada; antes do primeiro envio, o cliente confirma suporte pelo endpoint `/api/notes/sync-session`, evitando transmitir cópias a uma versão antiga da API durante um deploy.
+
+O rascunho temporário em `sessionStorage`, com validade de 30 minutos, permanece como apoio durante a gravação local e como alternativa nos navegadores sem fila. Sair da conta limpa esse apoio temporário, mas não a fila persistente confirmada. Armazenamento bloqueado ou cheio é indicado no editor e impede fechar enquanto o texto não estiver preservado ou for explicitamente descartado.
+
+Isso não implementa o sistema inteiro offline: a listagem completa e o compartilhamento dependem da API. Cópias ainda não enviadas existem somente neste navegador; limpar os dados do site, usar armazenamento privado temporário ou a remoção de dados pelo navegador pode apagá-las. A fonte principal compartilhada continua sendo a API e o PostgreSQL.
 
 ## Instalação
 
@@ -53,6 +63,8 @@ Não há novo segredo de ambiente. As mutações verificam a origem do navegador
 - `api/noteRoutes.js`: roteadores de `/api/notes` e `/api/note-labels`.
 - `api/noteAccess.js`: validações, escopo, apresentação e bloqueios transacionais.
 - `api/noteRead.js`: leitura da nota e sua apresentação em uma consulta SQL parametrizada, com isolamento de acesso e de marcadores pessoais.
+- `frontend/src/utils/noteQueue.js` e `noteQueueStore.js`: fila, repetições idempotentes e transações da cópia persistente.
+- `frontend/src/context/NoteSyncContext.jsx`: sincronização fora do ciclo de vida do editor e da página Notas.
 - `frontend/src/utils/noteContent.js`: formato e validação do texto, usados também pela API. O arquivo fica dentro do frontend para permitir seu build isolado na Vercel.
 - `Note.version`: conteúdo, compartilhamento e lixeira global.
 - `NoteUserState.version`: preferências individuais, independente do conteúdo.

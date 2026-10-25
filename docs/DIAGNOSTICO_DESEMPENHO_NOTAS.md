@@ -99,6 +99,16 @@ O autosave agora envia uma fotografia por pausa. Alterações digitadas durante 
 
 Não houve mudança no indicador de confirmação: “Todas as alterações salvas” ainda exige confirmação da API. Essas contagens não prometem um tempo fixo em produção, que depende também da rede e do banco.
 
+### Terceira melhoria: resposta imediata e fila persistente
+
+Fixação, arquivamento, ocultação e envio à lixeira passaram a usar projeções imediatas. A confirmação da API atualiza o estado definitivo; falhas retiram a projeção e atualizam a lista. A exclusão permanente continua explícita e aguarda o servidor. As projeções não incrementam versões reais nem alteram a base de autorização.
+
+Nos navegadores com IndexedDB e Web Locks, a cópia de cada edição é confirmada localmente antes de permitir fechar ou navegar. A sincronização continua fora do editor e da página, com estados visíveis e recuperação após recarga. Uma fila por conta preserva fotografias enviadas e alterações posteriores, coordena abas, pausa conflitos/revogação e usa o mesmo identificador de criação em respostas perdidas. O fallback anterior continua disponível quando as APIs do navegador não existem. Limpeza dos dados do navegador ainda pode apagar cópias não enviadas; isso não é um backup externo nem um modo offline completo.
+
+A leitura necessária antes da mutação também passou a usar uma consulta parametrizada, executada depois do bloqueio em uma instrução separada para revalidar revogações com snapshot atual. Na medição local, editar e mover à lixeira passaram de 8 para 7 consultas, e fixar de 9 para 7. Criar permaneceu em 11. Há uma verificação de capacidade/conta por sessão de sincronização antes do primeiro envio persistente, sem bloquear a interação com o editor.
+
+Os testes adicionais exercitam o worker automático, fechamento antes da resposta HTTP, navegação enquanto sincroniza, recarga, perda de resposta POST/PATCH, conflito entre usuários, duas abas, armazenamento cheio, sessão expirada, troca de conta, logout cancelado e reversão de ações otimistas. O armazenamento de teste usa fake-indexeddb somente como dependência de desenvolvimento.
+
 Foram verificados autosave, proteção do rascunho, consultas agrupadas, respostas fora de ordem, adoção da organização durante gravação de texto, revogação de acesso, criação sem recarregar, exclusão concorrente com listagem, filtros, paginação e recuperação de falha na autenticação.
 
 Não foram alterados região, plano, banco de produção ou contrato de resumo da listagem. O último continua completo para permitir abertura imediata com os dados disponíveis. A avaliação de infraestrutura continua dependendo de métricas no ambiente publicado.

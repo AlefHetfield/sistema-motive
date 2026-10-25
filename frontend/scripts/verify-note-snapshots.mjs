@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mergeNoteSnapshot, matchesNoteView, reconcileNotePage } from '../src/utils/noteSnapshots.js';
+import { projectNoteQueue } from '../src/utils/noteQueueProjection.js';
 
 const note = (fields = {}) => ({ id: 1, ownerId: 1, version: 1, title: 'Documentação', content: 'Matrícula', items: [], labels: [],
   updatedAt: '2026-10-25T10:00:00Z', state: { version: 1, color: 'default', isPinned: false }, ...fields });
@@ -69,4 +70,15 @@ test('remover último item de uma página posterior preserva total para voltar �
   assert.equal(current.total, 2); assert.deepEqual(current.notes, []);
   const outside = reconcileNotePage(page([original], { page: 2, pageSize: 2, total: 3 }), null, note({ id: 99 }), criteria, 1);
   assert.equal(outside.total, 4); assert.deepEqual(outside.notes.map(item => item.id), [1]);
+});
+
+test('projeção preserva texto pendente mesmo que a lista já contenha uma versão remota mais nova', () => {
+  const remote = note({ version: 3, content: 'Texto de outra pessoa' });
+  const pending = { id: 'copy-1', userId: 1, noteId: remote.id, baseVersion: 1, remoteNote: note(),
+    form: { title: 'Documentação', content: 'Meu texto local', items: [] }, kind: 'TEXT', status: 'conflict', updatedAt: Date.now() };
+  const projected = projectNoteQueue(page([remote]), [pending], new Map(), criteria, { id: 1 });
+  assert.equal(projected.notes[0].content, 'Meu texto local');
+  assert.equal(projected.notes[0]._syncState, 'conflict');
+  assert.equal(projected.total, 1);
+  assert.equal(pending.baseVersion, 1, 'Uma versão visual não altera a base usada na gravação.');
 });

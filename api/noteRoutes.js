@@ -1,5 +1,5 @@
 import express from 'express';
-import { readNoteSnapshot } from './noteRead.js';
+import { readNoteSnapshot, readNoteMutationSnapshot } from './noteRead.js';
 import {
   NOTE_COLORS, noteFail as fail, noteId as id, normalizedNoteText, noteScope,
   assertNoteAccess, assertNoteVersion, assertNoteActive, strictNoteBody,
@@ -40,6 +40,7 @@ function privateRouter(prisma, requireAuth) {
       const user = await prisma.user.findUnique({ where: { id: userId }, select: userSelect });
       if (!user?.isActive) throw fail('Sessão inválida. Entre novamente.', 401, 'UNAUTHENTICATED');
       req.noteUser = user;
+      if (req.get('X-Note-User') && req.get('X-Note-User') !== String(user.id)) throw fail('A conta conectada mudou. Entre novamente na conta desta cópia.', 409, 'SESSION_CHANGED');
       if (MUTATING_METHODS.has(req.method) && !allowedOrigin(req)) throw fail('Origem da requisição não permitida.', 403, 'ORIGIN_NOT_ALLOWED');
       next();
     } catch (error) { next(error); }
@@ -67,12 +68,7 @@ async function readNote(tx, noteId, userId, permission = 'read') {
 async function readForMutation(tx, noteId, userId, kind, permission = 'read') {
   // Authorization still runs after the shared row lock. Presentation relations
   // are loaded only once, after the write, rather than twice per action.
-  const note = await tx.note.findUnique({ where: { id: noteId }, select: {
-    id: true, ownerId: true, version: true, deletedAt: true,
-    access: { ...(kind === 'access' ? {} : { where: { userId } }), select: { userId: true, role: true } },
-    ...(kind === 'content' ? { title: true, content: true, items: true, kind: true } : {}),
-    ...(kind === 'state' ? { states: { where: { userId }, select: { version: true, archivedAt: true, hiddenAt: true } } } : {}),
-  } });
+  const note = await readNoteMutationSnapshot(tx, noteId, userId, kind);
   assertNoteAccess(note, userId, permission);
   return note;
 }
@@ -96,6 +92,8 @@ function positiveQuery(value, fallback, max) {
 
 export function createNoteRouter(prisma, requireAuth) {
   const router = privateRouter(prisma, requireAuth);
+
+  router.get('/sync-session', (req, res) => res.json({ userId: req.noteUser.id, persistentQueue: 1 }));
 
   router.get('/share-options', async (req, res) => {
     const q = req.query.q ?? '';
