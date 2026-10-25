@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { createNoteRouter, createNoteLabelRouter } from '../api/noteRoutes.js';
 import { encodeSession, decodeSession } from '../api/session.js';
 import { encodeNoteDocument, plainNoteDocument } from '../frontend/src/utils/noteContent.js';
+import { noteInclude, presentNote } from '../api/noteAccess.js';
 
 // This integration suite owns every record it creates and refuses remote databases.
 test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', { timeout: 120_000 }, async () => {
@@ -80,6 +81,10 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
       return response.data;
     };
     const get = (user, note) => expect(200, user, `/notes/${note.id}`);
+    const assertSnapshotContract = async (user, note) => {
+      const expected = presentNote(await prisma.note.findUnique({ where: { id: note.id }, include: noteInclude(user.id) }), user.id);
+      assert.deepEqual(await get(user, note), JSON.parse(JSON.stringify(expected)), 'A leitura otimizada deve preservar campos, datas e isolamento dos marcadores.');
+    };
     const write = (user, note, fields) => expect(200, user, `/notes/${note.id}`, 'PATCH', { version: note.version, ...fields });
     const state = (user, note, fields) => expect(200, user, `/notes/${note.id}/state`, 'PATCH', { version: note.state.version, ...fields });
     const share = (note, access) => expect(200, owner, `/notes/${note.id}/access`, 'PUT', { version: note.version, access });
@@ -104,6 +109,7 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
       assert.equal(teamNote.state.version, 1);
     }
     assert.equal(privateNote.access.some(entry => entry.userId === inactive.id || entry.userId === owner.id), false);
+    await assertSnapshotContract(owner, privateNote);
     privateNote = await write(editor, privateNote, { content: `${prefix} edição da equipe` });
     // The owner can still restrict a note explicitly. Existing/private notes are not backfilled.
     privateNote = await share(privateNote, []);
@@ -243,10 +249,12 @@ test('Notas com PostgreSQL: acesso, preferências, conflitos e recuperação', {
     assert.equal(contains(await list(viewer, `?labelId=${viewerLabel.id}&color=yellow`), shared), true);
     assert.equal((await list(owner, '?color=yellow')).total, 0);
     viewerNote = await state(viewer, viewerNote, { archived: true });
+    await assertSnapshotContract(viewer, viewerNote);
     assert.equal(contains(await list(viewer), shared), false);
     assert.equal(contains(await list(viewer, '?view=archived'), shared), true);
     assert.equal(contains(await list(owner), shared), true);
     viewerNote = await state(viewer, viewerNote, { archived: false, hidden: true });
+    await assertSnapshotContract(viewer, viewerNote);
     assert.equal(contains(await list(viewer), shared), false);
     assert.equal(contains(await list(viewer, '?view=hidden'), shared), true);
     assert.equal(contains(await list(owner), shared), true);

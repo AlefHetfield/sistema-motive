@@ -6,6 +6,8 @@ O módulo fica em `/notes`, no menu Operação de ADM, ASSISTENTE e CORRETOR. No
 
 Use **Nova nota** para texto ou **Nova lista** para checklist. O título é opcional: preencha algum texto ou item para criar a nota. O salvamento ocorre após uma pausa na digitação; **Todas as alterações salvas** significa que a API confirmou a gravação.
 
+Cada salvamento automático envia uma fotografia do texto. Se você continuar digitando durante a resposta, o rascunho fica preservado e as novas alterações são agrupadas na próxima pausa, em vez de manter uma sequência contínua de gravações. **Concluir** continua disponível durante o autosave: ao acioná-lo, o editor aguarda a gravação em andamento e salva a última digitação antes de fechar. A indicação **Concluindo…** aparece somente nessa saída solicitada.
+
 O botão **A** no rodapé abre as opções de negrito, itálico, sublinhado, tachado, listas com marcadores, listas numeradas e caixas de seleção no mesmo conteúdo. Selecione um trecho e escolha a formatação; Ctrl+B, Ctrl+I e Ctrl+U também funcionam. Clique novamente no botão ou pressione Escape nas opções para recolhê-las. A formatação permanece ao reabrir e aparece nos cartões. A pesquisa considera o texto, sem códigos de formatação. Notas anteriores continuam editáveis sem conversão em lote.
 
 Escolha grade ou lista, pesquise título/texto/itens e filtre por origem, cor ou marcador. A busca ignora diferenças de maiúsculas e acentos. **Minhas** inclui notas pessoais e compartilhadas por você; **Compartilhadas comigo** reúne as recebidas.
@@ -50,6 +52,7 @@ Não há novo segredo de ambiente. As mutações verificam a origem do navegador
 
 - `api/noteRoutes.js`: roteadores de `/api/notes` e `/api/note-labels`.
 - `api/noteAccess.js`: validações, escopo, apresentação e bloqueios transacionais.
+- `api/noteRead.js`: leitura da nota e sua apresentação em uma consulta SQL parametrizada, com isolamento de acesso e de marcadores pessoais.
 - `frontend/src/utils/noteContent.js`: formato e validação do texto, usados também pela API. O arquivo fica dentro do frontend para permitir seu build isolado na Vercel.
 - `Note.version`: conteúdo, compartilhamento e lixeira global.
 - `NoteUserState.version`: preferências individuais, independente do conteúdo.

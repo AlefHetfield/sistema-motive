@@ -23,7 +23,8 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
   const [showClose, setShowClose] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [actionBusy, setBusy] = useState(false);
-  const busy = actionBusy || leaving;
+  const [closing, setClosing] = useState(false);
+  const busy = actionBusy || leaving || closing;
   const [actionError, setActionError] = useState('');
   const lastRemoteCheck = useRef(0);
   useEffect(() => { if (initialNote?.id) void checkRemote(); }, [checkRemote, initialNote?.id]);
@@ -42,8 +43,11 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
     if (busy) return;
     if (!dirty && !saving) { onClose({ refresh: accessLost }); return; }
     if (!note?.id && !hasContent && !saving && discard()) { onClose(); return; }
-    const saved = await flush();
-    if (saved) onClose(); else setShowClose(true);
+    setClosing(true);
+    try {
+      const saved = await flush();
+      if (saved) onClose(); else setShowClose(true);
+    } finally { setClosing(false); }
   };
   const organize = async changes => {
     if (busy || note?.deletedAt) return;
@@ -96,7 +100,7 @@ export default function NoteEditor({ initialNote, kind = 'TEXT', userId, labels,
           {note?.role && note.role !== 'OWNER' && <button className="note-icon" disabled={busy || saving} onClick={() => organize({ hidden: !state.hiddenAt })} aria-label={state.hiddenAt ? 'Mostrar novamente' : 'Ocultar para mim'} title={state.hiddenAt ? 'Mostrar novamente' : 'Ocultar para mim'}>{state.hiddenAt ? <Eye size={18} /> : <EyeOff size={18} />}</button>}
           {note?.role === 'OWNER' && <button className="note-icon" disabled={busy || saving} onClick={trash} aria-label="Mover nota para a lixeira" title="Mover para lixeira"><Trash2 size={18} /></button>}
         </>}
-        <div className="flex-1" /><button className="note-button note-button-primary" onClick={safeClose} disabled={busy || saving}>{saving ? 'Salvando…' : canEdit ? 'Concluir' : 'Fechar'}</button>
+        <div className="flex-1" /><button className="note-button note-button-primary" onClick={safeClose} disabled={busy}>{closing ? 'Concluindo…' : canEdit ? 'Concluir' : 'Fechar'}</button>
       </footer>
     </NoteDialog>
     {shareNote && <NoteShareDialog note={shareNote} onClose={() => setShareNote(null)} onSaved={acceptMutation} />}

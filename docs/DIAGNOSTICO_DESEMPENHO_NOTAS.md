@@ -89,6 +89,16 @@ Comparação de consultas Prisma/SQL com o mesmo PostgreSQL local e usuários te
 
 Essa contagem foi medida, não inferida dos includes. Os tempos locais não equivalem à latência de produção; a diferença de inicialização de conexão também impede usar a primeira criação como comparação de tempo. O ganho prático em produção precisa ser medido após publicar.
 
+### Segunda melhoria: criação e salvamento contínuo
+
+Após o relato de espera prolongada em “Salvando…”, a leitura completa da nota passou a usar uma única consulta SQL parametrizada, reunindo dono, participantes, preferências e marcadores. A autorização permanece filtrada na consulta e validada no servidor; as escritas continuam coordenadas pelos mesmos bloqueios. O caminho de criação consulta somente o ID para detectar repetição e monta a resposta pela nova leitura, preservando a criação idempotente.
+
+Na nova medição local, criar passou de 15 para 11 consultas; editar e mover à lixeira passaram de 13 para 8; fixar passou de 14 para 9. A resposta foi comparada com a apresentação anterior, incluindo compartilhamento, marcadores pessoais e datas de arquivamento/ocultação.
+
+O autosave agora envia uma fotografia por pausa. Alterações digitadas durante uma requisição ficam no rascunho e são agrupadas para a próxima pausa. O fechamento explícito continua drenando todas as alterações, inclusive quando aguarda um POST de criação já em andamento. O botão Concluir permanece disponível durante o autosave e só bloqueia enquanto o fechamento está em andamento.
+
+Não houve mudança no indicador de confirmação: “Todas as alterações salvas” ainda exige confirmação da API. Essas contagens não prometem um tempo fixo em produção, que depende também da rede e do banco.
+
 Foram verificados autosave, proteção do rascunho, consultas agrupadas, respostas fora de ordem, adoção da organização durante gravação de texto, revogação de acesso, criação sem recarregar, exclusão concorrente com listagem, filtros, paginação e recuperação de falha na autenticação.
 
 Não foram alterados região, plano, banco de produção ou contrato de resumo da listagem. O último continua completo para permitir abertura imediata com os dados disponíveis. A avaliação de infraestrutura continua dependendo de métricas no ambiente publicado.

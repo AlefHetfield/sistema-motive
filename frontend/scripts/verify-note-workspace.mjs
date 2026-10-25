@@ -118,6 +118,22 @@ test('envio à lixeira remove o cartão com o POST e dispensa recarregamento da 
   assert.equal(app.listCalls().length, 1);
 });
 
+test('Concluir permanece disponível no autosave e só bloqueia durante o fechamento solicitado', async () => {
+  const app = await mount([]);
+  await app.click('Criar uma nota…'); await app.title('Criação em andamento');
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 760)); });
+  const post = app.calls.find(call => call.method === 'POST');
+  assert.ok(post);
+  assert.equal(app.button('Concluir').disabled, false);
+  await app.click('Concluir');
+  assert.equal(app.button('Concluindo…').disabled, true);
+  assert.equal(document.querySelector('input[aria-label="Título da nota, opcional"]').disabled, true);
+  await finish(post, note({ title: 'Criação em andamento', content: '' }), 201);
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.ok(app.button('Abrir nota: Criação em andamento'));
+  assert.equal(app.calls.filter(call => call.method === 'POST').length, 1);
+});
+
 test('lista iniciada antes da exclusão não ressuscita cartão; reconciliação da corrida ocorre uma vez', async () => {
   const app = await mount();
   await act(async () => { window.dispatchEvent(new window.Event('focus')); await nextTurn(); });

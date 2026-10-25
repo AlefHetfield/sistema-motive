@@ -1,4 +1,5 @@
 import express from 'express';
+import { readNoteSnapshot } from './noteRead.js';
 import {
   NOTE_COLORS, noteFail as fail, noteId as id, normalizedNoteText, noteScope,
   assertNoteAccess, assertNoteVersion, assertNoteActive, strictNoteBody,
@@ -58,7 +59,7 @@ function handleErrors(router) {
 }
 
 async function readNote(tx, noteId, userId, permission = 'read') {
-  const note = await tx.note.findUnique({ where: { id: noteId }, include: noteInclude(userId) });
+  const note = await readNoteSnapshot(tx, noteId, userId);
   assertNoteAccess(note, userId, permission);
   return note;
 }
@@ -144,8 +145,8 @@ export function createNoteRouter(prisma, requireAuth) {
       // Serialize duplicate creations before the unique key is inserted. A
       // retried request returns the already-saved note, even with stale text.
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(602218, ${userId}::integer)::text`;
-      const existing = await tx.note.findUnique({ where: { ownerId_clientMutationId: { ownerId: userId, clientMutationId: data.clientMutationId } }, include: noteInclude(userId) });
-      if (existing) return { note: presentNote(existing, userId), created: false };
+      const existing = await tx.note.findUnique({ where: { ownerId_clientMutationId: { ownerId: userId, clientMutationId: data.clientMutationId } }, select: { id: true } });
+      if (existing) return { note: presentNote(await readNote(tx, existing.id, userId), userId), created: false };
       const team = await tx.user.findMany({ where: { isActive: true, id: { not: userId } }, select: { id: true } });
       const note = await tx.note.create({
         data: {
@@ -153,9 +154,9 @@ export function createNoteRouter(prisma, requireAuth) {
           ...(team.length ? { access: { createMany: { data: team.map(user => ({ userId: user.id, role: 'EDITOR' })) } } } : {}),
           states: { createMany: { data: [userId, ...team.map(user => user.id)].map(id => ({ userId: id })) } },
         },
-        include: noteInclude(userId),
+        select: { id: true },
       });
-      return { note: presentNote(note, userId), created: true };
+      return { note: presentNote(await readNote(tx, note.id, userId), userId), created: true };
     });
     res.status(result.created ? 201 : 200).json(result.note);
   });

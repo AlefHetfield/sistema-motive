@@ -145,8 +145,11 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
     return request;
   }, [receiveRemote, persist]);
 
-  const flush = useCallback(async () => {
-    if (inFlightRef.current) return inFlightRef.current;
+  const flush = useCallback(async ({ background = false } = {}) => {
+    if (background && inFlightRef.current) return inFlightRef.current;
+    // Explicit close/save must drain the latest draft, even if it first waits
+    // for a background snapshot that was sent before the latest keystrokes.
+    while (inFlightRef.current) await inFlightRef.current;
     if (accessLostRef.current || pausedRef.current) return false;
     if (noteRef.current?.role === 'VIEWER' || noteRef.current?.deletedAt) return dirtyRef.current ? false : noteRef.current;
     if (!dirtyRef.current) return noteRef.current || false;
@@ -181,9 +184,9 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
           dirtyRef.current = noteFormSignature(formRef.current) !== noteFormSignature(remote);
           if (dirtyRef.current) persist();
           else removeNoteDraft(keyRef.current);
-          if (mountedRef.current) { setNote(remote); setConfirmedForm(formOf(remote)); setStatus(dirtyRef.current ? 'saving' : 'saved'); }
+          if (mountedRef.current) { setNote(remote); setConfirmedForm(formOf(remote)); setStatus(dirtyRef.current ? (background ? 'idle' : 'saving') : 'saved'); }
           onSavedRef.current?.(remote);
-          if (!mountedRef.current || accessLostRef.current) break;
+          if (background || !mountedRef.current || accessLostRef.current) break;
         }
         return dirtyRef.current ? false : noteRef.current;
       } catch (cause) {
@@ -247,10 +250,10 @@ export default function useNoteAutosave({ initialNote = null, kind = 'TEXT', use
   }, [conflict, flush]);
 
   useEffect(() => {
-    if (!dirty || !canEdit || pausedRef.current) return undefined;
-    const timer = setTimeout(() => { void flush(); }, 700);
+    if (!dirty || !canEdit || saving || pausedRef.current) return undefined;
+    const timer = setTimeout(() => { void flush({ background: true }); }, 700);
     return () => clearTimeout(timer);
-  }, [dirty, form, canEdit, flush]);
+  }, [dirty, form, confirmedForm, canEdit, saving, flush]);
 
   useEffect(() => {
     mountedRef.current = true;

@@ -160,6 +160,42 @@ test('resposta da organização atualiza o editor sem GET e invalida polling ant
   assert.equal(editor.current.note.state.version, 2);
 });
 
+test('criação em segundo plano agrupa texto digitado durante o POST em uma próxima pausa', async () => {
+  const calls = fakeHttp();
+  const editor = await mount(null);
+  await editor.edit('title', 'Nota nova');
+  await waitPastAutosave();
+  assert.equal(calls.length, 1); assert.equal(calls[0].method, 'POST');
+  await editor.edit('content', 'Primeira parte');
+  await editor.edit('content', 'Texto completo digitado durante a criação');
+  await finish(calls[0], note({ title: 'Nota nova', content: '' }));
+  assert.equal(calls.length, 1, 'Não deve emendar um PATCH enquanto a pessoa ainda escreve.');
+  assert.equal(editor.current.saving, false);
+  assert.equal(editor.current.dirty, true);
+  assert.equal(readStored().form.content, 'Texto completo digitado durante a criação');
+  await editor.edit('content', 'Versão final agrupada');
+  await waitPastAutosave();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].body.content, 'Versão final agrupada');
+  await finish(calls[1], note({ title: 'Nota nova', content: 'Versão final agrupada', version: 2 }));
+  assert.equal(editor.current.dirty, false);
+});
+
+test('Concluir durante criação em segundo plano aguarda POST e salva a última digitação antes de sair', async () => {
+  const calls = fakeHttp();
+  const editor = await mount(null);
+  await editor.edit('title', 'Minha nota');
+  await waitPastAutosave();
+  await editor.edit('content', 'Último texto antes de concluir');
+  const closing = await editor.start('flush');
+  await finish(calls[0], note({ title: 'Minha nota', content: '' }));
+  assert.equal(calls.length, 2, 'Concluir deve salvar imediatamente, sem a pausa do autosave.');
+  assert.equal(calls[1].body.content, 'Último texto antes de concluir');
+  await finish(calls[1], note({ title: 'Minha nota', content: 'Último texto antes de concluir', version: 2 }));
+  assert.equal((await closing.promise).version, 2);
+  assert.equal(editor.current.dirty, false);
+});
+
 test('revalidações simultâneas compartilham uma consulta', async () => {
   const calls = fakeHttp();
   const editor = await mount();
