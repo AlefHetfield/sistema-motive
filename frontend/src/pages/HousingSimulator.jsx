@@ -476,7 +476,7 @@ function HousingSimulator() {
   const generatePdf = () => {
     if (!result) return;
     try {
-      downloadHousingSimulationPdf(result);
+      downloadHousingSimulationPdf(result, new Date(), { ...form, income: parseCurrency(form.income) });
       toast.success('PDF da simulação gerado com sucesso.');
     } catch {
       toast.error('Não foi possível gerar o PDF da simulação.');
