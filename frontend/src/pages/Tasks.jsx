@@ -2,7 +2,7 @@ import useMobileLayout from '../hooks/useMobileLayout';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import TaskPropertyCard from '../components/TaskPropertyCard';
-import { Check, Circle, Star, Sun, ListTodo, CalendarDays, Clock, Plus, Search, Trash2, Users, UserRound, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, MoreHorizontal, StickyNote, LockKeyhole, PanelLeftClose, PanelLeftOpen, LayoutList, LayoutGrid } from 'lucide-react';
+import { Check, Circle, Star, Sun, ListTodo, CalendarDays, Clock, Plus, Search, Trash2, Users, UserRound, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, MoreHorizontal, StickyNote, LockKeyhole, PanelLeftClose, PanelLeftOpen, LayoutList, LayoutGrid, LoaderCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { taskApi } from '../services/api';
 import TaskEditor from '../components/TaskEditor';
@@ -32,6 +32,24 @@ export default function Tasks() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [taskLayout, setTaskLayout] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem('motive-task-layout') === 'list' ? 'list' : 'grid');
   const [openActionTaskId, setOpenActionTaskId] = useState(null);
+  useEffect(() => {
+    if (openActionTaskId == null) return undefined;
+    const closeOutside = event => {
+      const actions = document.getElementById(`task-actions-trigger-${openActionTaskId}`)?.closest('[data-task-actions]');
+      if (!actions?.contains(event.target)) setOpenActionTaskId(null);
+    };
+    const closeOnEscape = event => {
+      if (event.key !== 'Escape') return;
+      setOpenActionTaskId(null);
+      document.getElementById(`task-actions-trigger-${openActionTaskId}`)?.focus();
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [openActionTaskId]);
   const clientId = params.get('client') || '';
   const linkedTaskId = params.get('task') || '';
   const [options, setOptions] = useState(null);
@@ -59,12 +77,20 @@ export default function Tasks() {
   const [revision, setRevision] = useState(0);
   const [optionsRevision, setOptionsRevision] = useState(0);
   const pendingChanges = useRef(new Map());
+  const reloadAfterConflict = useRef(false);
   const mutationRevision = useRef(0);
   const mounted = useRef(true);
   const [optimisticChanges, setOptimisticChanges] = useState(new Map());
+  const [stepSaveFeedback, setStepSaveFeedback] = useState(new Map());
+  const stepFeedbackTimers = useRef(new Map());
   useEffect(() => {
+    const feedbackTimers = stepFeedbackTimers.current;
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+      feedbackTimers.forEach(timer => window.clearTimeout(timer));
+      feedbackTimers.clear();
+    };
   }, []);
   useEffect(() => {
     const refresh = () => { if (!document.hidden) { setRevision(value => value + 1); setOptionsRevision(value => value + 1); } };
@@ -184,8 +210,30 @@ export default function Tasks() {
       window.dispatchEvent(new Event('motive:task-notifications-changed'));
     }).catch(() => {});
   };
+  const showStepFeedback = (taskId, feedback) => {
+    window.clearTimeout(stepFeedbackTimers.current.get(taskId));
+    stepFeedbackTimers.current.delete(taskId);
+    setStepSaveFeedback(current => {
+      const next = new Map(current);
+      if (feedback) next.set(taskId, feedback);
+      else next.delete(taskId);
+      return next;
+    });
+    if (!feedback) return;
+    const timer = window.setTimeout(() => {
+      stepFeedbackTimers.current.delete(taskId);
+      if (mounted.current) setStepSaveFeedback(current => {
+        const next = new Map(current);
+        next.delete(taskId);
+        return next;
+      });
+    }, feedback === 'saved' ? 2500 : 5000);
+    stepFeedbackTimers.current.set(taskId, timer);
+  };
   const changeTask = async (task, patch, undo = false) => {
     if (busy || pendingChanges.current.has(task.id)) return;
+    const updatesSteps = Array.isArray(patch.steps);
+    if (updatesSteps) showStepFeedback(task.id, null);
     const startedQueryKey = queryKeyRef.current;
     mutationRevision.current += 1;
     pendingChanges.current.set(task.id, patch);
@@ -194,6 +242,7 @@ export default function Tasks() {
       const saved = await taskApi(`/${task.id}`, { method:'PATCH', body:{...patch,version:task.version} });
       window.dispatchEvent(new Event('motive:task-notifications-changed'));
       if (!mounted.current) return;
+      if (updatesSteps) showStepFeedback(task.id, 'saved');
       setSummaryRevision(value => value + 1);
       if (startedQueryKey === queryKeyRef.current) reconcileTask(saved);
       else reload();
@@ -202,11 +251,19 @@ export default function Tasks() {
         await changeTask(saved, patch.remove ? {restore:true} : {status:task.status});
       } } });
     } catch(err) {
-      if (mounted.current) toast.error(err.message);
+      if (mounted.current) {
+        if (updatesSteps) showStepFeedback(task.id, 'error');
+        toast.error(err.message);
+        if (err.status === 409) reloadAfterConflict.current = true;
+      }
     } finally {
       pendingChanges.current.delete(task.id);
       if (mounted.current) {
         setOptimisticChanges(new Map(pendingChanges.current));
+        if (reloadAfterConflict.current && !pendingChanges.current.size) {
+          reloadAfterConflict.current = false;
+          reload();
+        }
       }
     }
   };
@@ -249,7 +306,7 @@ export default function Tasks() {
     finally { setBusy(false); reload(); }
   };
   return <div className="task-page mx-auto max-w-[1500px] p-3 sm:p-4 md:p-7">
-    <div className="mb-3 flex items-center justify-between gap-3 lg:mb-6 lg:flex-wrap lg:gap-4"><div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-widest text-primary lg:block">Organize sua rotina</p><h2 className="truncate text-lg font-bold text-slate-900 lg:mt-1 lg:text-3xl">{mobile ? (activeList?.name || views.find(item => item[0] === view)?.[1]) : 'Cada tarefa, um próximo passo.'}</h2><p className="mt-2 hidden text-sm text-gray-500 lg:block">{options?.canManageAll ? 'Acompanhe suas prioridades e as tarefas da equipe.' : 'Seu espaço para acompanhar as tarefas atribuídas a você.'}</p></div><button type="button" disabled={!options} onClick={()=>setEditor({new:true})} className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40 lg:px-4 lg:py-3"><Plus size={18}/> {view === 'social' ? 'Nova publicação' : 'Nova tarefa'}</button></div>
+    <div className="mb-3 flex items-center justify-between gap-3 lg:mb-4 lg:flex-wrap lg:gap-4"><div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-widest text-primary lg:block">Organize sua rotina</p><h2 className="truncate text-lg font-bold text-slate-900 lg:mt-1 lg:text-2xl">{mobile ? (activeList?.name || views.find(item => item[0] === view)?.[1]) : 'Cada tarefa, um próximo passo.'}</h2><p className="mt-1 hidden text-sm text-gray-500 lg:block">{options?.canManageAll ? 'Acompanhe suas prioridades e as tarefas da equipe.' : 'Seu espaço para acompanhar as tarefas atribuídas a você.'}</p></div><button type="button" disabled={!options} onClick={()=>setEditor({new:true})} className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40 lg:px-4 lg:py-2.5"><Plus size={18}/> {view === 'social' ? 'Nova publicação' : 'Nova tarefa'}</button></div>
     {mobile && <button type="button" aria-expanded={showTaskLists} aria-controls="task-lists" onClick={() => setShowTaskLists(value => !value)} className="mb-3 flex min-h-10 w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-left text-sm font-semibold text-primary"><span>Lista e visualização</span><span>{showTaskLists ? 'Fechar' : 'Trocar'}</span></button>}
     <div className={`grid gap-5 ${compactSidebar ? 'lg:grid-cols-[72px_minmax(0,1fr)]' : 'lg:grid-cols-[230px_minmax(0,1fr)]'}`}>
       <aside id="task-lists" hidden={mobile && !showTaskLists} className={`self-start rounded-2xl border border-gray-200 bg-white transition-all ${compactSidebar ? 'p-2' : 'p-3'}`}>
@@ -264,11 +321,71 @@ export default function Tasks() {
         {clientId&&<div className="flex items-center justify-between rounded-xl bg-blue-50 p-3 text-sm text-blue-800"><span>Tarefas do cliente {initialClient?.nome||`#${clientId}`}</span><button type="button" onClick={()=>{setParams({});setInitialClient(null);setPage(1);}}>Remover filtro</button></div>}
         <form onSubmit={e=>{e.preventDefault();setSearch(query);setPage(1);setLoading(true);reload();}} className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"><div className="flex min-w-0 flex-1"><input aria-label="Pesquisar tarefas" placeholder="Pesquisar por título ou anotação" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" aria-label="Pesquisar" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition hover:bg-primary/10 hover:text-primary"><Search size={18}/></button></div>{options?.canManageAll&&view!=='day'&&<FancySelect className={mobile ? 'w-full' : 'min-w-52 border-l border-slate-100 pl-2'} size="compact" ariaLabel="Filtrar responsável" value={String(assigneeId)} onChange={value=>{setAssigneeId(value);setPage(1);setLoading(true);}} placeholder="Toda a equipe" options={[{ value: '', label: 'Toda a equipe' }, ...options.users.map(user=>({ value:String(user.id), label:`${user.id===options.userId?'Minhas tarefas':user.nome}${!user.isActive?' (inativo)':''}` }))]} />}</form>
         {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={() => { if (!options) setOptionsRevision(value => value + 1); reload(); }} className="underline">Tentar novamente</button></p>}
-        {loading?<p role="status" className="p-8 text-center text-sm text-gray-500">Carregando tarefas…</p>:<div className={taskLayout==='grid'?'flex flex-col gap-2 xl:grid xl:grid-cols-2 xl:items-start xl:gap-3':''}>{taskColumns.map((column,columnIndex)=><div key={columnIndex} className={taskLayout==='grid'?'contents xl:block xl:space-y-3':'space-y-2'}>{column.map(({task:originalTask,index:taskIndex}) => { const patch = optimisticChanges.get(originalTask.id); const task = { ...originalTask, ...patch }; const taskBusy = busy || Boolean(patch); const visual = taskVisual(task); return <article key={task.id} style={taskLayout==='grid'?{order:taskIndex}:undefined} aria-busy={Boolean(patch)} className={`group relative grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-2 overflow-visible rounded-xl border border-slate-200 bg-white p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:-translate-y-px hover:border-slate-300 hover:shadow-md lg:flex lg:gap-2.5`}>
-          <button type="button" disabled={taskBusy} aria-label={task.status==='DONE'?`Reabrir ${task.title}`:`Concluir ${task.title}`} onClick={()=>changeTask(task,{status:task.status==='DONE'?'TODO':'DONE'},task.status!=='DONE')} className={`mt-1 rounded-full ${task.status==='DONE'?'text-emerald-600':'text-slate-500 hover:text-primary'}`}>{task.status==='DONE'?<Check size={22}/>:<Circle size={22}/>}</button>
-          <div className="min-w-0 flex-1 pr-9 lg:pr-0"><button type="button" disabled={taskBusy} onClick={()=>openTask(task)} className="w-full text-left"><span className={`flex items-center gap-2 break-words text-[15px] font-semibold ${task.status==='DONE'?'text-gray-400 line-through':'text-slate-800'}`}><span>{task.title}</span>{task.isNew&&<span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-sky-700 no-underline">Nova</span>}</span>{task.notes?.trim()&&<span className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-gray-500"><StickyNote size={13} className="mt-0.5 shrink-0 text-slate-400"/><span className="line-clamp-2 whitespace-pre-line text-left">{task.notes.trim()}</span></span>}<span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-gray-500"><span className="inline-flex items-center gap-1 font-medium text-slate-600"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 text-[9px] font-bold text-indigo-700">{task.assignee.nome.charAt(0)}</span>{task.assignee.nome}</span>{task.isPrivate&&<span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700"><LockKeyhole size={12}/>Pessoal</span>}{task.client&&<span className="truncate text-slate-500">{task.client.nome}</span>}{task.dueDate&&<span className={task.dueDate.slice(0,10)<today()&&task.status!=='DONE'?'font-semibold text-red-600':'text-slate-500'}>{taskDateLabel(task.dueDate)}</span>}<span role={patch ? 'status' : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${visual.badge}`}><span className={`h-1.5 w-1.5 rounded-full ${visual.dot}`}/>{patch ? (patch.remove ? 'Removendo…' : 'Salvando…') : visual.label}</span>{task.steps.length>0&&<span>{task.steps.filter(step=>step.done).length}/{task.steps.length} etapas</span>}</span></button>{task.property && <div className="mt-2"><TaskPropertyCard property={task.property} compact /></div>}</div>
-          <div className="absolute right-2 top-2 lg:hidden"><button type="button" aria-label={`Ações de ${task.title}`} aria-expanded={openActionTaskId === task.id} onClick={()=>setOpenActionTaskId(current=>current===task.id?null:task.id)} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"><MoreHorizontal size={20}/></button>{openActionTaskId === task.id && <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">{canReorder && <><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'up');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowUp size={17}/> Subir na fila</button><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} onClick={()=>{setOpenActionTaskId(null);movePublication(task,'down');}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"><ArrowDown size={17}/> Descer na fila</button></>}<button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{important:!task.important});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Star size={17} fill={task.important?'currentColor':'none'} className={task.important?'text-amber-500':''}/>{task.important?'Remover importância':'Marcar importante'}</button><button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()});}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"><Sun size={17}/> {task.myDay?.slice(0,10)===today()?'Remover do meu dia':'Adicionar ao meu dia'}</button><button type="button" disabled={taskBusy} onClick={()=>{setOpenActionTaskId(null);changeTask(task,{remove:true},true);}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"><Trash2 size={17}/> Excluir tarefa</button></div>}</div>
-          <div className={`hidden h-8 flex-wrap items-center justify-end gap-1 transition lg:flex opacity-100`}>{canReorder && <><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} aria-label={`Subir ${task.title} na fila`} onClick={() => movePublication(task, 'up')} className="rounded-lg p-1.5 text-gray-500 hover:bg-slate-100 disabled:opacity-30"><ArrowUp size={17} /></button><button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} aria-label={`Descer ${task.title} na fila`} onClick={() => movePublication(task, 'down')} className="rounded-lg p-1.5 text-gray-500 hover:bg-slate-100 disabled:opacity-30"><ArrowDown size={17} /></button></>}<button type="button" disabled={taskBusy} aria-label={`Importância de ${task.title}`} aria-pressed={task.important} onClick={()=>changeTask(task,{important:!task.important})} className={`rounded-lg p-1.5 hover:bg-amber-50 ${task.important?'text-amber-500':'text-slate-500 hover:text-amber-500'}`}><Star size={18} fill={task.important?'currentColor':'none'}/></button><button type="button" disabled={taskBusy} aria-label={`Adicionar ${task.title} ao meu dia`} onClick={()=>changeTask(task,{myDay:task.myDay?.slice(0,10)===today()?null:today()})} className={`rounded-lg p-1.5 hover:bg-primary/5 ${task.myDay?.slice(0,10)===today()?'text-primary':'text-slate-500 hover:text-primary'}`}><Sun size={18}/></button><button type="button" disabled={taskBusy} aria-label={`Excluir ${task.title}`} onClick={()=>changeTask(task,{remove:true},true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"><Trash2 size={17}/></button></div>
+        {loading?<p role="status" className="p-8 text-center text-sm text-gray-500">Carregando tarefas…</p>:<div className={taskLayout==='grid'?'flex flex-col gap-2 xl:grid xl:grid-cols-2 xl:items-start xl:gap-3':''}>{taskColumns.map((column,columnIndex)=><div key={columnIndex} className={taskLayout==='grid'?'contents xl:block xl:space-y-3':'space-y-2'}>{column.map(({task:originalTask,index:taskIndex}) => { const patch = optimisticChanges.get(originalTask.id); const task = { ...originalTask, ...patch }; const taskBusy = busy || Boolean(patch); const visual = taskVisual(task); const savingSteps = Array.isArray(patch?.steps); const stepFeedback = savingSteps ? 'saving' : stepSaveFeedback.get(task.id); return <article key={task.id} style={taskLayout === 'grid' ? { order: taskIndex } : undefined} aria-busy={Boolean(patch)} className="group relative grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:shadow-md sm:p-3.5">
+          <button type="button" disabled={taskBusy} aria-label={task.status === 'DONE' ? `Reabrir ${task.title}` : `Concluir ${task.title}`} onClick={() => changeTask(task, { status: task.status === 'DONE' ? 'TODO' : 'DONE' }, task.status !== 'DONE')} className={`mt-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${task.status === 'DONE' ? 'text-emerald-600' : 'text-slate-500 hover:text-primary'}`}>
+            {task.status === 'DONE' ? <Check size={22} /> : <Circle size={22} />}
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-start gap-2">
+              <button type="button" disabled={taskBusy} onClick={() => openTask(task)} className="min-w-0 flex-1 rounded-md py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+                <span className={`break-words text-[15px] font-semibold leading-6 ${task.status === 'DONE' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                  {task.title}{task.isNew && <span className="ml-2 inline-block rounded-full bg-sky-100 px-2 py-0.5 align-middle text-[9px] font-extrabold uppercase leading-4 tracking-wide text-sky-700 no-underline">Nova</span>}
+                </span>
+              </button>
+              <div data-task-actions className="relative flex shrink-0 items-center gap-0.5">
+                {canReorder && <div className="hidden items-center lg:flex">
+                  <button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} aria-label={`Subir ${task.title} na fila`} onClick={() => movePublication(task, 'up')} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30"><ArrowUp size={17} /></button>
+                  <button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} aria-label={`Descer ${task.title} na fila`} onClick={() => movePublication(task, 'down')} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30"><ArrowDown size={17} /></button>
+                </div>}
+                <button type="button" disabled={taskBusy} aria-label={`Importância de ${task.title}`} aria-pressed={task.important} onClick={() => changeTask(task, { important: !task.important })} className={`flex h-8 w-8 items-center justify-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 hover:bg-amber-50 ${task.important ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}><Star size={18} fill={task.important ? 'currentColor' : 'none'} /></button>
+                <button type="button" disabled={taskBusy} aria-label={`${task.myDay?.slice(0, 10) === today() ? 'Remover' : 'Adicionar'} ${task.title} ${task.myDay?.slice(0, 10) === today() ? 'do' : 'ao'} meu dia`} onClick={() => changeTask(task, { myDay: task.myDay?.slice(0, 10) === today() ? null : today() })} className={`hidden h-8 w-8 items-center justify-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 hover:bg-primary/5 sm:flex ${task.myDay?.slice(0, 10) === today() ? 'text-primary' : 'text-slate-400 hover:text-primary'}`}><Sun size={18} /></button>
+                <button id={`task-actions-trigger-${task.id}`} type="button" disabled={taskBusy} aria-label={`Ações de ${task.title}`} aria-expanded={openActionTaskId === task.id} aria-controls={`task-actions-${task.id}`} onClick={() => setOpenActionTaskId(current => current === task.id ? null : task.id)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><MoreHorizontal size={19} /></button>
+                {openActionTaskId === task.id && <div id={`task-actions-${task.id}`} role="group" aria-label={`Ações de ${task.title}`} className="absolute right-0 top-9 z-20 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                  {canReorder && <div className="lg:hidden">
+                    <button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === 1 && data.tasks[0]?.id === task.id)} onClick={() => { setOpenActionTaskId(null); movePublication(task, 'up'); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ArrowUp size={17} />Subir na fila</button>
+                    <button type="button" disabled={busy || optimisticChanges.size > 0 || (data.page === data.pages && data.tasks.at(-1)?.id === task.id)} onClick={() => { setOpenActionTaskId(null); movePublication(task, 'down'); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ArrowDown size={17} />Descer na fila</button>
+                  </div>}
+                  <button type="button" disabled={taskBusy} onClick={() => { setOpenActionTaskId(null); changeTask(task, { myDay: task.myDay?.slice(0, 10) === today() ? null : today() }); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 sm:hidden"><Sun size={17} />{task.myDay?.slice(0, 10) === today() ? 'Remover do meu dia' : 'Adicionar ao meu dia'}</button>
+                  <button type="button" disabled={taskBusy} aria-label={`Excluir ${task.title}`} onClick={() => { setOpenActionTaskId(null); changeTask(task, { remove: true }, true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"><Trash2 size={17} />Excluir tarefa</button>
+                </div>}
+              </div>
+            </div>
+            <button type="button" disabled={taskBusy} onClick={() => openTask(task)} className="mt-1 block w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 font-medium text-slate-600"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-[9px] font-semibold text-indigo-700">{task.assignee.nome.charAt(0)}</span><span className="truncate" title={task.assignee.nome}>{task.assignee.nome}</span></span>
+                {task.client && <span className="truncate" title={task.client.nome}>{task.client.nome}</span>}
+              </span>
+              <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span role={patch && !savingSteps ? 'status' : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${visual.badge}`}><span className={`h-1.5 w-1.5 rounded-full ${visual.dot}`} />{patch && !savingSteps ? (patch.remove ? 'Removendo…' : 'Salvando…') : visual.label}</span>
+                {task.dueDate && <span className={`inline-flex items-center gap-1 ${task.dueDate.slice(0, 10) < today() && task.status !== 'DONE' ? 'font-medium text-red-600' : 'text-slate-500'}`}><CalendarDays size={12} />{taskDateLabel(task.dueDate)}</span>}
+                {task.isPrivate && <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700"><LockKeyhole size={12} />Pessoal</span>}
+              </span>
+              {task.notes?.trim() && <span className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500"><StickyNote size={13} className="mt-0.5 shrink-0 text-slate-400" /><span className="line-clamp-2 whitespace-pre-line">{task.notes.trim()}</span></span>}
+            </button>
+            {task.steps.length > 0 && <section aria-label={`Subtarefas de ${task.title}`} className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+              <div className="mb-2 flex min-h-4 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <p className="text-[11px] font-semibold text-slate-500">Subtarefas <span aria-hidden="true" className="px-0.5 text-slate-400">·</span> {task.steps.filter(step => step.done).length} de {task.steps.length}</p>
+                <span role="status" aria-live="polite" aria-atomic="true" className={`inline-flex items-center gap-1 text-[10px] font-medium ${stepFeedback === 'error' ? 'text-red-600' : stepFeedback === 'saved' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                  {stepFeedback && <span className="sr-only">{task.title}: </span>}
+                  {stepFeedback === 'saving' && <><LoaderCircle aria-hidden="true" size={12} className="motion-safe:animate-spin" />Salvando…</>}
+                  {stepFeedback === 'saved' && <><Check aria-hidden="true" size={12} />Salvo</>}
+                  {stepFeedback === 'error' && <><AlertCircle aria-hidden="true" size={12} />Não salvo</>}
+                </span>
+              </div>
+              <div role="progressbar" aria-label={`Progresso das subtarefas de ${task.title}`} aria-valuemin={0} aria-valuemax={task.steps.length} aria-valuenow={task.steps.filter(step => step.done).length} className="mb-3 h-1 overflow-hidden rounded-full bg-slate-200/80">
+                <div className={`h-full rounded-full transition-[width] ${task.steps.every(step => step.done) ? 'bg-emerald-500' : 'bg-primary/70'}`} style={{ width: `${task.steps.filter(step => step.done).length / task.steps.length * 100}%` }} />
+              </div>
+              <ul className="space-y-2">
+                {task.steps.map((step, index) => <li key={index}>
+                  <label className={`flex min-h-9 items-start gap-2 rounded-lg px-1 py-1.5 text-[13px] leading-5 transition ${taskBusy ? 'cursor-wait opacity-60' : 'cursor-pointer hover:bg-white/70'}`}>
+                    <input type="checkbox" aria-label={`${step.done ? 'Reabrir' : 'Concluir'} subtarefa ${step.title}`} checked={step.done} disabled={taskBusy} onChange={event => changeTask(task, { steps: task.steps.map((item, itemIndex) => itemIndex === index ? { ...item, done: event.target.checked } : item) })} className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-wait" />
+                    <span className={`min-w-0 break-words ${step.done ? 'text-slate-500 line-through' : 'text-slate-700'}`}>{step.title}</span>
+                  </label>
+                </li>)}
+              </ul>
+            </section>}
+            {task.property && <div className="mt-3"><TaskPropertyCard property={task.property} compact /></div>}
+          </div>
         </article>; })}</div>)}{!data?.tasks.length&&!error&&<div className="rounded-2xl border border-dashed bg-white p-10 text-center xl:col-span-2"><ListTodo className="mx-auto mb-3 text-primary" size={32}/><h4 className="font-semibold text-gray-800">Tudo tranquilo por aqui</h4><p className="mt-2 text-sm text-gray-500">Nenhuma tarefa nesta visualização. Crie uma tarefa ou ajuste os filtros.</p></div>}</div>}
         {data?.pages>1&&<div className="flex items-center justify-center gap-4"><button disabled={loading||data.page<=1} onClick={()=>{setPage(data.page-1);setLoading(true);}} aria-label="Página anterior"><ArrowLeft size={18}/></button><span className="text-sm">{data.page}/{data.pages}</span><button disabled={loading||data.page>=data.pages} onClick={()=>{setPage(data.page+1);setLoading(true);}} aria-label="Próxima página"><ArrowRight size={18}/></button></div>}
         {view !== 'delegated' && <form onSubmit={quickCreate} className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><input required disabled={creatingTask} maxLength={250} value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Adicionar uma tarefa e pressionar Enter" aria-label="Título da nova tarefa" className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none disabled:opacity-60"/><button disabled={creatingTask||!options||!newTitle.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{creatingTask ? 'Adicionando…' : 'Adicionar'}</button></form>}

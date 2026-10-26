@@ -228,6 +228,14 @@ export async function fetchProperties(filters = {}) {
     return response.json();
 }
 
+export async function fetchPropertyDetails(propertyId, { signal } = {}) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/${encodeURIComponent(propertyId)}`, {
+        credentials: 'include', signal,
+    });
+    if (!response.ok) throw await apiError(response, 'Falha ao buscar os dados do imóvel.');
+    return response.json();
+}
+
 export async function fetchCalendarStatus() {
     const response = await fetch(`${API_BASE_URL}/api/calendar/status`, { credentials: 'include' });
     if (!response.ok) throw await apiError(response, 'Falha ao verificar a integração com o Google Agenda.');

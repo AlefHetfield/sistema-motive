@@ -532,6 +532,22 @@ export function createPropertyRouter(prisma, requireAuth) {
     }
   });
 
+  router.get('/:id', async (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const id = Number(req.params.id);
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(id)) {
+      return res.status(400).json({ error: 'ID do imóvel inválido.' });
+    }
+    try {
+      const property = await prisma.property.findUnique({ where: { id } });
+      if (!property) return res.status(404).json({ error: 'Imóvel não encontrado.' });
+      res.json(property);
+    } catch (error) {
+      console.error('Erro ao buscar imóvel:', error);
+      res.status(500).json({ error: 'Não foi possível buscar os dados do imóvel.' });
+    }
+  });
+
   router.post('/drive-preview', async (req, res) => {
     try {
       const driveFolderUrl = normalizeDriveFolderUrl(req.body?.driveFolderUrl);

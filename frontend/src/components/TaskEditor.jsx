@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TaskClientPicker from './TaskClientPicker';
 import TaskPropertyPicker from './TaskPropertyPicker';
@@ -12,21 +12,38 @@ const dateValue = value => value?.slice(0, 10) || '';
 
 function Action({ icon, label, active, expanded, onClick, children }) {
   const Icon = icon;
-  return <section className={`relative rounded-xl border border-gray-200 bg-white ${expanded ? 'z-20' : 'z-0'}`}>
+  return <section className={`relative first:rounded-t-2xl last:rounded-b-2xl ${expanded ? 'z-20 bg-slate-50/50' : 'z-0'}`}>
     <button type="button" onClick={onClick} aria-expanded={children ? expanded : undefined} aria-pressed={!children ? Boolean(active) : undefined}
-      className={`flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition hover:bg-gray-50 ${active ? 'text-primary' : 'text-gray-600'}`}>
+      className={`flex min-h-12 w-full items-center gap-3 rounded-[inherit] px-4 py-3 text-left text-sm outline-none transition hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 ${active ? 'font-medium text-primary' : 'text-slate-600'}`}>
       <Icon size={18} className="shrink-0" /><span className="min-w-0 flex-1 break-words">{label}</span>
       {children ? <ChevronDown size={15} className={expanded ? 'rotate-180' : ''} /> : active ? <Check size={16} /> : null}
     </button>
-    {children && expanded && <div className="space-y-3 border-t border-gray-100 p-4">{children}</div>}
+    {children && expanded && <div className="space-y-3 border-t border-slate-100 p-4">{children}</div>}
   </section>;
 }
 
 export default function TaskEditor({ task, options, initialClient, initialList, initialDay = false, initialSocial = false, initialProperty = null, requireDelegation = false, onClose, onSaved }) {
   const navigate = useNavigate();
   const dialogRef = useRef(null);
+  const titleRef = useRef(null);
   const [form, setForm] = useState(() => ({ title: task?.title || (initialProperty ? `Publicar ${initialProperty.title}`.slice(0, 250) : ''), category: task?.category || (initialSocial ? 'SOCIAL' : 'GENERAL'), propertyId: task?.propertyId || initialProperty?.id || null, notes: task?.notes || '', status: task?.status || 'TODO', important: task?.important || false,
     assigneeId: task?.assigneeId || (requireDelegation ? '' : options.userId), clientId: task?.clientId || initialClient?.id || '', listId: task?.listId || initialList || '', dueDate: dateValue(task?.dueDate), myDay: task ? dateValue(task.myDay) : initialDay ? taskToday() : '', steps: task?.steps || [], isPrivate: task ? Boolean(task.isPrivate) : !initialSocial }));
+  useLayoutEffect(() => {
+    const title = titleRef.current;
+    if (!title) return undefined;
+    const resizeTitle = () => {
+      const style = window.getComputedStyle(title);
+      const lineHeight = Number.parseFloat(style.lineHeight) || 28;
+      const padding = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
+      const maximum = lineHeight * 3 + padding;
+      title.style.height = 'auto';
+      title.style.height = `${Math.min(Math.max(title.scrollHeight, lineHeight * 2 + padding), maximum)}px`;
+      title.style.overflowY = title.scrollHeight > maximum ? 'auto' : 'hidden';
+    };
+    resizeTitle();
+    window.addEventListener('resize', resizeTitle);
+    return () => window.removeEventListener('resize', resizeTitle);
+  }, [form.title]);
   const [expanded, setExpanded] = useState(requireDelegation ? 'assignee' : initialProperty || task?.property ? 'property' : '');
   const [customDate, setCustomDate] = useState(false);
   const [today, setToday] = useState(taskToday);
@@ -80,6 +97,8 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
   const toggle = name => setExpanded(current => current === name ? '' : name);
   const completed = form.status === 'DONE';
+  const completedSteps = form.steps.filter(step => step.done).length;
+  const stepProgress = form.steps.length ? completedSteps / form.steps.length * 100 : 0;
   const assignee = options.users.find(user => user.id === Number(form.assigneeId));
 
   const list = options.lists.find(item => item.id === Number(form.listId));
@@ -120,16 +139,33 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
             <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">{publicationCheck.tasks.map(item => <li key={item.id}><button type="button" onClick={() => { onClose(); navigate(`/tasks?view=social&task=${item.id}`); }} className="w-full rounded-lg bg-white p-2 text-left text-sm text-gray-700"><span className="block font-semibold">{item.title}</span><span className="block text-xs">{item.assignee.nome} · {item.dueDate ? taskDateLabel(item.dueDate) : 'Sem data prevista'}</span><span className="text-xs font-semibold text-primary underline">Abrir tarefa existente</span></button></li>)}</ul>
             {approvedDuplicates === duplicateSignature(publicationCheck) ? <p className="mt-3 text-xs text-amber-900">Você optou por criar outra publicação. Clique em Salvar para confirmar.</p> : <button type="button" onClick={() => setApprovedDuplicates(duplicateSignature(publicationCheck))} className="mt-3 text-sm font-semibold text-amber-900 underline">{task ? 'Manter este vínculo mesmo assim' : 'Criar outra publicação mesmo assim'}</button>}
           </section>}
-          <section className="rounded-xl border border-gray-200 bg-white p-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-start gap-3">
               <button type="button" onClick={() => set('status', completed ? 'TODO' : 'DONE')} aria-label={completed ? 'Marcar como pendente' : 'Concluir tarefa'} aria-pressed={completed} className={`mt-2 ${completed ? 'text-emerald-600' : 'text-gray-400 hover:text-primary'}`}>{completed ? <CheckCircle2 size={22} /> : <Circle size={22} />}</button>
-              <input autoFocus aria-label="Título da tarefa" required maxLength={250} placeholder="O que precisa ser feito?" className={`min-w-0 flex-1 rounded-lg py-2 text-base font-semibold outline-none focus:ring-2 focus:ring-primary/20 ${completed ? 'text-gray-400 line-through' : 'text-slate-800'}`} value={form.title} onChange={e => set('title', e.target.value)} />
+              <textarea ref={titleRef} autoFocus aria-label="Título da tarefa" required maxLength={250} rows={2} placeholder="O que precisa ser feito?" className={`min-w-0 flex-1 resize-none rounded-lg py-2 text-lg font-semibold leading-7 outline-none focus:ring-2 focus:ring-primary/20 ${completed ? 'text-slate-500 line-through' : 'text-slate-800'}`} value={form.title} onChange={e => set('title', e.target.value)} onKeyDown={event => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }} />
               <button type="button" aria-label="Marcar como importante" aria-pressed={form.important} onClick={() => set('important', !form.important)} className={`mt-2 ${form.important ? 'text-amber-500' : 'text-gray-400'}`}><Star size={20} fill={form.important ? 'currentColor' : 'none'} /></button>
             </div>
-            {!social && form.steps.length > 0 && <p className="mb-2 ml-9 text-xs text-gray-400">{form.steps.filter(step => step.done).length} de {form.steps.length} etapas concluídas</p>}
-            {!social && <div className="space-y-2">{form.steps.map((step,index) => <div key={index} className="flex items-center gap-2 border-b border-gray-100 py-2"><input type="checkbox" aria-label={`Concluir etapa ${step.title}`} checked={step.done} onChange={e => set('steps', form.steps.map((item,i) => i === index ? { ...item, done: e.target.checked } : item))} /><span className={`min-w-0 flex-1 break-words text-sm ${step.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{step.title}</span><button type="button" aria-label={`Remover etapa ${step.title}`} onClick={() => set('steps', form.steps.filter((_,i) => i !== index))} className="text-gray-400"><X size={14} /></button></div>)}</div>}
-            {!social && <div className="mt-2 flex items-center gap-2"><button type="button" aria-label="Adicionar etapa" disabled={!stepTitle.trim() || form.steps.length >= 100} onClick={addStep} className="p-1 text-primary disabled:text-gray-300"><Plus size={18} /></button><input className="min-w-0 flex-1 rounded-lg py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20" aria-label="Nova etapa" placeholder="Adicionar etapa" maxLength={250} value={stepTitle} onChange={e => setStepTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }} /></div>}
+            {!social && <section aria-label="Subtarefas" className="mt-4 rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-600">Subtarefas <span aria-hidden="true">·</span> {completedSteps} de {form.steps.length}</p>
+              {form.steps.length > 0 && <div role="progressbar" aria-label="Progresso das subtarefas" aria-valuemin={0} aria-valuemax={form.steps.length} aria-valuenow={completedSteps} aria-valuetext={`${completedSteps} de ${form.steps.length} concluídas`} className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200">
+                <div className={`h-full rounded-full transition-[width] ${completedSteps === form.steps.length ? 'bg-emerald-500' : 'bg-primary/70'}`} style={{ width: `${stepProgress}%` }} />
+              </div>}
+              {form.steps.length > 0 && <ul className="mt-3 space-y-1">{form.steps.map((step,index) => <li key={index} className="flex items-start gap-2">
+                <label className="flex min-h-9 min-w-0 flex-1 cursor-pointer items-start gap-2.5 py-1.5 text-sm leading-5">
+                  <input type="checkbox" aria-label={`${step.done ? 'Reabrir' : 'Concluir'} subtarefa ${step.title}`} checked={step.done} onChange={e => set('steps', form.steps.map((item,i) => i === index ? { ...item, done: e.target.checked } : item))} className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-primary focus:ring-2 focus:ring-primary/20" />
+                  <span className={`min-w-0 flex-1 break-words ${step.done ? 'text-slate-500 line-through' : 'text-slate-700'}`}>{step.title}</span>
+                </label>
+                <button type="button" aria-label={`Remover subtarefa ${step.title}`} onClick={() => set('steps', form.steps.filter((_,i) => i !== index))} className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 outline-none transition hover:bg-white hover:text-red-600 focus-visible:ring-2 focus-visible:ring-primary/20"><X size={14} /></button>
+              </li>)}</ul>}
+              <div className="mt-2 flex items-center gap-2 border-t border-slate-200/70 pt-2"><button type="button" aria-label="Adicionar subtarefa" disabled={!stepTitle.trim() || form.steps.length >= 100} onClick={addStep} className="rounded-lg p-1 text-primary disabled:text-slate-300"><Plus size={18} /></button><input className="min-w-0 flex-1 rounded-lg bg-transparent py-2 text-sm outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20" aria-label="Nova subtarefa" placeholder="Adicionar subtarefa" maxLength={250} value={stepTitle} onChange={e => setStepTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }} /></div>
+            </section>}
           </section>
+          <section aria-label="Detalhes da tarefa" className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
           <Action icon={Sun} active={inMyDay} label={ownTask ? inMyDay ? 'Adicionada ao Meu dia' : 'Adicionar ao Meu dia' : inMyDay ? `No dia de ${assignee?.nome || 'responsável'}` : `Adicionar ao dia de ${assignee?.nome || 'responsável'}`} onClick={() => set('myDay', inMyDay ? '' : today)} />
           <Action icon={CalendarDays} active={Boolean(form.dueDate)} label={form.dueDate ? `${social ? 'Publicação prevista' : 'Prazo'}: ${taskDateLabel(form.dueDate, today)}` : social ? 'Data prevista da publicação' : 'Adicionar prazo'} expanded={expanded === 'date'} onClick={() => toggle('date')}>
             <div className="space-y-1">{[['Hoje', today], ['Amanhã', addTaskDays(today, 1)], ['Próxima semana', addTaskDays(today, 7)]].map(([label, value]) => <button key={label} type="button" onClick={() => selectDate(value)} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-primary/5"><span>{label}</span><span className="text-xs text-gray-400">{new Date(`${value}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span></button>)}
@@ -156,6 +192,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
           {!social && <Action icon={StickyNote} active={Boolean(form.notes)} label={form.notes ? 'Anotação adicionada' : 'Adicionar anotação'} expanded={expanded === 'notes'} onClick={() => toggle('notes')}>
             <textarea aria-label="Anotação" className={field} rows={4} maxLength={10000} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Escreva algo sobre esta tarefa…" />
           </Action>}
+          </section>
         </fieldset>
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200 bg-white px-5 py-4"><span className="text-xs text-gray-400">{task ? `Criada em ${new Date(task.createdAt).toLocaleDateString('pt-BR')}` : 'Só o título é obrigatório.'}</span><button type="submit" disabled={saving} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Salvando…' : 'Salvar'}</button></footer>
       </form>
