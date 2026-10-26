@@ -146,8 +146,9 @@ export default function FancySelect({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && filteredOptions.length === 1 && !filteredOptions[0].disabled) {
-                    event.preventDefault();
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  if (filteredOptions.length === 1 && !filteredOptions[0].disabled) {
                     onChange?.(filteredOptions[0].value);
                     setOpen(false);
                   }
@@ -173,7 +174,9 @@ export default function FancySelect({
                     role="option"
                     aria-selected={isSelected}
                     disabled={option.disabled}
-                    onClick={() => {
+                    onClick={(event) => {
+                      // Prevent an enclosing label from clicking the trigger and reopening the menu.
+                      event.preventDefault();
                       if (option.disabled) return;
                       onChange?.(option.value);
                       setOpen(false);

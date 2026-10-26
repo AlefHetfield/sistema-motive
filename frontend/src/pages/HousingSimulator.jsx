@@ -38,6 +38,14 @@ import useMobileLayout from '../hooks/useMobileLayout';
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const STATE_NAMES = {
+  AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará',
+  DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão',
+  MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará',
+  PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima',
+  SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins',
+};
 
 const INITIAL_FORM = {
   bank: 'CAIXA',
@@ -107,7 +115,6 @@ function buildShareSummary(result) {
 
   return [
     '🏠 *SIMULAÇÃO HABITACIONAL*',
-    '_Motive Consultoria Imobiliária_',
     '',
     `🏦 *Instituição:* ${result.bank === 'CAIXA' ? 'CAIXA' : 'Bradesco'}`,
     `📋 *Produto:* ${product}`,
@@ -117,7 +124,7 @@ function buildShareSummary(result) {
     `• Valor do imóvel: *${currency.format(result.propertyValue)}*`,
     `• Valor financiado: *${currency.format(result.financed)}*`,
     `• Entrada necessária: *${currency.format(result.requiredEntry)}*`,
-    `• Primeira parcela: *${currency.format(result.installment.total)}*`,
+    `• Valor parcela: *${currency.format(result.installment.total)}*`,
     '',
     '📌 *CONDIÇÕES DA SIMULAÇÃO*',
     `• Prazo: *${result.term} meses*`,
@@ -157,8 +164,8 @@ function CurrencyField({ value, onChange, placeholder }) {
   );
 }
 
-function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel, typeahead = true }) {
-  return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} typeahead={typeahead} />;
+function ResponsiveSelect({ value, onChange, options, placeholder = 'Selecione', disabled = false, ariaLabel, typeahead = true, searchable = false, searchPlaceholder }) {
+  return <FancySelect value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} ariaLabel={ariaLabel} typeahead={typeahead} searchable={searchable} searchPlaceholder={searchPlaceholder} />;
 }
 
 function Choice({ selected, onClick, children, tone = 'blue' }) {
@@ -252,7 +259,7 @@ function ComparisonPanel({ current, alternative, onClose }) {
   const rows = [
     { label: 'Financiamento', caixa: caixa.financed, bradesco: bradesco.financed, format: (value) => currency.format(value), better: 'higher' },
     { label: 'Entrada necessária', caixa: caixa.requiredEntry, bradesco: bradesco.requiredEntry, format: (value) => currency.format(value), better: 'lower' },
-    { label: 'Primeira parcela', caixa: caixa.installment.total, bradesco: bradesco.installment.total, format: (value) => currency.format(value), better: 'lower' },
+    { label: 'Valor parcela', caixa: caixa.installment.total, bradesco: bradesco.installment.total, format: (value) => currency.format(value), better: 'lower' },
     { label: 'Taxa efetiva', caixa: caixa.rate.effective, bradesco: bradesco.rate.effective, format: (value) => `${percent.format(value)}% a.a.`, better: 'lower' },
     { label: 'Prazo', caixa: caixa.term, bradesco: bradesco.term, format: (value) => `${value} meses`, better: null },
   ];
@@ -602,10 +609,10 @@ function HousingSimulator() {
                   <h2 className="mb-4 flex items-center gap-2 font-bold text-gray-800"><MapPin className="h-5 w-5 text-primary" /> Localização do imóvel</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Estado">
-                      <ResponsiveSelect typeahead ariaLabel="Estado" value={form.uf} onChange={(value) => { setForm((current) => ({ ...current, uf: value, municipality: '' })); setResult(null); setComparison(null); }} options={Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => ({ value: uf, label: uf }))} />
+                      <ResponsiveSelect typeahead searchable searchPlaceholder="Digite o estado ou a UF" ariaLabel="Estado" value={form.uf} onChange={(value) => { setForm((current) => ({ ...current, uf: value, municipality: '' })); setResult(null); setComparison(null); }} options={Object.keys(MUNICIPAL_LIMITS).sort().map((uf) => ({ value: uf, label: uf, searchText: STATE_NAMES[uf] }))} />
                     </Field>
                     <Field label="Município" hint={`Tabela vigente desde ${MUNICIPAL_TABLE_EFFECTIVE_DATE}.`}>
-                      <ResponsiveSelect typeahead ariaLabel="Município" disabled={!form.uf} value={form.municipality} onChange={(value) => set('municipality', value)} options={municipalities.map(([name]) => ({ value: name, label: name }))} />
+                      <ResponsiveSelect typeahead searchable searchPlaceholder="Digite a cidade" ariaLabel="Município" disabled={!form.uf} value={form.municipality} onChange={(value) => set('municipality', value)} options={municipalities.map(([name]) => ({ value: name, label: name }))} />
                     </Field>
                   </div>
                 </section>
@@ -668,7 +675,7 @@ function HousingSimulator() {
                   <ScenarioAdjustments form={form} result={result} entryAvailability={entryAvailability} onAdjust={adjustScenario} onEntryChange={changeEntry} onRestore={restoreScenario} />
                   <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
                     <Metric icon={Banknote} label="Entrada necessária" value={currency.format(result.requiredEntry)} strong />
-                    <Metric icon={CircleDollarSign} label="Primeira parcela" value={currency.format(result.installment.total)} strong />
+                    <Metric icon={CircleDollarSign} label="Valor parcela" value={currency.format(result.installment.total)} strong />
                     <Metric icon={Clock3} label="Prazo" value={`${result.term} meses`} />
                     <Metric icon={Percent} label="Taxa efetiva" value={`${percent.format(result.rate.effective)}% a.a.`} />
                     <Metric icon={BadgeCheck} label="Cota utilizada" value={`${percent.format(result.quota)}%`} />
@@ -676,7 +683,7 @@ function HousingSimulator() {
                   </div>
 
                   <div className="rounded-xl border border-gray-100">
-                    <div className="border-b border-gray-100 px-4 py-3"><h3 className="text-sm font-bold text-gray-800">Composição da primeira parcela</h3></div>
+                    <div className="border-b border-gray-100 px-4 py-3"><h3 className="text-sm font-bold text-gray-800">Composição da parcela</h3></div>
                     <div className="divide-y divide-gray-100 px-4 text-sm">
                       {[['Amortização + juros', result.installment.base], ['Seguro MIP', result.installment.mip], ['Seguro DFI', result.installment.dfi], ['Tarifa administrativa', result.installment.adminFee]].map(([label, value]) => <div key={label} className="flex justify-between gap-4 py-2.5"><span className="text-gray-500">{label}</span><strong className="text-gray-700">{currency.format(value)}</strong></div>)}
                     </div>
