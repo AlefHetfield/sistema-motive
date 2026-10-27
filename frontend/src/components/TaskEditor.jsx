@@ -142,7 +142,7 @@ export default function TaskEditor({ task, options, initialClient, initialList, 
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-start gap-3">
               <button type="button" onClick={() => set('status', completed ? 'TODO' : 'DONE')} aria-label={completed ? 'Marcar como pendente' : 'Concluir tarefa'} aria-pressed={completed} className={`mt-2 ${completed ? 'text-emerald-600' : 'text-gray-400 hover:text-primary'}`}>{completed ? <CheckCircle2 size={22} /> : <Circle size={22} />}</button>
-              <textarea ref={titleRef} autoFocus aria-label="Título da tarefa" required maxLength={250} rows={2} placeholder="O que precisa ser feito?" className={`min-w-0 flex-1 resize-none rounded-lg py-2 text-lg font-semibold leading-7 outline-none focus:ring-2 focus:ring-primary/20 ${completed ? 'text-slate-500 line-through' : 'text-slate-800'}`} value={form.title} onChange={e => set('title', e.target.value)} onKeyDown={event => {
+              <textarea ref={titleRef} autoFocus aria-label="Título da tarefa" required maxLength={250} rows={2} placeholder="O que precisa ser feito?" className={`min-w-0 flex-1 resize-none rounded-lg bg-transparent py-2 text-lg font-semibold leading-7 outline-none focus:ring-2 focus:ring-primary/20 ${completed ? 'text-slate-500 line-through' : 'text-slate-800'}`} value={form.title} onChange={e => set('title', e.target.value)} onKeyDown={event => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();

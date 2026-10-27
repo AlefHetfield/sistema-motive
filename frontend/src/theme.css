@@ -1242,3 +1242,66 @@
 
 :root[data-theme="dark"] :where([class~="border-slate-200/60"]):not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)) { border-color: rgba(49, 68, 84, .6); }
 :root[data-theme="dark"] :where([class~="border-slate-200/80"]):not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)) { border-color: rgba(49, 68, 84, .8); }
+
+/* Keep native checkbox semantics while using the app palette in every state. */
+:root {
+  --checkbox-surface: #ffffff;
+  --checkbox-border: #94a3b8;
+  --checkbox-hover: #315b78;
+  --checkbox-checked: #315b78;
+  --checkbox-ink: #ffffff;
+  --checkbox-focus: #315b78;
+  --checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3 3 7-7' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] {
+  --checkbox-surface: #14222e;
+  --checkbox-border: #6e879b;
+  --checkbox-hover: #a8cbe3;
+  --checkbox-checked: #82b3d4;
+  --checkbox-ink: #102536;
+  --checkbox-focus: #96c4e3;
+  --checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3 3 7-7' fill='none' stroke='%23102536' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)) {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+  border: 1px solid var(--checkbox-border);
+  border-radius: .25rem;
+  background-color: var(--checkbox-surface);
+  background-image: none;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):hover:not(:disabled) {
+  border-color: var(--checkbox-hover);
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):is(:checked, :indeterminate) {
+  border-color: var(--checkbox-checked);
+  background-color: var(--checkbox-checked);
+  background-image: var(--checkbox-mark);
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):indeterminate {
+  background-image: linear-gradient(var(--checkbox-ink), var(--checkbox-ink));
+  background-size: 8px 2px;
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):focus-visible {
+  outline: 2px solid var(--checkbox-focus);
+  outline-offset: 3px;
+}
+:root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):disabled {
+  opacity: .55;
+}
+@media (forced-colors: active) {
+  :root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)) {
+    appearance: auto;
+  }
+  :root input[type="checkbox"]:not(:where([data-theme-surface="paper"], [data-theme-surface="paper"] *, .gm-style, .gm-style *)):is(:checked, :indeterminate) {
+    background-image: none;
+  }
+}
