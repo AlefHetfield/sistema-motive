@@ -13,7 +13,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import CompleteProcessModal from '../components/CompleteProcessModal';
 import ClientDetailsDrawer from '../components/ClientDetailsDrawer';
 import PauseClientModal from '../components/PauseClientModal';
-import { ModernInput } from '../components/ModernInput';
+import SearchInput from '../components/SearchInput';
 import StatusBadge from '../components/ui/StatusBadge';
 import useMobileLayout from '../hooks/useMobileLayout';
 import ClientStatusAge from '../components/ClientStatusAge';
@@ -375,6 +375,13 @@ const ClientsList = () => {
     const [toasts, setToasts] = useState([]);
     const toastTimersRef = useRef({});
     const [searchTerm, setSearchTerm] = useState('');
+    const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
+    useEffect(() => {
+        const term = searchTerm.trim();
+        if (term === appliedSearchTerm) return undefined;
+        const timer = setTimeout(() => setAppliedSearchTerm(term), 250);
+        return () => clearTimeout(timer);
+    }, [searchTerm, appliedSearchTerm]);
     const [activeTab, setActiveTab] = useState('active');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
@@ -386,6 +393,7 @@ const ClientsList = () => {
     const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
     const [viewMode, setViewMode] = useState('table'); // 'table' ou 'kanban'
     const [showAllStats, setShowAllStats] = useState(false);
+    const [showMobileStats, setShowMobileStats] = useState(false);
     const [expandedMobileCards, setExpandedMobileCards] = useState({});
     const [completionClient, setCompletionClient] = useState(null);
     const [detailsClientId, setDetailsClientId] = useState(null);
@@ -771,6 +779,7 @@ const ClientsList = () => {
         setFilters({ agencia: '', responsavel: '', status: '', venda: '', modalidade: '' });
         setWaitingOnly(false);
         setStalledOnly(false);
+        setMonthYearFilter('');
     };
 
     const activeFiltersCount = Object.values(filters).filter(v => v !== '').length
@@ -834,7 +843,7 @@ const ClientsList = () => {
     };
 
     const filteredClients = useMemo(() => {
-        const search = searchTerm.trim().toLowerCase();
+        const search = appliedSearchTerm.toLowerCase();
         
         const filtered = allClients.filter(client => {
             // tab filtering
@@ -931,7 +940,7 @@ const ClientsList = () => {
         }
 
         return filtered;
-    }, [allClients, searchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly, stalledOnly]);
+    }, [allClients, appliedSearchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly, stalledOnly]);
 
     // Calcular estatísticas financeiras
     const financialStats = useMemo(() => {
@@ -1024,6 +1033,22 @@ const ClientsList = () => {
                 </div>
             )}
             <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+                {mobile && <>
+                    <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-600">Visualização</p>
+                        <div className="flex gap-2" aria-label="Modo de visualização">
+                            {[[ 'table', 'Lista', List ], [ 'kanban', 'Kanban', LayoutGrid ]].map(([value, label, icon]) => { const Icon = icon; return <button key={value} type="button" aria-pressed={viewMode === value} onClick={() => setViewMode(value)} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm font-semibold ${viewMode === value ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-gray-600'}`}><Icon size={17} />{label}</button>; })}
+                        </div>
+                    </div>
+                    {activeTab === 'active' && <div className="flex flex-wrap gap-2" aria-label="Filtros rápidos">
+                        <button type="button" aria-pressed={stalledOnly} onClick={() => { setStalledOnly(current => !current); setWaitingOnly(false); }} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${stalledOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-600'}`}>Parados {STALLED_CLIENT_DAYS}+ dias</button>
+                        <button type="button" aria-pressed={waitingOnly} onClick={() => { setWaitingOnly(current => !current); setStalledOnly(false); }} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${waitingOnly ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-600'}`}>Em espera</button>
+                    </div>}
+                    {activeTab !== 'active' && uniqueMonthYears.length > 0 && <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-600">Período</p>
+                        <FancySelect ariaLabel="Filtrar por período" value={monthYearFilter} onChange={setMonthYearFilter} placeholder="Todos os períodos" options={[{ label: 'Todos os períodos', value: '' }, ...uniqueMonthYears]} />
+                    </div>}
+                </>}
                 {/* Status */}
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Status</label>
@@ -1097,7 +1122,7 @@ const ClientsList = () => {
                 </div>
 
                 {/* Footer com botão de limpar */}
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-2xl flex justify-end">
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-2xl flex justify-between gap-3">
                     <button
                         onClick={handleClearFilters}
                         disabled={activeFiltersCount === 0}
@@ -1105,6 +1130,7 @@ const ClientsList = () => {
                     >
                         Limpar Filtros
                     </button>
+                    {mobile && <button type="button" onClick={() => setIsFilterDropdownOpen(false)} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white">Ver {filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clientes'}</button>}
                 </div>
             </div>
         </div>
@@ -1149,7 +1175,7 @@ const ClientsList = () => {
 
     return (
         <div id="active-clients-content" className="fade-in mx-auto min-h-full w-full max-w-[1600px] min-w-0 p-3 sm:px-7 sm:pb-7 sm:pt-3">
-            <section className="app-card sticky top-0 z-40 mb-5 overflow-visible rounded-2xl border bg-white">
+            <section className="app-card sticky top-0 z-40 mb-3 overflow-visible rounded-2xl border bg-white sm:mb-5">
                 <div className="flex items-center border-b border-[#E7ECEF] px-3 py-2 sm:px-4">
                 <div className="no-scrollbar flex overflow-x-auto rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Situação dos clientes">
                     {[
@@ -1183,16 +1209,17 @@ const ClientsList = () => {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                     <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
                         <div className="min-w-0 flex-1">
-                            <ModernInput
+                            <SearchInput
                                 id="search-client"
-                                Icon={Search}
-                                type="text"
+                                label="Pesquisar clientes"
                                 placeholder="Buscar por nome, CPF ou imóvel"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={setSearchTerm}
+                                onClear={() => { setSearchTerm(''); setAppliedSearchTerm(''); }}
+                                onSubmit={() => setAppliedSearchTerm(searchTerm.trim())}
                             />
                         </div>
-                        {(activeTab === 'signed' || activeTab === 'archived') && uniqueMonthYears.length > 0 && (
+                        {!mobile && (activeTab === 'signed' || activeTab === 'archived') && uniqueMonthYears.length > 0 && (
                             <div className="sm:w-52">
                                 <FancySelect
                                     value={monthYearFilter}
@@ -1205,7 +1232,7 @@ const ClientsList = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 lg:justify-end">
-                        {activeTab === 'active' && (
+                        {!mobile && activeTab === 'active' && (
                             <button
                                 type="button"
                                 aria-pressed={stalledOnly}
@@ -1217,7 +1244,7 @@ const ClientsList = () => {
                                 Parados {STALLED_CLIENT_DAYS}+ dias
                             </button>
                         )}
-                        {activeTab === 'active' && (
+                        {!mobile && activeTab === 'active' && (
                             <button
                                 type="button"
                                 aria-pressed={waitingOnly}
@@ -1230,7 +1257,7 @@ const ClientsList = () => {
                                 {financialStats.waiting > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] leading-none text-amber-800">{financialStats.waiting}</span>}
                             </button>
                         )}
-                        <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-1" aria-label="Modo de visualização">
+                        {!mobile && <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-1" aria-label="Modo de visualização">
                             <button
                                 type="button"
                                 aria-pressed={viewMode === 'table'}
@@ -1249,11 +1276,13 @@ const ClientsList = () => {
                                 <LayoutGrid size={16} />
                                 <span className="hidden sm:inline">Kanban</span>
                             </button>
-                        </div>
+                        </div>}
 
                         <div className="relative" ref={filterDropdownRef}>
                             <button
                                 type="button"
+                                aria-expanded={isFilterDropdownOpen}
+                                aria-label={activeFiltersCount ? `Filtros (${activeFiltersCount} ativos)` : 'Filtros'}
                                 onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
                                 className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${activeFiltersCount > 0 ? 'border-primary/40 bg-primary/5 text-primary' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
                             >
@@ -1268,7 +1297,7 @@ const ClientsList = () => {
                         <button
                             type="button"
                             onClick={() => handleOpenModal()}
-                            className="flex basis-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:basis-auto"
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:flex-none"
                         >
                             <PlusCircle size={18} />
                             <span>Novo cliente</span>
@@ -1331,8 +1360,11 @@ const ClientsList = () => {
             )}
 
             {viewMode === 'table' && (
-                <section className="app-card mb-5 overflow-hidden rounded-2xl border bg-white" aria-label="Resumo dos clientes">
-                    <div className="flex items-center justify-between gap-3 border-b border-[#E7ECEF] px-4 py-3.5">
+                <section className="app-card mb-3 overflow-hidden rounded-2xl border bg-white sm:mb-5" aria-label="Resumo dos clientes">
+                    {mobile ? <button type="button" className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left" aria-expanded={showMobileStats} aria-controls="client-summary-content" onClick={() => setShowMobileStats(value => !value)}>
+                        <span className="text-sm font-semibold text-gray-900">Resumo <span className="ml-1 font-normal text-gray-500">· {financialStats.total} {financialStats.total === 1 ? 'cliente' : 'clientes'}</span></span>
+                        <ChevronDown size={17} className={`text-primary transition-transform ${showMobileStats ? 'rotate-180' : ''}`} />
+                    </button> : <div className="flex items-center justify-between gap-3 border-b border-[#E7ECEF] px-4 py-3.5">
                         <div>
                             <h2 className="text-sm font-semibold text-gray-900">Resumo da seleção</h2>
                             <p className="text-xs text-gray-500">Os valores acompanham a busca e os filtros aplicados.</p>
@@ -1348,9 +1380,10 @@ const ClientsList = () => {
                                 <ChevronDown size={14} className={`transition-transform ${showAllStats ? 'rotate-180' : ''}`} />
                             </button>
                         )}
-                    </div>
+                    </div>}
 
-                    <div className="grid grid-cols-3 gap-px bg-[#E7ECEF]">
+                    {(!mobile || showMobileStats) && <div id="client-summary-content">
+                    <div className="grid grid-cols-2 gap-px bg-[#E7ECEF] sm:grid-cols-3">
                         <div className="min-w-0 bg-white p-3 sm:p-4">
                             <div className="mb-2 flex items-center gap-2 text-gray-500">
                                 <User size={16} />
@@ -1380,7 +1413,7 @@ const ClientsList = () => {
                         )}
 
                         {activeTab === 'active' ? (
-                            <div className="min-w-0 bg-white p-3 sm:p-4">
+                            <div className="col-span-2 min-w-0 bg-white p-3 sm:col-span-1 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-amber-700">
                                     <AlertTriangle size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aguardando ação</span>
@@ -1389,7 +1422,7 @@ const ClientsList = () => {
                                 <p className="mt-1 hidden text-xs text-amber-700 sm:block">Inconformes ou aguardando reserva</p>
                             </div>
                         ) : !isAssistant ? (
-                            <div className="min-w-0 bg-white p-3 sm:p-4">
+                            <div className="col-span-2 min-w-0 bg-white p-3 sm:col-span-1 sm:p-4">
                                 <div className="mb-2 flex items-center gap-2 text-purple-700">
                                     <CheckCircle2 size={16} />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Remuneração</span>
@@ -1401,6 +1434,7 @@ const ClientsList = () => {
                         ) : null}
                     </div>
 
+                    {mobile && activeTab === 'active' && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-gray-100 text-xs font-semibold text-primary" aria-expanded={showAllStats} onClick={() => setShowAllStats(value => !value)}>{showAllStats ? 'Ocultar indicadores' : 'Ver mais indicadores'}<ChevronDown size={14} className={showAllStats ? 'rotate-180' : ''} /></button>}
                     {activeTab === 'active' && showAllStats && (
                         <div className="grid grid-cols-2 gap-3 border-t border-[#E7ECEF] bg-slate-50/60 p-4 lg:grid-cols-5">
                             {[
@@ -1425,6 +1459,7 @@ const ClientsList = () => {
                             )}
                         </div>
                     )}
+                    </div>}
                 </section>
             )}
 
@@ -1602,7 +1637,26 @@ const ClientsList = () => {
                                     </div>
 
                                     {/* Corpo do Card */}
-                                    <div className="p-3 space-y-2.5">
+                                    <div className="flex flex-col gap-2.5 p-3">
+                                        {activeTab === 'active' ? (
+                                            <div className="border-b border-gray-100 pb-2">
+                                                <p className="text-xs text-gray-500 mb-2">Status atual</p>
+                                                <StatusSelect
+                                                    currentStatus={client.status}
+                                                    clientId={client.id}
+                                                    onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)}
+                                                    disabled={client.emEspera || !!updatingStatusMap[client.id]}
+                                                    loading={!!updatingStatusMap[client.id]}
+                                                />
+                                                <ClientStatusAge client={client} />
+                                                {client.emEspera && <p className="mt-2 text-xs font-medium text-amber-700">{getWaitResumeLabel(client.dataRetomada)}</p>}
+                                            </div>
+                                        ) : (
+                                            <div className="border-t border-gray-100 pt-2">
+                                                <StatusBadge status={client.status} />
+                                            </div>
+                                        )}
+
                                         {/* Imóvel */}
                                         <div className="flex items-start gap-2.5">
                                             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
@@ -1637,25 +1691,6 @@ const ClientsList = () => {
                                                     <p className="text-sm font-medium text-gray-700 truncate">{[client.agencia, client.cidade].filter(Boolean).join(' · ')}</p>
                                                     {client.matricula && <p className="mt-0.5 text-xs text-gray-500">Matrícula {client.matricula}</p>}
                                                 </div>
-                                            </div>
-                                        )}
-
-                                        {activeTab === 'active' ? (
-                                            <div className="pt-2 border-t border-gray-100">
-                                                <p className="text-xs text-gray-500 mb-2">Status atual</p>
-                                                <StatusSelect 
-                                                    currentStatus={client.status} 
-                                                    clientId={client.id} 
-                                                    onChange={(newStatus) => handleQuickStatusUpdate(client.id, newStatus)} 
-                                                    disabled={client.emEspera || !!updatingStatusMap[client.id]}
-                                                    loading={!!updatingStatusMap[client.id]} 
-                                                />
-                                                <ClientStatusAge client={client} />
-                                                {client.emEspera && <p className="mt-2 text-xs font-medium text-amber-700">{getWaitResumeLabel(client.dataRetomada)}</p>}
-                                            </div>
-                                        ) : (
-                                            <div className="border-t border-gray-100 pt-2">
-                                                <StatusBadge status={client.status} />
                                             </div>
                                         )}
 

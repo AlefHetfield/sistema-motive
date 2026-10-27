@@ -2,11 +2,12 @@ import useMobileLayout from '../hooks/useMobileLayout';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import TaskPropertyCard from '../components/TaskPropertyCard';
-import { Check, Circle, Star, Sun, ListTodo, CalendarDays, Clock, Plus, Search, Trash2, Users, UserRound, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, MoreHorizontal, StickyNote, LockKeyhole, PanelLeftClose, PanelLeftOpen, LayoutList, LayoutGrid, LoaderCircle, AlertCircle } from 'lucide-react';
+import { Check, Circle, Star, Sun, ListTodo, CalendarDays, Clock, Plus, Trash2, Users, UserRound, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, MoreHorizontal, StickyNote, LockKeyhole, PanelLeftClose, PanelLeftOpen, LayoutList, LayoutGrid, LoaderCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { taskApi } from '../services/api';
 import TaskEditor from '../components/TaskEditor';
 import FancySelect from '../components/FancySelect';
+import SearchInput from '../components/SearchInput';
 import { taskToday, taskDateLabel } from '../utils/taskDates';
 
 const views = [['all','Tarefas',ListTodo],['day','Meu dia',Sun],['important','Importantes',Star],['overdue','Atrasadas',Clock],['planned','Planejadas',CalendarDays],['waiting','Aguardando retorno',UserRound],['social','Redes Sociais',Users],['delegated','Delegadas por mim',Users],['done','Concluídas',Check]];
@@ -74,6 +75,12 @@ export default function Tasks() {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    const term = query.trim();
+    if (term === search) return undefined;
+    const timer = setTimeout(() => { setSearch(term); setPage(1); }, 250);
+    return () => clearTimeout(timer);
+  }, [query, search]);
   const [revision, setRevision] = useState(0);
   const [optionsRevision, setOptionsRevision] = useState(0);
   const pendingChanges = useRef(new Map());
@@ -144,6 +151,7 @@ export default function Tasks() {
     // A refresh must not replace a pending change with an older server snapshot.
     // The last mutation triggers one refresh for the whole batch.
     if (pendingChanges.current.size) return;
+    setLoading(true);
     const controller = new AbortController();
     const startedAtRevision = mutationRevision.current;
     const filters = new URLSearchParams({ view, ...(view === 'social' ? { status: socialDone ? 'done' : 'pending', order: socialOrder } : {}), ...(view === 'delegated' ? { status: delegatedStatus } : {}), page: String(page), ...(listId ? { listId } : {}), ...(assigneeId ? { assigneeId } : {}), ...(clientId ? { clientId } : {}), ...(search ? { q:search } : {}) });
@@ -306,7 +314,7 @@ export default function Tasks() {
     finally { setBusy(false); reload(); }
   };
   return <div className="task-page mx-auto max-w-[1500px] p-3 sm:p-4 md:p-7">
-    <div className="mb-3 flex items-center justify-between gap-3 lg:mb-4 lg:flex-wrap lg:gap-4"><div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-widest text-primary lg:block">Organize sua rotina</p><h2 className="truncate text-lg font-bold text-slate-900 lg:mt-1 lg:text-2xl">{mobile ? (activeList?.name || views.find(item => item[0] === view)?.[1]) : 'Cada tarefa, um próximo passo.'}</h2><p className="mt-1 hidden text-sm text-gray-500 lg:block">{options?.canManageAll ? 'Acompanhe suas prioridades e as tarefas da equipe.' : 'Seu espaço para acompanhar as tarefas atribuídas a você.'}</p></div><button type="button" disabled={!options} onClick={()=>setEditor({new:true})} className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40 lg:px-4 lg:py-2.5"><Plus size={18}/> {view === 'social' ? 'Nova publicação' : 'Nova tarefa'}</button></div>
+    <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0">{mobile ? <h2 className="truncate text-base font-semibold text-slate-900">{activeList?.name || views.find(item => item[0] === view)?.[1]}</h2> : <p className="text-sm text-slate-500">{options?.canManageAll ? 'Tarefas da equipe' : 'Minhas tarefas'}</p>}</div><button type="button" disabled={!options} onClick={()=>setEditor({new:true})} className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-40 lg:px-4"><Plus size={18}/> {view === 'social' ? 'Nova publicação' : 'Nova tarefa'}</button></div>
     {mobile && <button type="button" aria-expanded={showTaskLists} aria-controls="task-lists" onClick={() => setShowTaskLists(value => !value)} className="mb-3 flex min-h-10 w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-left text-sm font-semibold text-primary"><span>Lista e visualização</span><span>{showTaskLists ? 'Fechar' : 'Trocar'}</span></button>}
     <div className={`grid gap-5 ${compactSidebar ? 'lg:grid-cols-[72px_minmax(0,1fr)]' : 'lg:grid-cols-[230px_minmax(0,1fr)]'}`}>
       <aside id="task-lists" hidden={mobile && !showTaskLists} className={`self-start rounded-2xl border border-gray-200 bg-white transition-all ${compactSidebar ? 'p-2' : 'p-3'}`}>
@@ -319,7 +327,10 @@ export default function Tasks() {
         {view === 'social' && <div className="space-y-3 rounded-xl bg-primary/5 p-3"><p className="text-sm text-gray-600">Organize a fila de publicações e as datas previstas.</p><div className="flex flex-wrap gap-3"><FancySelect className="min-w-48" size="compact" ariaLabel="Ordenar publicações" value={socialOrder} onChange={value => { setSocialOrder(value); setPage(1); setLoading(true); }} options={[{ value: 'date', label: 'Data prevista' }, { value: 'manual', label: 'Ordem da fila' }]} /><button type="button" aria-expanded={socialDone} onClick={() => { setSocialDone(value => !value); setPage(1); setLoading(true); }} className="text-sm font-semibold text-primary">{socialDone ? 'Voltar às pendentes' : 'Mostrar concluídas'}</button></div>{socialOrder === 'manual' && options?.canManageAll && !socialDone && <p className="text-xs text-gray-500">Use as setas para ordenar a fila da equipe. Remova os filtros para habilitar a ordenação.</p>}</div>}
         {view === 'delegated' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary/5 p-3"><p className="text-sm text-gray-600">Demandas que você atribuiu a outras pessoas.</p><FancySelect className="min-w-44" size="compact" ariaLabel="Situação das tarefas delegadas" value={delegatedStatus} onChange={value => { setDelegatedStatus(value); setPage(1); setLoading(true); }} options={[{ value: 'pending', label: 'Pendentes' }, { value: 'done', label: 'Concluídas' }, { value: 'all', label: 'Todas' }]} /></div>}
         {clientId&&<div className="flex items-center justify-between rounded-xl bg-blue-50 p-3 text-sm text-blue-800"><span>Tarefas do cliente {initialClient?.nome||`#${clientId}`}</span><button type="button" onClick={()=>{setParams({});setInitialClient(null);setPage(1);}}>Remover filtro</button></div>}
-        <form onSubmit={e=>{e.preventDefault();setSearch(query);setPage(1);setLoading(true);reload();}} className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"><div className="flex min-w-0 flex-1"><input aria-label="Pesquisar tarefas" placeholder="Pesquisar por título ou anotação" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" aria-label="Pesquisar" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition hover:bg-primary/10 hover:text-primary"><Search size={18}/></button></div>{options?.canManageAll&&view!=='day'&&<FancySelect className={mobile ? 'w-full' : 'min-w-52 border-l border-slate-100 pl-2'} size="compact" ariaLabel="Filtrar responsável" value={String(assigneeId)} onChange={value=>{setAssigneeId(value);setPage(1);setLoading(true);}} placeholder="Toda a equipe" options={[{ value: '', label: 'Toda a equipe' }, ...options.users.map(user=>({ value:String(user.id), label:`${user.id===options.userId?'Minhas tarefas':user.nome}${!user.isActive?' (inativo)':''}` }))]} />}</form>
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <SearchInput className="flex-1" label="Pesquisar tarefas" placeholder="Pesquisar por título ou anotação" value={query} onChange={setQuery} onClear={() => { setQuery(''); setSearch(''); setPage(1); }} onSubmit={() => { setSearch(query.trim()); setPage(1); }} />
+          {options?.canManageAll && view !== 'day' && <FancySelect className={mobile ? 'w-full' : 'min-w-52 border-l border-slate-100 pl-2'} size="compact" ariaLabel="Filtrar responsável" value={String(assigneeId)} onChange={value => { setAssigneeId(value); setPage(1); setLoading(true); }} placeholder="Toda a equipe" options={[{ value: '', label: 'Toda a equipe' }, ...options.users.map(user => ({ value: String(user.id), label: `${user.id === options.userId ? 'Minhas tarefas' : user.nome}${!user.isActive ? ' (inativo)' : ''}` }))]} />}
+        </div>
         {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={() => { if (!options) setOptionsRevision(value => value + 1); reload(); }} className="underline">Tentar novamente</button></p>}
         {loading?<p role="status" className="p-8 text-center text-sm text-gray-500">Carregando tarefas…</p>:<div className={taskLayout==='grid'?'flex flex-col gap-2 xl:grid xl:grid-cols-2 xl:items-start xl:gap-3':''}>{taskColumns.map((column,columnIndex)=><div key={columnIndex} className={taskLayout==='grid'?'contents xl:block xl:space-y-3':'space-y-2'}>{column.map(({task:originalTask,index:taskIndex}) => { const patch = optimisticChanges.get(originalTask.id); const task = { ...originalTask, ...patch }; const taskBusy = busy || Boolean(patch); const visual = taskVisual(task); const savingSteps = Array.isArray(patch?.steps); const stepFeedback = savingSteps ? 'saving' : stepSaveFeedback.get(task.id); return <article key={task.id} style={taskLayout === 'grid' ? { order: taskIndex } : undefined} aria-busy={Boolean(patch)} className="group relative grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:shadow-md sm:p-3.5">
           <button type="button" disabled={taskBusy} aria-label={task.status === 'DONE' ? `Reabrir ${task.title}` : `Concluir ${task.title}`} onClick={() => changeTask(task, { status: task.status === 'DONE' ? 'TODO' : 'DONE' }, task.status !== 'DONE')} className={`mt-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${task.status === 'DONE' ? 'text-emerald-600' : 'text-slate-500 hover:text-primary'}`}>

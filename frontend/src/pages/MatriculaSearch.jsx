@@ -90,17 +90,15 @@ export default function MatriculaSearch() {
   const movePage = next => runSearch(submittedSearch.filters, next);
   const fieldProps = { filters, onChange: change };
 
-  return <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
-    <section className="relative overflow-hidden rounded-3xl bg-secondary p-6 text-white md:p-8">
-      <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full border-[35px] border-white/5" />
-      <div className="relative max-w-3xl">
-        <div className="mb-4 flex items-center gap-2 text-sm text-white/75"><FileSearch size={18} /> Consulta de imóveis urbanos</div>
-        <h2 className="text-2xl font-bold md:text-3xl">Do endereço à matrícula.</h2>
-        <p className="mt-3 text-sm leading-6 text-white/75">Comece pelo nome da rua. Acrescente número, bairro ou lote e quadra para encontrar o imóvel certo.</p>
-        {metadata && <div className="mt-5 flex flex-wrap gap-3 text-xs">
-          <span className="rounded-full bg-white/10 px-3 py-2">{formatCount(metadata.total)} registros na base</span>
-          <span className="rounded-full bg-white/10 px-3 py-2">Busca sem acentos e sem diferenciar maiúsculas</span>
-        </div>}
+  return <div className="mx-auto max-w-7xl space-y-4 p-3 sm:p-6">
+    <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <FileSearch size={20} className="mt-0.5 shrink-0 text-primary" />
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-gray-900">Consulta por endereço</h2>
+          <p className="mt-1 text-sm leading-5 text-gray-500">Comece pela rua. Refine com número, bairro, lote ou quadra.</p>
+          {metadata && <p className="mt-2 text-xs leading-5 text-gray-500">{formatCount(metadata.total)} registros · A busca ignora acentos e maiúsculas.</p>}
+        </div>
       </div>
     </section>
 

@@ -77,18 +77,18 @@ const MetricCard = props => {
     return (
     <Link
         to={props.to}
-        className="group min-w-0 bg-white p-4 transition-colors hover:bg-slate-50/80 sm:p-5"
+        className="group min-w-0 bg-white p-3 transition-colors hover:bg-slate-50/80 sm:p-5"
     >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
             <div>
-                <p className="text-sm font-medium text-gray-500">{props.label}</p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">{props.value}</p>
+                <p className="text-xs font-medium text-gray-500 sm:text-sm">{props.label}</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">{props.value}</p>
             </div>
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${props.tone}`}>
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${props.tone}`}>
                 <Icon size={21} />
             </div>
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-3 hidden items-center justify-between gap-2 sm:flex">
             <span className="truncate text-xs text-gray-500">{props.helper}</span>
             <ChevronRight size={15} className="shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-primary" />
         </div>
@@ -222,23 +222,23 @@ const Dashboard = () => {
     return (
         <div className="min-h-full p-4 sm:px-7 sm:pb-7 sm:pt-3">
             <div className="mx-auto max-w-[1600px] space-y-5">
-                <HealthCheck />
-
-                <section className="flex flex-col gap-5 py-2 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="min-w-0">
-                        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary"><span className="h-2 w-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />Centro de trabalho <span className="font-medium capitalize tracking-normal text-gray-400">· {formatLongDate(new Date())}</span></div>
-                        <h1 className="max-w-3xl text-2xl font-bold tracking-[-0.035em] text-secondary sm:text-[32px] sm:leading-tight">Olá, {firstName}. Aqui está o que pede atenção.</h1>
-                        <p className="mt-2 max-w-2xl text-sm text-gray-500">Acompanhe clientes, pendências e imóveis sem sair da sua área de trabalho.</p>
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <h2 className="text-xl font-bold tracking-tight text-gray-900">Olá, {firstName}.</h2>
+                            <p className="mt-1 text-xs capitalize text-gray-500">{formatLongDate(new Date())}</p>
+                        </div>
+                        <HealthCheck />
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Atalhos de trabalho">
                         {QUICK_ACTIONS.map(action => {
                             const QuickIcon = action.icon;
                             return (
                                 <Link key={action.label} to={action.to} className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[#DDE4E8] bg-white px-3 py-2.5 text-secondary shadow-[0_1px_2px_rgba(23,47,67,0.035)] transition hover:border-primary/30 hover:bg-slate-50">
                                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${action.tone}`}><QuickIcon size={16} /></span>
                                     <span className="min-w-0">
-                                        <span className="block truncate text-xs font-bold">{action.label}</span>
-                                        <span className="hidden truncate text-[10px] text-gray-400 sm:block">{action.description}</span>
+                                        <span className="block text-sm font-semibold leading-5">{action.label}</span>
+                                        <span className="mt-0.5 hidden text-xs leading-5 text-gray-500 lg:block">{action.description}</span>
                                     </span>
                                 </Link>
                             );
@@ -253,7 +253,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                <section className="app-card grid grid-cols-1 gap-px overflow-hidden rounded-2xl border bg-[#E7ECEF] sm:grid-cols-2 xl:grid-cols-4">
+                <section className="app-card grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-[#E7ECEF] xl:grid-cols-4">
                     <MetricCard label="Clientes ativos" value={dashboard.active.length} helper={`${dashboard.operational.length} em andamento`} icon={Users} tone="bg-blue-50 text-primary" to="/clients" />
                     <MetricCard label="Aguardando ação" value={dashboard.waitingAction.length} helper="Inconformes ou aguardando reserva" icon={AlertTriangle} tone="bg-red-50 text-red-600" to="/clients" />
                     <MetricCard label="Parados há 7+ dias" value={dashboard.stalled.length} helper="Clientes sem atualização recente" icon={Clock3} tone="bg-amber-50 text-amber-600" to="/clients" />

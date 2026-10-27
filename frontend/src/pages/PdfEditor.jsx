@@ -321,15 +321,11 @@ const PdfEditor = () => {
 
     return (
         <div id="pdf-editor-view" className="fade-in p-3 sm:p-6">
-            {/* Header */}
-            <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Editor de PDF</h2>
-                <p className="text-gray-500">Combine PDFs e imagens JPG, reorganize e gerencie páginas com visualização em tempo real</p>
-            </div>
+            <p className="mb-3 text-sm leading-5 text-gray-500">Adicione PDFs ou imagens JPG e arraste as páginas para reorganizar.</p>
 
             {/* Barra de ações */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 animate-fade-in">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 mb-4 animate-fade-in">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
                     <input
                         type="file"
                         multiple

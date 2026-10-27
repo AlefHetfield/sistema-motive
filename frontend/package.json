@@ -11,6 +11,7 @@
     "test:simulator": "node scripts/verify-housing-simulator.mjs",
     "test:simulator:pdf": "node scripts/verify-housing-simulation-pdf.mjs",
     "test:theme": "node scripts/verify-theme.mjs && node scripts/verify-theme-exceptions.mjs",
+    "test:forms-navigation": "node scripts/verify-contract-navigation.mjs && node scripts/verify-simulator-navigation.mjs",
     "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs scripts/verify-note-queue.mjs",
     "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "preview": "vite preview"

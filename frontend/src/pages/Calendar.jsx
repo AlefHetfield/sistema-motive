@@ -93,19 +93,28 @@ const upcomingDateLabel = key => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} · ${calendarDate}`;
 };
 
-const eventTone = event => {
+const eventCategoryIndex = event => {
   const normalized = String(event.title || '').toLocaleLowerCase('pt-BR');
+  if (normalized.includes('visita')) return 0;
+  if (normalized.includes('engenharia')) return 2;
+  if (normalized.includes('capta')) return 1;
+  if (normalized.includes('folga')) return 3;
+  return 4;
+};
+
+const eventTone = event => {
+  const category = eventCategoryIndex(event);
   const past = isPastEvent(event);
-  if (normalized.includes('visita')) return past
+  if (category === 0) return past
     ? 'border-sky-200 bg-sky-50 text-sky-800 dark:!border-sky-900 dark:!bg-sky-950/50 dark:!text-sky-200'
     : 'border-[#C4D6E3] bg-[#DCE8F1] text-[#24465E] dark:!border-sky-800 dark:!bg-sky-950/80 dark:!text-sky-100';
-  if (normalized.includes('engenharia')) return past
+  if (category === 2) return past
     ? 'border-amber-200 bg-amber-50 text-amber-800 dark:!border-amber-900 dark:!bg-amber-950/50 dark:!text-amber-200'
     : 'border-[#E2D2B2] bg-[#F0E5CE] text-[#654D23] dark:!border-amber-800 dark:!bg-amber-950/80 dark:!text-amber-100';
-  if (normalized.includes('capta')) return past
+  if (category === 1) return past
     ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:!border-emerald-900 dark:!bg-emerald-950/50 dark:!text-emerald-200'
     : 'border-[#C5D8CA] bg-[#DEEADF] text-[#315740] dark:!border-emerald-800 dark:!bg-emerald-950/80 dark:!text-emerald-100';
-  if (normalized.includes('folga')) return past
+  if (category === 3) return past
     ? 'border-violet-200 bg-violet-50 text-violet-800 dark:!border-violet-900 dark:!bg-violet-950/50 dark:!text-violet-200'
     : 'border-[#D5CCE5] bg-[#E9E3F2] text-[#53416F] dark:!border-violet-800 dark:!bg-violet-950/80 dark:!text-violet-100';
   return past
@@ -445,9 +454,10 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
 
 function AgendaEvent({ event, onClick, compact = false }) {
   const fullLabel = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70 dark:!opacity-100 dark:!saturate-100' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:shadow-md'}`}>
-    <span className={`block truncate font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{!isAllDay(event) && <span className="mr-1 font-medium opacity-70 dark:opacity-90">{eventTime(event)}</span>}{event.title}</span>
-    {!compact && event.location && <span className="mt-1 flex items-center gap-1 truncate text-xs opacity-75 dark:opacity-90"><MapPin className="h-3 w-3 shrink-0" />{event.location}</span>}
+  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border text-left transition hover:brightness-95 ${compact ? 'px-2 py-1.5' : 'min-h-11 px-3 py-2.5 lg:px-2 lg:py-1.5'} ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70 dark:!opacity-100 dark:!saturate-100' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:shadow-md'}`}>
+    {!compact && !isAllDay(event) && <span className="mb-1 block text-xs font-semibold opacity-90 lg:hidden">{eventTime(event)}</span>}
+    <span className={`font-bold ${compact ? 'block truncate text-[11px]' : 'line-clamp-2 break-words text-sm leading-5 lg:block lg:truncate'}`}>{!isAllDay(event) && <span className={`${compact ? '' : 'hidden lg:inline'} mr-1 font-medium opacity-70 dark:opacity-90`}>{eventTime(event)}</span>}{event.title}</span>
+    {!compact && event.location && <span className="mt-1 flex items-start gap-1 text-xs leading-5 opacity-90"><MapPin className="mt-1 h-3 w-3 shrink-0" /><span className="line-clamp-2 lg:block lg:truncate">{event.location}</span></span>}
   </button>;
 }
 
@@ -545,10 +555,10 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
 
   return <div className="min-w-0 bg-slate-50/50">
     <div className="grid grid-cols-3 gap-x-3 gap-y-2 border-b border-slate-100 bg-white px-3 py-2.5">
-      {EVENT_LEGEND.map(item => <span key={item.label} className="inline-flex min-w-0 items-center gap-1.5 text-[10px] font-bold text-slate-500"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} /><span className="truncate">{item.label}</span></span>)}
+      {EVENT_LEGEND.map(item => <span key={item.label} className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-500"><span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} /><span>{item.label}</span></span>)}
     </div>
     <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-      {WEEKDAYS.map((day, index) => <div key={`${day}-${index}`} className={`py-2 text-center text-[9px] font-extrabold uppercase tracking-wide ${index === 0 || index === 6 ? 'text-slate-400' : 'text-slate-500'}`}>{day.slice(0, 1)}</div>)}
+      {WEEKDAYS.map((day, index) => <div key={`${day}-${index}`} className={`py-2 text-center text-xs font-semibold ${index === 0 || index === 6 ? 'text-slate-400' : 'text-slate-500'}`}>{day.slice(0, 1)}</div>)}
     </div>
     <div className="grid grid-cols-7 bg-slate-200/70 gap-px">
       {days.map(day => {
@@ -557,19 +567,18 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
         const currentMonth = day.getMonth() === cursor.getMonth();
         const today = key === todayKey;
         const selected = key === selectedKey;
-        return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 overflow-hidden cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50 dark:!bg-[var(--color-background)]'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35 dark:!bg-sky-950/60' : ''}`}>
-          <button type="button" onClick={event => { event.stopPropagation(); setSelectedKey(key); }} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ${today ? 'bg-primary text-white shadow-sm' : currentMonth ? 'text-slate-700' : 'text-slate-300'}`}>{day.getDate()}</button>
-          <div className="space-y-0.5">
-            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] dark:!opacity-100 dark:!saturate-100' : 'shadow-sm'}`}>{event.title}</button>)}
-            {dayEvents.length > 2 && <span className="block px-1 text-[8px] font-extrabold text-primary">+{dayEvents.length - 2}</span>}
-          </div>
-        </div>;
+        const categories = [...new Set(dayEvents.map(eventCategoryIndex))].sort();
+        return <button key={key} type="button" onClick={() => setSelectedKey(key)} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}: ${dayEvents.length} compromisso(s)`} aria-pressed={selected} aria-current={today ? 'date' : undefined} aria-controls="calendar-day-events" className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 overflow-hidden p-1 transition focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${currentMonth ? 'bg-white' : 'bg-slate-50 dark:!bg-[var(--color-background)]'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/50 dark:!bg-sky-950/60' : ''}`}>
+          <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${today ? 'bg-primary text-white' : currentMonth ? 'text-slate-700' : 'text-slate-400'}`}>{day.getDate()}</span>
+          <span aria-hidden="true" className="flex h-2 items-center justify-center gap-0.5">{categories.map(index => <span key={index} className={`h-1.5 w-1.5 rounded-full ${EVENT_LEGEND[index].color}`} />)}</span>
+          <span aria-hidden="true" className="h-4 text-xs font-semibold leading-4 text-slate-500">{dayEvents.length || ''}</span>
+        </button>;
       })}
     </div>
-    <section className="border-t border-slate-200 bg-white p-4">
+    <section id="calendar-day-events" aria-label="Compromissos do dia selecionado" className="border-t border-slate-200 bg-white p-4">
       <header className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-primary">{selectedIsToday ? 'Hoje' : 'Dia selecionado'}</p><h4 className="mt-0.5 truncate text-base font-bold capitalize text-slate-900">{selectedDay.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h4><p className="text-xs text-slate-400">{selectedEvents.length ? `${selectedEvents.length} compromisso(s)` : 'Agenda livre'}</p></div>
-        <button type="button" onClick={() => onCreate(selectedDay)} className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-sm"><Plus className="h-4 w-4" />Agendar</button>
+        <button type="button" onClick={() => onCreate(selectedDay)} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-semibold text-white shadow-sm"><Plus className="h-4 w-4" />Agendar</button>
       </header>
       <div className="space-y-2">{selectedEvents.length ? selectedEvents.map(event => <AgendaEvent key={event.id} event={event} onClick={() => onEdit(event)} />) : <button type="button" onClick={() => onCreate(selectedDay)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-5 text-sm font-semibold text-slate-400"><CalendarDays className="h-4 w-4" />Adicionar compromisso neste dia</button>}</div>
     </section>
@@ -703,10 +712,10 @@ export default function CalendarPage() {
     : `${MONTHS[cursor.getMonth()]} de ${cursor.getFullYear()}`;
 
   return <div className="mx-auto flex min-h-full max-w-[1600px] flex-col p-3 sm:p-4 lg:p-6">
-    <section className="app-card mb-4 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between lg:p-5">
-      <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Agenda compartilhada</p><h2 className="mt-1 text-2xl font-bold text-slate-900">Visitas e compromissos da equipe</h2><p className="mt-1 text-sm text-slate-500">Tudo o que for alterado aqui também será atualizado no Google Agenda.</p></div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs leading-5 text-slate-500 sm:text-sm">Agenda da equipe no Google Agenda</p>
       <div className="flex gap-2"><Button variant="secondary" size="icon" aria-label="Atualizar agenda" onClick={reload}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></Button><Button onClick={() => createAt(new Date())}><Plus className="h-4 w-4" />Agendar visita</Button></div>
-    </section>
+    </div>
 
     {!configured && <div role="alert" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900"><p className="font-bold">Falta concluir a conexão com o Google Agenda</p><p className="mt-1 text-sm">Ative a Calendar API, compartilhe a agenda com a conta de serviço e configure <code className="font-bold">GOOGLE_CALENDAR_ID</code> no servidor.</p></div>}
     {error && configured && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><span>{error}</span><button type="button" className="font-bold underline" onClick={reload}>Tentar novamente</button></div>}

@@ -5,6 +5,9 @@
 .note-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid #dde4e8; border-radius:11px; padding:8px 12px; background:white; font-size:13px; font-weight:500; color:#315b78; transition:background .15s,border-color .15s; }
 .note-button:hover { background:#f0f5f7; border-color:#bacbd7; }
 .note-button:disabled { opacity:.5; cursor:not-allowed; }
+@media (min-width:1024px) {
+ .notes-workspace .notes-navigation-toggle { display:none; }
+}
 .note-button-primary { background:#315b78; border-color:#315b78; color:white; }
 .note-button-primary:hover { background:#274d68; color:white; }
 .note-icon { display:inline-flex; align-items:center; justify-content:center; width:40px; min-width:40px; height:40px; border-radius:10px; color:#667583; }

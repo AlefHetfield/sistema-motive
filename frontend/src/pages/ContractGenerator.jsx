@@ -383,17 +383,28 @@ export default function ContractGenerator() {
       <div className="mx-auto max-w-[1800px]">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <p role="status" className="text-xs text-slate-500">{draftStatus} · contém dados pessoais</p>
-          <button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => {
+          <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
+          <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium leading-5 text-emerald-700"><ShieldCheck className="h-4 w-4 shrink-0" /><span>Modelo protegido e versionado</span></span>
+          <Button variant="secondary" className="whitespace-nowrap" onClick={() => {
             if (!window.confirm('Iniciar um novo contrato? O rascunho atual neste navegador será substituído. Contratos já gerados serão mantidos.')) return;
             setData(initialData()); setCurrentStep(0); setFurthestStep(0); setSelectedClient(null); setDraftClientId(0); setPropertyId(''); setErrors({}); prefillClientRef.current = 0;
-          }}>Novo contrato</button>
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-700"><ShieldCheck className="h-4 w-4" />Modelo protegido e versionado</div>
+          }}><Plus className="h-4 w-4" />Novo contrato</Button>
+          </div>
         </div>
 
-        <div className={`mb-5 overflow-x-auto p-2 ${surfaceClass}`}>
-          <div className="flex min-w-max items-center">
-            {steps.map((step, index) => { const Icon = step.icon; const active = currentStep === index; const done = currentStep > index; return <button key={step.label} type="button" onClick={() => { if (index <= furthestStep) { setCurrentStep(index); setErrors({}); } }} className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition ${active ? 'bg-primary text-white shadow-sm' : done ? 'text-emerald-700 hover:bg-emerald-50' : 'cursor-default text-gray-400'}`}><span className={`flex h-6 w-6 items-center justify-center rounded-full ${active ? 'bg-white/20' : done ? 'bg-emerald-100' : 'bg-gray-100'}`}>{done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}</span>{index + 1}. {step.label}</button>; })}
-          </div>
+        <div className={`mb-5 p-2 ${surfaceClass}`}>
+          <nav aria-label="Etapas do contrato" className="overflow-x-auto">
+            <div className="flex min-w-max items-center">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const active = currentStep === index;
+                const done = index < furthestStep;
+                const locked = index > furthestStep;
+                return <button key={step.label} type="button" disabled={locked} aria-current={active ? 'step' : undefined} aria-describedby={locked ? 'contract-step-help' : undefined} onClick={() => { if (!locked) { setCurrentStep(index); setErrors({}); } }} className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 ${active ? 'bg-primary text-white shadow-sm' : locked ? 'cursor-not-allowed text-gray-400' : done ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-600 hover:bg-slate-50'}`}><span className={`flex h-6 w-6 items-center justify-center rounded-full ${active ? 'bg-white/20' : done ? 'bg-emerald-100' : 'bg-gray-100'}`}>{done && !active ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}</span>{index + 1}. {step.label}</button>;
+              })}
+            </div>
+          </nav>
+          {furthestStep < steps.length - 1 && <p id="contract-step-help" className="px-3.5 pb-1 pt-2 text-xs leading-5 text-slate-500">Conclua a etapa {furthestStep + 1} e use Continuar para liberar {steps[furthestStep + 1].label}.</p>}
         </div>
 
         <div className="mb-4 flex gap-1 rounded-xl bg-slate-100 p-1 xl:hidden">
