@@ -3,6 +3,8 @@ import { AlertTriangle, Copy, MapPin, MapPinned, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { googleMapsIsConfigured, loadGoogleMaps } from '../../lib/googleMaps';
 import { propertyMarkerColor } from './propertyConstants';
+import { useTheme } from '../../context/ThemeContext';
+import { propertyMapThemeOptions } from './propertyMapTheme';
 
 const markerIcons = new Map();
 const priceFormatter = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
@@ -147,6 +149,8 @@ const priceMarkerIcon = (property, selected, hovered) => {
 };
 
 export default function PropertyMap({ properties, selectedPropertyId, hoveredPropertyId, locatedAddress, onSelect, onHover, onCreateAtLocation }) {
+  const { resolvedTheme } = useTheme();
+  const mapThemeRef = useRef(resolvedTheme);
   const wrapperRef = useRef(null);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -160,6 +164,11 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
   const [mapError, setMapError] = useState('');
   const [mapReady, setMapReady] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
+
+  useEffect(() => {
+    mapThemeRef.current = resolvedTheme;
+    if (mapRef.current) mapRef.current.setOptions(propertyMapThemeOptions(resolvedTheme));
+  }, [resolvedTheme, mapReady]);
 
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
   useEffect(() => { onHoverRef.current = onHover; }, [onHover]);
@@ -180,6 +189,7 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
           fullscreenControl: true,
           gestureHandling: 'greedy',
           clickableIcons: false,
+          ...propertyMapThemeOptions(mapThemeRef.current),
           mapTypeControlOptions: { position: maps.ControlPosition.TOP_RIGHT },
         });
         mapRef.current.addListener('click', () => {
@@ -337,7 +347,7 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
 
   return (
     <div ref={wrapperRef} className="relative h-full min-h-0 lg:min-h-[520px] w-full" onContextMenu={event => event.preventDefault()}>
-      <div ref={containerRef} className="absolute inset-0" aria-label="Mapa dos imóveis" />
+      <div ref={containerRef} data-theme-surface="paper" className="absolute inset-0" aria-label="Mapa dos imóveis" />
       {contextMenu && (
         <div className="absolute z-30 w-[230px] overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-2xl" style={{ left: contextMenu.x, top: contextMenu.y }} role="menu">
           <button type="button" onClick={createAtLocation} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-gray-800 hover:bg-primary/10 hover:text-primary" role="menuitem">

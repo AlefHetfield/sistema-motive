@@ -86,3 +86,56 @@
  .notes-workspace button,.note-dialog button { min-height:44px; }
  .note-card-preview { -webkit-line-clamp:5; }
 }
+
+/* Personal note colors follow the interface without changing stored color IDs. */
+:root {
+ --note-color-default:#ffffff;
+ --note-color-yellow:#fff7da;
+ --note-color-green:#eaf5ed;
+ --note-color-blue:#eaf2fa;
+ --note-color-pink:#fceef1;
+ --note-color-purple:#f2edfa;
+}
+:root[data-theme="dark"] {
+ --note-color-default:#182530;
+ --note-color-yellow:#3b3420;
+ --note-color-green:#23392f;
+ --note-color-blue:#223647;
+ --note-color-pink:#412a35;
+ --note-color-purple:#332d45;
+}
+:root[data-theme="dark"] :is(.notes-workspace,.note-dialog) { --note-ink:#e8eef4; color:#e8eef4; }
+:root[data-theme="dark"] .note-dialog { background:#182530; border-color:#334451; box-shadow:0 24px 90px #0007; }
+:root[data-theme="dark"] .note-dialog-backdrop { background:#050b12b3; }
+:root[data-theme="dark"] .note-input { background:#14212c; border-color:#334451; color:#e8eef4; }
+:root[data-theme="dark"] .note-input:focus { border-color:#93bfdf; box-shadow:0 0 0 3px #93bfdf20; }
+:root[data-theme="dark"] .note-button { background:#1c2c39; border-color:#334451; color:#aad1eb; }
+:root[data-theme="dark"] .note-button:hover { background:#263b4b; border-color:#587084; }
+:root[data-theme="dark"] .note-button-primary { background:#315b78; border-color:#456f8c; color:#fff; }
+:root[data-theme="dark"] .note-button-primary:hover { background:#3a6a8b; color:#fff; }
+:root[data-theme="dark"] .note-icon { color:#b3c2ce; }
+:root[data-theme="dark"] .note-icon:hover,
+:root[data-theme="dark"] .note-icon[aria-pressed=true],
+:root[data-theme="dark"] .note-format-toolbar .note-icon:hover,
+:root[data-theme="dark"] .note-format-toolbar .note-icon[aria-pressed=true] { background:#93bfdf16; color:#aad1eb; }
+:root[data-theme="dark"] .note-card { border-color:#334451; box-shadow:0 2px 4px #0002; }
+:root[data-theme="dark"] .note-card:hover { border-color:#658096; box-shadow:0 8px 24px #0003; }
+:root[data-theme="dark"] .note-label { background:#c2d8e814; color:#c0ceda; }
+:root[data-theme="dark"] .note-swatch { border-color:#a9bfd157; color:#d7e5ef; }
+:root[data-theme="dark"] .note-format-options,
+:root[data-theme="dark"] .note-rich-content .note-task-completed { border-color:#a9bfd126; }
+:root[data-theme="dark"] .note-rich-content { color:#e8eef4; caret-color:#b2d8ef; }
+:root[data-theme="dark"] .note-rich-content input[type=checkbox] { accent-color:#82b3d4; }
+:root[data-theme="dark"] .note-rich-content li[data-checked=true] > div > p { color:#a6b5c1; }
+:root[data-theme="dark"] .note-rich-content .note-task-remove:hover { background:#93bfdf16; color:#aad1eb; }
+:root[data-theme="dark"] :is(.note-card,.note-dialog) [class~="text-[#526575]"] { color:#b3c2ce; }
+:root[data-theme="dark"] :is(.note-card,.note-dialog) [class~="text-[#315b78]"] { color:#aad1eb; }
+:root[data-theme="dark"] :is(.note-card,.note-dialog) :is([class~="border-[#172f430a]"],[class~="border-[#172f4312]"]) { border-color:#a9bfd126; }
+
+.note-filter-control { border:1px solid #dde4e8; background:#fff; }
+.note-create-list { background:#f5f8fa; }
+.note-create-list:hover { background:#eaf0f4; }
+:root[data-theme="dark"] :is(.note-filter-control,.note-create-list) { background:#1c2c39; border-color:#334451; color:#b9d8ed; }
+:root[data-theme="dark"] :is(.note-filter-control,.note-create-list):hover,
+:root[data-theme="dark"] .note-filter-control[aria-pressed=true] { background:#263b4b; border-color:#587084; color:#d7eafb; }
+:root[data-theme="dark"] :is(.note-filter-control,.note-create-list):focus-visible { outline:3px solid #93bfdf; outline-offset:2px; background:#263b4b; color:#d7eafb; }

@@ -34,7 +34,7 @@ export default function Button({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`inline-flex shrink-0 items-center justify-center gap-2 font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`ui-button ui-button--${variant} inline-flex shrink-0 items-center justify-center gap-2 font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}

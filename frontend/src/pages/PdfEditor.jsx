@@ -76,7 +76,7 @@ function SortablePageItem({ page, id, index, onRemove, isLoading }) {
             </div>
 
             {/* Preview da página */}
-            <div className="aspect-[1/1.414] bg-white flex items-center justify-center relative overflow-hidden">
+            <div data-theme-surface="paper" className="aspect-[1/1.414] bg-white flex items-center justify-center relative overflow-hidden">
                 {isLoading ? (
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                         <Loader2 size={32} className="animate-spin" />
@@ -485,7 +485,7 @@ const PdfEditor = () => {
                                         </div>
                                         
                                         {/* Preview */}
-                                        <div className="aspect-[1/1.414] bg-white flex items-center justify-center relative overflow-hidden">
+                                        <div data-theme-surface="paper" className="aspect-[1/1.414] bg-white flex items-center justify-center relative overflow-hidden">
                                             {activePage.fileUrl ? (
                                                 activePage.isImage ? (
                                                     <img

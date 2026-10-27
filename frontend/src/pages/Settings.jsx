@@ -7,16 +7,42 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { downloadPropertiesBackup, fetchCalendarStatus } from '../services/api';
 
 import { API_BASE_URL } from '../config/api';
+import { useTheme } from '../context/ThemeContext';
+import { Palette, Sun, Moon, Monitor } from 'lucide-react';
+import { controlClass } from '../components/ui/styles';
 
 const UserManagement = lazy(() => import('./UserManagement'));
+
+function AppearanceSettings() {
+    const { theme, resolvedTheme, setTheme } = useTheme();
+    const choices = [
+        { value: 'light', label: 'Claro', description: 'Fundos claros e contraste suave.', icon: Sun },
+        { value: 'dark', label: 'Escuro', description: 'Fundos escuros para trabalhar com menos luminosidade.', icon: Moon },
+        { value: 'system', label: 'Automático', description: 'Acompanha o tema definido no dispositivo.', icon: Monitor },
+    ];
+    return <section className="max-w-3xl">
+        <h2 className="text-lg font-semibold text-gray-900">Aparência</h2>
+        <p className="mt-1 text-sm leading-6 text-gray-500">Escolha como prefere visualizar o sistema. A preferência fica salva neste navegador.</p>
+        <div role="radiogroup" aria-label="Tema de aparência" className="mt-5 grid gap-3 sm:grid-cols-3">
+            {choices.map(choice => {
+                const Icon = choice.icon;
+                return <label key={choice.value} className={`flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition hover:border-primary/40 ${theme === choice.value ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-slate-200 bg-white'}`}>
+                    <span className="flex items-center justify-between"><Icon size={22} aria-hidden="true" className={theme === choice.value ? 'text-primary' : 'text-slate-500'} /><input type="radio" name="appearance-theme" aria-label={choice.label} value={choice.value} checked={theme === choice.value} onChange={() => setTheme(choice.value)} className="h-4 w-4 accent-primary" /></span>
+                    <span><span className="block text-sm font-semibold text-slate-800">{choice.label}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{choice.description}</span></span>
+                </label>;
+            })}
+        </div>
+        {theme === 'system' && <p role="status" className="mt-4 text-xs text-gray-500">O dispositivo está usando o tema {resolvedTheme === 'dark' ? 'escuro' : 'claro'}.</p>}
+    </section>;
+}
 
 const Settings = () => {
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const allowedTabs = user?.role === 'ADM'
-        ? ['profile', 'security', 'users', 'integrations', 'reports']
-        : ['profile', 'security'];
+        ? ['profile', 'appearance', 'security', 'users', 'integrations', 'reports']
+        : ['profile', 'appearance', 'security'];
     const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : 'profile';
     const setActiveTab = (tab) => {
         setSearchParams((current) => {
@@ -175,6 +201,7 @@ const Settings = () => {
 
     const tabs = [
         { id: 'profile', label: 'Perfil', icon: User },
+        { id: 'appearance', label: 'Aparência', icon: Palette },
         { id: 'security', label: 'Segurança', icon: Lock },
         ...(user?.role === 'ADM' ? [{ id: 'users', label: 'Usuários', icon: UserCog }] : []),
         ...(user?.role === 'ADM' ? [{ id: 'integrations', label: 'Integrações', icon: CalendarDays }] : []),
@@ -231,6 +258,7 @@ const Settings = () => {
 
             {/* Conteúdo */}
             <div className="app-card rounded-2xl border bg-white p-4 sm:p-6">
+                {activeTab === 'appearance' && <AppearanceSettings />}
                 {activeTab === 'users' && user?.role === 'ADM' && (
                     <Suspense fallback={<div className="flex items-center justify-center gap-3 py-8" role="status"><LoadingSpinner />Carregando usuários...</div>}>
                         <UserManagement embedded />
@@ -319,9 +347,7 @@ const Settings = () => {
                                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                                         required
                                         minLength={6}
-                                        className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-xl
-                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                                 transition-all duration-200 outline-none"
+                                        className={`${controlClass} pl-10 pr-12`}
                                         placeholder="Mínimo 6 caracteres"
                                     />
                                     <button
@@ -349,9 +375,7 @@ const Settings = () => {
                                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                                         required
                                         minLength={6}
-                                        className="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-xl
-                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                                 transition-all duration-200 outline-none"
+                                        className={`${controlClass} pl-10 pr-12`}
                                         placeholder="Digite novamente a senha"
                                     />
                                     <button

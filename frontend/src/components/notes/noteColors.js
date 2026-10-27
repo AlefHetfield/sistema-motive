@@ -6,4 +6,7 @@ export const noteColors = [
   { id: 'pink', label: 'Rosa', value: '#fceef1' },
   { id: 'purple', label: 'Lilás', value: '#f2edfa' },
 ];
-export const noteBackground = color => noteColors.find(item => item.id === color)?.value || '#ffffff';
+export const noteBackground = color => {
+  const selected = noteColors.find(item => item.id === color) || noteColors[0];
+  return `var(--note-color-${selected.id}, ${selected.value})`;
+};

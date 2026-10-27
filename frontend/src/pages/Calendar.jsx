@@ -97,20 +97,20 @@ const eventTone = event => {
   const normalized = String(event.title || '').toLocaleLowerCase('pt-BR');
   const past = isPastEvent(event);
   if (normalized.includes('visita')) return past
-    ? 'border-sky-200 bg-sky-50 text-sky-800'
-    : 'border-[#C4D6E3] bg-[#DCE8F1] text-[#24465E]';
+    ? 'border-sky-200 bg-sky-50 text-sky-800 dark:!border-sky-900 dark:!bg-sky-950/50 dark:!text-sky-200'
+    : 'border-[#C4D6E3] bg-[#DCE8F1] text-[#24465E] dark:!border-sky-800 dark:!bg-sky-950/80 dark:!text-sky-100';
   if (normalized.includes('engenharia')) return past
-    ? 'border-amber-200 bg-amber-50 text-amber-800'
-    : 'border-[#E2D2B2] bg-[#F0E5CE] text-[#654D23]';
+    ? 'border-amber-200 bg-amber-50 text-amber-800 dark:!border-amber-900 dark:!bg-amber-950/50 dark:!text-amber-200'
+    : 'border-[#E2D2B2] bg-[#F0E5CE] text-[#654D23] dark:!border-amber-800 dark:!bg-amber-950/80 dark:!text-amber-100';
   if (normalized.includes('capta')) return past
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-    : 'border-[#C5D8CA] bg-[#DEEADF] text-[#315740]';
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:!border-emerald-900 dark:!bg-emerald-950/50 dark:!text-emerald-200'
+    : 'border-[#C5D8CA] bg-[#DEEADF] text-[#315740] dark:!border-emerald-800 dark:!bg-emerald-950/80 dark:!text-emerald-100';
   if (normalized.includes('folga')) return past
-    ? 'border-violet-200 bg-violet-50 text-violet-800'
-    : 'border-[#D5CCE5] bg-[#E9E3F2] text-[#53416F]';
+    ? 'border-violet-200 bg-violet-50 text-violet-800 dark:!border-violet-900 dark:!bg-violet-950/50 dark:!text-violet-200'
+    : 'border-[#D5CCE5] bg-[#E9E3F2] text-[#53416F] dark:!border-violet-800 dark:!bg-violet-950/80 dark:!text-violet-100';
   return past
-    ? 'border-slate-200 bg-slate-50 text-slate-700'
-    : 'border-[#D5DCE2] bg-[#E9EDF0] text-[#455462]';
+    ? 'border-slate-200 bg-slate-50 text-slate-700 dark:!border-slate-700 dark:!bg-slate-800/60 dark:!text-slate-200'
+    : 'border-[#D5DCE2] bg-[#E9EDF0] text-[#455462] dark:!border-slate-600 dark:!bg-slate-800 dark:!text-slate-100';
 };
 
 const EVENT_LEGEND = [
@@ -445,9 +445,9 @@ function EventModal({ event, initialDate, initialTime, initialProperty, properti
 
 function AgendaEvent({ event, onClick, compact = false }) {
   const fullLabel = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:shadow-md'}`}>
-    <span className={`block truncate font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{!isAllDay(event) && <span className="mr-1 font-medium opacity-70">{eventTime(event)}</span>}{event.title}</span>
-    {!compact && event.location && <span className="mt-1 flex items-center gap-1 truncate text-xs opacity-75"><MapPin className="h-3 w-3 shrink-0" />{event.location}</span>}
+  return <button type="button" onClick={onClick} title={fullLabel} aria-label={fullLabel} className={`block w-full min-w-0 rounded-lg border px-2 py-1.5 text-left transition hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70 dark:!opacity-100 dark:!saturate-100' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:shadow-md'}`}>
+    <span className={`block truncate font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{!isAllDay(event) && <span className="mr-1 font-medium opacity-70 dark:opacity-90">{eventTime(event)}</span>}{event.title}</span>
+    {!compact && event.location && <span className="mt-1 flex items-center gap-1 truncate text-xs opacity-75 dark:opacity-90"><MapPin className="h-3 w-3 shrink-0" />{event.location}</span>}
   </button>;
 }
 
@@ -482,10 +482,10 @@ function WeekView({ days, events, todayKey, onCreate, onEdit }) {
         <div />
         {days.map(day => {
           const today = dateKey(day) === todayKey;
-          return <button key={dateKey(day)} type="button" onClick={() => onCreate(day)} className={`flex flex-col items-center gap-1 border-l border-slate-100 py-3 hover:bg-slate-50 ${today ? 'bg-sky-50/70' : ''}`}><span className="text-[10px] font-extrabold uppercase text-slate-400">{WEEKDAYS[day.getDay()]}</span><span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${today ? 'bg-primary text-white' : 'text-slate-700'}`}>{day.getDate()}</span></button>;
+          return <button key={dateKey(day)} type="button" onClick={() => onCreate(day)} className={`flex flex-col items-center gap-1 border-l border-slate-100 py-3 hover:bg-slate-50 ${today ? 'bg-sky-50/70 dark:!bg-sky-950/60' : ''}`}><span className="text-[10px] font-extrabold uppercase text-slate-400">{WEEKDAYS[day.getDay()]}</span><span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${today ? 'bg-primary text-white' : 'text-slate-700'}`}>{day.getDate()}</span></button>;
         })}
       </div>
-      <div className="grid grid-cols-[54px_repeat(7,minmax(110px,1fr))] border-b border-slate-100 bg-slate-50/60">
+      <div className="grid grid-cols-[54px_repeat(7,minmax(110px,1fr))] border-b border-slate-100 bg-slate-50/60 dark:!bg-[var(--color-surface-muted)]">
         <div className="px-2 py-2 text-right text-[9px] font-bold uppercase text-slate-400">Dia</div>
         {days.map(day => {
           const allDayEvents = events.filter(event => isAllDay(event) && eventOccursOn(event, day));
@@ -509,7 +509,7 @@ function WeekView({ days, events, todayKey, onCreate, onEdit }) {
               const height = Math.max(((end - start) / 60) * WEEK_HOUR_HEIGHT, 28);
               const conflict = dayEvents.some(other => other.id !== event.id && !isTimeExemptEvent(other) && Math.abs(eventStart(other) - eventStart(event)) < 90 * 60 * 1000);
               const label = `${eventTime(event)} · ${event.title}${event.location ? ` · ${event.location}` : ''}`;
-              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight transition hover:z-20 hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:shadow-md'} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
+              return <button key={event.id} type="button" title={label} aria-label={label} onClick={() => onEdit(event)} className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border px-2 py-1 text-left text-[10px] font-bold leading-tight transition hover:z-20 hover:brightness-95 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] hover:opacity-70 dark:!opacity-100 dark:!saturate-100' : 'shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:shadow-md'} ${conflict ? 'ring-2 ring-amber-400' : ''}`} style={{ top, height }}><span className="block opacity-70">{eventTime(event)}</span><span className="block line-clamp-2">{event.title}</span></button>;
             })}
             {today && nowMinutes >= rangeStart && nowMinutes <= rangeEnd && <div className="pointer-events-none absolute left-0 right-0 z-30 h-px bg-red-500" style={{ top: ((nowMinutes - rangeStart) / 60) * WEEK_HOUR_HEIGHT }}><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" /></div>}
           </div>;
@@ -524,7 +524,7 @@ function MobileWeekView({ days, events, todayKey, loading, onCreate, onEdit }) {
   return <div className="divide-y divide-slate-100">{days.map(day => {
     const dayEvents = events.filter(event => eventOccursOn(event, day));
     const today = dateKey(day) === todayKey;
-    return <section key={dateKey(day)} className={today ? 'bg-sky-50/45' : 'bg-white'}>
+    return <section key={dateKey(day)} className={today ? 'bg-sky-50/45 dark:!bg-sky-950/45' : 'bg-white'}>
       <header className="flex items-center justify-between gap-3 px-4 py-3"><div className="flex items-center gap-3"><span className={`flex h-10 w-10 flex-col items-center justify-center rounded-xl ${today ? 'bg-primary text-white' : 'bg-slate-100 text-slate-700'}`}><strong className="text-sm leading-none">{day.getDate()}</strong><span className="mt-0.5 text-[8px] font-bold uppercase">{WEEKDAYS[day.getDay()]}</span></span><div><h4 className="text-sm font-bold capitalize text-slate-800">{today ? 'Hoje' : day.toLocaleDateString('pt-BR', { weekday: 'long' })}</h4><p className="text-xs text-slate-400">{day.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p></div></div><button type="button" onClick={() => onCreate(day)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-primary"><Plus className="h-4 w-4" /></button></header>
       <div className="space-y-2 px-4 pb-4">{dayEvents.length ? dayEvents.map(event => <AgendaEvent key={event.id} event={event} onClick={() => onEdit(event)} />) : <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Sem compromissos</p>}</div>
     </section>;
@@ -557,10 +557,10 @@ function MobileMonthCalendar({ cursor, days, events, todayKey, loading, onCreate
         const currentMonth = day.getMonth() === cursor.getMonth();
         const today = key === todayKey;
         const selected = key === selectedKey;
-        return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 overflow-hidden cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35' : ''}`}>
+        return <div key={key} onClick={() => setSelectedKey(key)} className={`min-h-[76px] min-w-0 overflow-hidden cursor-pointer p-1 transition ${currentMonth ? 'bg-white' : 'bg-slate-50 dark:!bg-[var(--color-background)]'} ${selected ? 'relative z-[1] bg-sky-50 ring-2 ring-inset ring-primary/35 dark:!bg-sky-950/60' : ''}`}>
           <button type="button" onClick={event => { event.stopPropagation(); setSelectedKey(key); }} aria-label={`Ver ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ${today ? 'bg-primary text-white shadow-sm' : currentMonth ? 'text-slate-700' : 'text-slate-300'}`}>{day.getDate()}</button>
           <div className="space-y-0.5">
-            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35]' : 'shadow-sm'}`}>{event.title}</button>)}
+            {dayEvents.slice(0, 2).map(event => <button key={event.id} type="button" onClick={click => { click.stopPropagation(); onEdit(event); }} title={event.title} className={`block w-full min-w-0 max-w-full overflow-hidden truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold leading-3 ${eventTone(event)} ${isPastEvent(event) ? 'opacity-45 saturate-[.35] dark:!opacity-100 dark:!saturate-100' : 'shadow-sm'}`}>{event.title}</button>)}
             {dayEvents.length > 2 && <span className="block px-1 text-[8px] font-extrabold text-primary">+{dayEvents.length - 2}</span>}
           </div>
         </div>;
@@ -743,13 +743,13 @@ export default function CalendarPage() {
               <div className="divide-y divide-slate-100">{group.events.map(event => <article key={event.id} className="min-w-0 p-3"><AgendaEvent event={event} onClick={() => setEditor(event)} /></article>)}</div>
             </section>)}</div> : <p className="p-10 text-center text-sm text-slate-500">Nenhum próximo compromisso neste mês.</p>}</div>
           : viewMode === 'week' ? <WeekView days={week.days} events={visibleEvents} todayKey={todayKey} onCreate={createAt} onEdit={setEditor} /> : <div>
-          <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">{WEEKDAYS.map((day, index) => <div key={day} className={`px-2 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-400 ${index === 0 || index === 6 ? 'bg-slate-100/70' : ''}`}>{day}</div>)}</div>
+          <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">{WEEKDAYS.map((day, index) => <div key={day} className={`px-2 py-2 text-center text-[10px] font-extrabold uppercase tracking-wide text-slate-400 ${index === 0 || index === 6 ? 'bg-slate-100/70 dark:!bg-[var(--color-surface-muted)]' : ''}`}>{day}</div>)}</div>
           <div className="grid grid-cols-7">{grid.days.map(day => {
             const dayEvents = events.filter(event => eventOccursOn(event, day));
             const currentMonth = day.getMonth() === cursor.getMonth();
             const today = dateKey(day) === todayKey;
             const weekend = day.getDay() === 0 || day.getDay() === 6;
-            return <div key={dateKey(day)} className={`group min-h-[118px] border-b border-r border-slate-100 p-1.5 ${today ? 'bg-sky-100/70 shadow-[inset_0_4px_0_0_rgb(14_165_233_/_0.7)]' : currentMonth ? weekend ? 'bg-slate-50/75' : 'bg-white' : 'bg-slate-100/60'}`}>
+            return <div key={dateKey(day)} className={`group min-h-[118px] border-b border-r border-slate-100 p-1.5 ${today ? 'bg-sky-100/70 shadow-[inset_0_4px_0_0_rgb(14_165_233_/_0.7)] dark:!bg-sky-950/60' : currentMonth ? weekend ? 'bg-slate-50/75 dark:!bg-[var(--color-surface-muted)]' : 'bg-white' : 'bg-slate-100/60 dark:!bg-[var(--color-background)]'}`}>
               <button type="button" onClick={() => { setInitialDate(day); setEditor({ new: true }); }} aria-label={`Agendar em ${day.toLocaleDateString('pt-BR')}`} className={`mb-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${today ? 'bg-primary text-white' : currentMonth ? 'text-slate-700 group-hover:bg-slate-100' : 'text-slate-300'}`}>{day.getDate()}</button>
               <div className="space-y-1">{dayEvents.slice(0, 3).map(event => <AgendaEvent key={event.id} event={event} compact onClick={() => setEditor(event)} />)}{dayEvents.length > 3 && <button type="button" onClick={() => setExpandedDay({ day, events: dayEvents })} className="px-1 text-[10px] font-bold text-primary">+ {dayEvents.length - 3} compromisso(s)</button>}</div>
             </div>;

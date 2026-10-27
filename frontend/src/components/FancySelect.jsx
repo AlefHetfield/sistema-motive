@@ -127,7 +127,7 @@ export default function FancySelect({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex w-full items-center justify-between rounded-xl border border-[#DDE4E8] bg-white text-sm shadow-[0_1px_2px_rgba(23,47,67,0.04)] outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 ${size === 'compact' ? 'h-10 px-3' : 'h-11 px-3.5'} ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400 opacity-70' : 'cursor-pointer hover:border-[#BAC9D2] hover:bg-slate-50/60'}`}
+        className={`ui-select-trigger flex w-full items-center justify-between rounded-xl border border-[#DDE4E8] bg-white text-sm shadow-[0_1px_2px_rgba(23,47,67,0.04)] outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 ${size === 'compact' ? 'h-10 px-3' : 'h-11 px-3.5'} ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-400 opacity-70' : 'cursor-pointer hover:border-[#BAC9D2] hover:bg-slate-50/60'}`}
       >
         <span className={`truncate ${selected ? 'text-gray-800' : 'text-gray-500'}`}>
           {selected ? selected.label : placeholder}
@@ -136,7 +136,7 @@ export default function FancySelect({
       </button>
 
       {open && (
-        <div role="listbox" aria-label={ariaLabel} className={`${inlineMenu ? 'relative mt-2' : `absolute z-[70] min-w-full ${dropUp ? 'bottom-full mb-2' : 'mt-2'}`} overflow-hidden rounded-2xl border border-[#DDE4E8] bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(23,47,67,0.18)] backdrop-blur-xl`}>
+        <div role="listbox" aria-label={ariaLabel} className={`ui-select-menu ${inlineMenu ? 'relative mt-2' : `absolute z-[70] min-w-full ${dropUp ? 'bottom-full mb-2' : 'mt-2'}`} overflow-hidden rounded-2xl border border-[#DDE4E8] bg-white/95 p-1.5 shadow-[0_18px_45px_rgba(23,47,67,0.18)] backdrop-blur-xl`}>
           {searchable && (
             <div className="relative mb-1.5">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -156,7 +156,7 @@ export default function FancySelect({
                 placeholder={searchPlaceholder}
                 aria-label={`Pesquisar em ${ariaLabel || 'opções'}`}
                 autoComplete="off"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary focus:bg-white focus:!ring-4 focus:!ring-primary/10 focus:!ring-offset-0 focus-visible:!ring-4 focus-visible:!ring-primary/10 focus-visible:!ring-offset-0"
+                className="ui-select-search h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary focus:bg-white focus:!ring-4 focus:!ring-primary/10 focus:!ring-offset-0 focus-visible:!ring-4 focus-visible:!ring-primary/10 focus-visible:!ring-offset-0"
               />
             </div>
           )}
@@ -181,7 +181,7 @@ export default function FancySelect({
                       onChange?.(option.value);
                       setOpen(false);
                     }}
-                    className={`flex min-h-10 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-all ${option.disabled ? 'cursor-not-allowed text-gray-300' : isSelected ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-800 hover:bg-slate-50'}`}
+                    className={`ui-select-option flex min-h-10 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-all ${option.disabled ? 'cursor-not-allowed text-gray-300' : isSelected ? 'bg-primary/10 font-semibold text-primary' : 'text-gray-800 hover:bg-slate-50'}`}
                   >
                     {isSelected ? <Check size={16} className="text-primary" /> : <span className="w-4" />}
                     <span className="truncate">{option.label}</span>

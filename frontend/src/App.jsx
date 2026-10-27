@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 import PrivateRoute from './components/PrivateRoute';
 import LoadingAnimation from './components/LoadingAnimation';
@@ -47,14 +48,15 @@ const router = createBrowserRouter(createRoutesFromElements(
   </>
 ));
 
-function App() {
+function AppContent() {
   const mobile = useMobileLayout();
+  const { resolvedTheme } = useTheme();
 
   return (
     <AuthProvider>
         <Toaster 
           position={mobile ? 'top-center' : 'top-right'}
-          theme="light"
+          theme={resolvedTheme}
           richColors
           expand={true}
           closeButton
@@ -65,6 +67,10 @@ function App() {
         </Suspense>
     </AuthProvider>
   );
+}
+
+function App() {
+  return <ThemeProvider><AppContent /></ThemeProvider>;
 }
 
 export default App;

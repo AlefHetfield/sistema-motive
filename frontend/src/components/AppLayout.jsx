@@ -10,6 +10,49 @@ import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
 import { Suspense } from 'react';
 import LoadingAnimation from './LoadingAnimation';
+import { useTheme } from '../context/ThemeContext';
+import { Sun, Moon, Monitor, Check } from 'lucide-react';
+
+function ThemeMenu() {
+    const { theme, setTheme } = useTheme();
+    const menuRef = useRef(null);
+    const triggerRef = useRef(null);
+    const choices = [
+        { value: 'light', label: 'Claro', icon: Sun },
+        { value: 'dark', label: 'Escuro', icon: Moon },
+        { value: 'system', label: 'Automático', icon: Monitor },
+    ];
+    const selected = choices.find(choice => choice.value === theme) || choices[2];
+    const Icon = selected.icon;
+    useEffect(() => {
+        const outside = event => {
+            if (!menuRef.current?.contains(event.target) && menuRef.current) menuRef.current.open = false;
+        };
+        const escape = event => {
+            if (event.key === 'Escape' && menuRef.current?.open) {
+                event.preventDefault();
+                menuRef.current.open = false;
+                triggerRef.current?.focus();
+            }
+        };
+        document.addEventListener('pointerdown', outside);
+        document.addEventListener('keydown', escape);
+        return () => {
+            document.removeEventListener('pointerdown', outside);
+            document.removeEventListener('keydown', escape);
+        };
+    }, []);
+    return <details ref={menuRef} className="relative shrink-0">
+        <summary ref={triggerRef} aria-label={`Aparência: ${selected.label}`} title={`Aparência: ${selected.label}`} className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl text-slate-500 outline-none transition hover:bg-slate-100 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden"><Icon size={19} aria-hidden="true" /></summary>
+        <div role="group" aria-label="Tema de aparência" className="absolute right-0 top-full z-[75] mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+            <p className="px-2.5 py-1.5 text-[11px] font-semibold text-slate-500">Aparência</p>
+            {choices.map(choice => {
+                const ChoiceIcon = choice.icon;
+                return <button key={choice.value} type="button" aria-pressed={theme === choice.value} onClick={() => { setTheme(choice.value); menuRef.current.open = false; triggerRef.current?.focus(); }} className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-primary/30 ${theme === choice.value ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-50'}`}><ChoiceIcon size={16} aria-hidden="true" /><span className="flex-1">{choice.label}</span>{theme === choice.value && <Check size={15} aria-hidden="true" />}</button>;
+            })}
+        </div>
+    </details>;
+}
 
 const corretorNavItems = [
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
@@ -337,6 +380,7 @@ const AppLayout = () => {
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2 lg:gap-3">
+                        <ThemeMenu />
                         {isAuthenticated && user?.id && <TaskNotifications key={user.id} userId={user.id} />}
                         <div className="hidden border-l border-[#DDE4E8] pl-4 text-right lg:block">
                             <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>

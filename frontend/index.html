@@ -18,6 +18,22 @@
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
+    <script>
+      (() => {
+        let preference = 'system';
+        try {
+          const saved = localStorage.getItem('motive-theme');
+          if (['light', 'dark', 'system'].includes(saved)) preference = saved;
+        } catch { /* The system preference remains available without storage. */ }
+        let systemDark = false;
+        try { systemDark = matchMedia('(prefers-color-scheme: dark)').matches; } catch { /* Light fallback. */ }
+        const theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#101820' : '#F6F8F9';
+      })();
+    </script>
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema Motive | CRM</title>

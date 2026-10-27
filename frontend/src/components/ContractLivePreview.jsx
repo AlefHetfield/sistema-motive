@@ -79,6 +79,8 @@ function PdfPages({ blob, zoom, onError, currentStep }) {
           canvas.style.width = `${viewport.width}px`;
           canvas.style.height = `${viewport.height}px`;
           canvas.className = 'bg-white shadow-md';
+          canvas.setAttribute('data-theme-surface', 'paper');
+          canvas.style.colorScheme = 'light';
           canvas.setAttribute('role', 'img');
           canvas.setAttribute('aria-label', `Página ${number} de ${pdf.numPages} do contrato`);
           const task = page.render({ canvasContext: canvas.getContext('2d'), viewport, transform: [ratio, 0, 0, ratio, 0, 0] });
