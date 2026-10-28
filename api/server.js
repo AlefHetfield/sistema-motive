@@ -15,6 +15,7 @@ import { createMatriculaRouter } from './matriculaRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
 import { createNoteRouter, createNoteLabelRouter } from './noteRoutes.js';
 import { createCalendarRouter } from './calendarRoutes.js';
+import { createEngineeringRouter } from './engineeringRoutes.js';
 import { encodeSession, decodeSession } from './session.js';
 import { withClientStatusSince } from './clientStatusAge.js';
 
@@ -116,6 +117,7 @@ app.use('/api/tasks', createTaskRouter(prisma, requireAuth));
 app.use('/api/notes', createNoteRouter(prisma, requireAuth));
 app.use('/api/note-labels', createNoteLabelRouter(prisma, requireAuth));
 app.use('/api/calendar', createCalendarRouter(requireAuth));
+app.use('/api/engineerings', createEngineeringRouter(prisma, requireAuth));
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`

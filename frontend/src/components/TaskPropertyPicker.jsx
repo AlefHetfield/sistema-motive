@@ -3,7 +3,7 @@ import TaskPropertyCard from './TaskPropertyCard';
 import { X } from 'lucide-react';
 import { taskApi } from '../services/api';
 
-export default function TaskPropertyPicker({ property, onSelect }) {
+export default function TaskPropertyPicker({ property, onSelect, showSelectedProperty = true }) {
   const listId = useId();
   const inputRef = useRef(null);
   const [query, setQuery] = useState('');
@@ -69,5 +69,5 @@ export default function TaskPropertyPicker({ property, onSelect }) {
       <p role="status" className="px-3 py-2 text-xs text-gray-500">{loading ? 'Buscando imóveis…' : error || (results.length ? `${results.length} sugestão(ões). Selecione um imóvel ou refine a busca.` : 'Nenhum imóvel encontrado.')}</p>
     </div>}
     {!showResults && <p className="text-xs text-gray-500">Digite pelo menos 2 letras para buscar.</p>}
-    {property && <div className="space-y-2"><TaskPropertyCard property={property} /><button type="button" onClick={() => onSelect(null)} className="flex items-center gap-1 text-xs text-red-600"><X size={14} /> Remover imóvel vinculado</button></div>}  </div>;
+    {property && showSelectedProperty && <div className="space-y-2"><TaskPropertyCard property={property} /><button type="button" onClick={() => onSelect(null)} className="flex items-center gap-1 text-xs text-red-600"><X size={14} /> Remover imóvel vinculado</button></div>}  </div>;
 }

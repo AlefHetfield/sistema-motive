@@ -4,7 +4,7 @@ import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import NoteSyncStatus from './notes/NoteSyncStatus';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, HardHat, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
@@ -69,6 +69,7 @@ const corretorNavItems = [
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
+    { to: '/engineerings', label: 'Engenharias', icon: HardHat, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
@@ -84,6 +85,7 @@ const assistenteNavItems = [
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operação' },
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
+    { to: '/engineerings', label: 'Engenharias', icon: HardHat, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
@@ -99,6 +101,7 @@ const adminNavItems = [
 const pageDescriptions = {
     '/dashboard': 'Acompanhe os principais indicadores e atividades da operação.',
     '/clients': 'Visualize e gerencie o progresso dos financiamentos em tempo real.',
+    '/engineerings': 'Controle os imóveis exclusivos, pedidos de engenharia e avaliações.',
     '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
     '/notes': 'Guarde ideias, organize anotações e compartilhe com sua equipe.',
     '/agenda': 'Organize visitas e compromissos sincronizados com o Google Agenda.',

@@ -13,6 +13,7 @@ const AppLayout = lazy(() => import('./components/AppLayout'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ClientsList = lazy(() => import('./pages/ClientsList'));
+const Engineerings = lazy(() => import('./pages/Engineerings'));
 const PdfEditor = lazy(() => import('./pages/PdfEditor'));
 const ReceiptGenerator = lazy(() => import('./pages/ReceiptGenerator'));
 const MatriculaSearch = lazy(() => import('./pages/MatriculaSearch'));
@@ -32,6 +33,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route index element={<Navigate to="/pdf-editor" replace />} />
       <Route path="dashboard" element={<PrivateRoute requiredRole="ADM"><Dashboard /></PrivateRoute>} />
       <Route path="clients" element={<PrivateRoute><ClientsList /></PrivateRoute>} />
+      <Route path="engineerings" element={<PrivateRoute requiredRole={['ADM', 'ASSISTENTE']}><Engineerings /></PrivateRoute>} />
       <Route path="pdf-editor" element={<PdfEditor />} />
       <Route path="receipt-generator" element={<ReceiptGenerator />} />
       <Route path="contract-generator" element={<ContractGenerator />} />

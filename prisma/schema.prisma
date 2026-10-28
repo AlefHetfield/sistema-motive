@@ -176,12 +176,33 @@ model Property {
   updatedAt             DateTime @updatedAt
   tasks Task[]
   clients Client[]
+  engineerings Engineering[]
 
   @@index([status])
   @@index([city])
   @@index([latitude, longitude])
   @@index([driveFolderUrl])
   @@map("properties")
+}
+
+model Engineering {
+  id            Int       @id @default(autoincrement())
+  imovel        String    @db.VarChar(250)
+  matricula     String?   @db.VarChar(100)
+  cidade        String?   @db.VarChar(150)
+  dataPedido    DateTime? @db.Date
+  valorImovel   Decimal?  @db.Decimal(15, 2)
+  valorAvaliado Decimal?  @db.Decimal(15, 2)
+  descricao     String?
+  propertyId    Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  property      Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([cidade])
+  @@index([dataPedido, id])
+  @@map("engineerings")
 }
 
 model TaskList {

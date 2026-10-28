@@ -27,7 +27,7 @@ const PrivateRoute = ({ children, requiredRole }) => {
     }
 
     // Se requer uma role específica e o usuário não tem, mostra acesso negado
-    if (requiredRole && user?.role !== requiredRole) {
+    if (requiredRole && !(Array.isArray(requiredRole) ? requiredRole : [requiredRole]).includes(user?.role)) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">

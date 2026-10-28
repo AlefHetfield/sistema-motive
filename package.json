@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test:clients": "node --test scripts/verify-client-status-age.mjs",
+    "test:engineerings": "node --test scripts/verify-engineerings.mjs",
     "test:tasks": "node --test scripts/verify-tasks.mjs scripts/verify-task-dates.mjs",
     "test:notes": "node --test scripts/verify-notes.mjs scripts/verify-note-drafts.mjs",
     "db:migrate:deploy": "node scripts/migrate-deploy.mjs",
