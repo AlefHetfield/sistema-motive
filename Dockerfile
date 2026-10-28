@@ -9,7 +9,7 @@ RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate
 COPY --chown=node:node api ./api
-COPY --chown=node:node shared ./shared
+COPY --chown=node:node frontend/src/utils/engineeringValidity.js ./frontend/src/utils/engineeringValidity.js
 COPY --chown=node:node frontend/src/utils/noteContent.js ./frontend/src/utils/noteContent.js
 COPY --chown=node:node assets ./assets
 COPY --chown=node:node scripts ./scripts

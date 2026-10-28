@@ -1,5 +1,5 @@
 import express from 'express';
-import { addEngineeringDays, engineeringToday } from '../shared/engineeringValidity.js';
+import { addEngineeringDays, engineeringToday } from '../frontend/src/utils/engineeringValidity.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const positiveId = value => {

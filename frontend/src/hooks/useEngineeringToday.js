@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { engineeringToday } from '../../../shared/engineeringValidity';
+import { engineeringToday } from '../utils/engineeringValidity';
 
 export default function useEngineeringToday() {
   const [today, setToday] = useState(engineeringToday);

@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { engineeringData, engineeringFilters, createEngineeringRouter } from '../api/engineeringRoutes.js';
-import { addEngineeringDays, engineeringToday, engineeringValidity } from '../shared/engineeringValidity.js';
+import { addEngineeringDays, engineeringToday, engineeringValidity } from '../frontend/src/utils/engineeringValidity.js';
 
 test('engenharias: vencimento soma 180 dias corridos e usa calendário de São Paulo', () => {
   assert.equal(addEngineeringDays('2026-10-28', 180), '2027-04-26');

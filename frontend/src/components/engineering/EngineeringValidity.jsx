@@ -1,5 +1,5 @@
 import { CalendarClock } from 'lucide-react';
-import { engineeringValidity } from '../../../../shared/engineeringValidity';
+import { engineeringValidity } from '../../utils/engineeringValidity';
 import { engineeringDate } from './engineeringForm';
 
 const tones = {

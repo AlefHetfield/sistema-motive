@@ -9,7 +9,7 @@ import { emptyEngineeringForm, engineeringDate, engineeringMoney, moneyInput, pa
 import EngineeringMoneyInput from './EngineeringMoneyInput';
 import EngineeringValidity from './EngineeringValidity';
 import useEngineeringToday from '../../hooks/useEngineeringToday';
-import { engineeringValidity } from '../../../../shared/engineeringValidity';
+import { engineeringValidity } from '../../utils/engineeringValidity';
 
 export default function EngineeringModal({ item, onClose, onSaved }) {
   const titleId = useId();
