@@ -15,6 +15,7 @@ const today = taskToday;
 const statusLabels = { TODO: 'Pendente', IN_PROGRESS: 'Pendente', WAITING: 'Aguardando retorno', DONE: 'Concluída' };
 const inputClass = 'rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary';
 const summaryKey = { all: 'all', day: 'myDay', important: 'important', overdue: 'overdue', planned: 'planned', waiting: 'waiting', social: 'social', delegated: 'delegated', done: 'done' };
+const focusRefreshInterval = 30000;
 const taskVisual = task => {
   if (task.status === 'DONE') return { badge: 'bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500', label: 'Concluída' };
   const due = task.dueDate?.slice(0, 10);
@@ -86,6 +87,10 @@ export default function Tasks() {
   const pendingChanges = useRef(new Map());
   const reloadAfterConflict = useRef(false);
   const mutationRevision = useRef(0);
+  const lastRefreshAt = useRef(0);
+  const activeListRequest = useRef(null);
+  const loadedQueryKey = useRef(null);
+  const pauseFocusRefresh = useRef(false);
   const mounted = useRef(true);
   const [optimisticChanges, setOptimisticChanges] = useState(new Map());
   const [stepSaveFeedback, setStepSaveFeedback] = useState(new Map());
@@ -100,9 +105,18 @@ export default function Tasks() {
     };
   }, []);
   useEffect(() => {
-    const refresh = () => { if (!document.hidden) { setRevision(value => value + 1); setOptionsRevision(value => value + 1); } };
+    const refresh = () => {
+      if (document.hidden || pendingChanges.current.size || pauseFocusRefresh.current || activeListRequest.current || Date.now() - lastRefreshAt.current < focusRefreshInterval) return;
+      lastRefreshAt.current = Date.now();
+      setRevision(value => value + 1);
+      setOptionsRevision(value => value + 1);
+    };
     window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
   const [currentDay, setCurrentDay] = useState(taskToday);
   useEffect(() => { const timer = setInterval(() => setCurrentDay(taskToday()), 60000); return () => clearInterval(timer); }, []);
@@ -115,6 +129,7 @@ export default function Tasks() {
   const [newTitle, setNewTitle] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
   const [busy, setBusy] = useState(false);
+  pauseFocusRefresh.current = busy || creatingTask;
   const [newList, setNewList] = useState('');
   const [shared, setShared] = useState(false);
   const [listForm, setListForm] = useState(false);
@@ -122,7 +137,8 @@ export default function Tasks() {
   const taskViewRef = useRef(null);
   const queryKeyRef = useRef('');
   taskViewRef.current = { view, socialDone, delegatedStatus, assigneeId, clientId, listId, search, userId: options?.userId };
-  queryKeyRef.current = JSON.stringify([view, socialDone, delegatedStatus, assigneeId, clientId, listId, search, page]);
+  const queryKey = JSON.stringify([view, socialDone, socialOrder, delegatedStatus, assigneeId, clientId, listId, search, page]);
+  queryKeyRef.current = queryKey;
   useEffect(() => {
     if (!linkedTaskId) return;
     const controller = new AbortController();
@@ -151,14 +167,25 @@ export default function Tasks() {
     // A refresh must not replace a pending change with an older server snapshot.
     // The last mutation triggers one refresh for the whole batch.
     if (pendingChanges.current.size) return;
-    setLoading(true);
+    // Keep the current cards mounted when revalidating the same view.
+    setLoading(loadedQueryKey.current !== queryKey);
     const controller = new AbortController();
+    activeListRequest.current = controller;
+    lastRefreshAt.current = Date.now();
     const startedAtRevision = mutationRevision.current;
     const filters = new URLSearchParams({ view, ...(view === 'social' ? { status: socialDone ? 'done' : 'pending', order: socialOrder } : {}), ...(view === 'delegated' ? { status: delegatedStatus } : {}), page: String(page), ...(listId ? { listId } : {}), ...(assigneeId ? { assigneeId } : {}), ...(clientId ? { clientId } : {}), ...(search ? { q:search } : {}) });
     const isCurrent = () => !controller.signal.aborted && startedAtRevision === mutationRevision.current;
-    taskApi(`?${filters}`, { signal:controller.signal }).then(result => { if (isCurrent()) { setData(result); setError(''); } }).catch(err => { if (isCurrent()) setError(err.message); }).finally(() => { if (isCurrent()) setLoading(false); });
-    return () => controller.abort();
-  }, [view, listId, assigneeId, clientId, search, page, revision, currentDay, delegatedStatus, socialDone, socialOrder]);
+    taskApi(`?${filters}`, { signal:controller.signal }).then(result => {
+      if (isCurrent()) { loadedQueryKey.current = queryKey; setData(result); setError(''); }
+    }).catch(err => { if (isCurrent()) setError(err.message); }).finally(() => {
+      if (activeListRequest.current === controller) activeListRequest.current = null;
+      if (isCurrent()) setLoading(false);
+    });
+    return () => {
+      controller.abort();
+      if (activeListRequest.current === controller) activeListRequest.current = null;
+    };
+  }, [view, listId, assigneeId, clientId, search, page, revision, currentDay, delegatedStatus, socialDone, socialOrder, queryKey]);
   useEffect(() => {
     const controller = new AbortController();
     taskApi('/summary', { signal: controller.signal }).then(setSummary).catch(() => {});

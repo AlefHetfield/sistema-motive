@@ -15,6 +15,7 @@
     "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs scripts/verify-note-queue.mjs",
     "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "test:engineerings": "node scripts/verify-engineerings-ui.mjs",
+    "test:task-refresh": "node scripts/verify-task-refresh.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
