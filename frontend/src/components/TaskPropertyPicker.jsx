@@ -3,7 +3,10 @@ import TaskPropertyCard from './TaskPropertyCard';
 import { X } from 'lucide-react';
 import { taskApi } from '../services/api';
 
-export default function TaskPropertyPicker({ property, onSelect, showSelectedProperty = true }) {
+const defaultSearchProperties = (term, options) => taskApi(`/properties?q=${encodeURIComponent(term)}`, options);
+const propertyMoney = value => value == null || value === '' ? 'Valor não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+export default function TaskPropertyPicker({ property, onSelect, showSelectedProperty = true, searchProperties = defaultSearchProperties, showPropertyDetails = false }) {
   const listId = useId();
   const inputRef = useRef(null);
   const [query, setQuery] = useState('');
@@ -19,7 +22,7 @@ export default function TaskPropertyPicker({ property, onSelect, showSelectedPro
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const found = await taskApi(`/properties?q=${encodeURIComponent(term)}`, { signal: controller.signal });
+        const found = await searchProperties(term, { signal: controller.signal });
         if (!controller.signal.aborted) setResults(found);
       } catch (err) {
         if (!controller.signal.aborted) setError(err.message);
@@ -28,7 +31,7 @@ export default function TaskPropertyPicker({ property, onSelect, showSelectedPro
       }
     }, 350);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [query, term, open]);
+  }, [query, term, open, searchProperties]);
 
   const search = value => {
     setQuery(value); setResults([]); setActive(-1); setError('');
@@ -44,7 +47,7 @@ export default function TaskPropertyPicker({ property, onSelect, showSelectedPro
   }}>
     <input ref={inputRef} role="combobox" aria-label="Pesquisar imóvel" aria-autocomplete="list" aria-expanded={showResults}
       aria-controls={showResults ? listId : undefined} aria-activedescendant={showResults && active >= 0 ? `${listId}-${active}` : undefined}
-      autoComplete="off" maxLength={200} placeholder={property ? 'Buscar outro imóvel…' : 'Título, código ou endereço…'}
+      autoComplete="off" maxLength={200} placeholder={property ? 'Buscar outro imóvel…' : showPropertyDetails ? 'Código, imóvel, proprietário ou valor…' : 'Título, código ou endereço…'}
       className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
       value={query} onChange={event => search(event.target.value)} onFocus={() => { if (!open && term.length >= 2) search(query); }}
       onKeyDown={event => {
@@ -63,7 +66,8 @@ export default function TaskPropertyPicker({ property, onSelect, showSelectedPro
           className={`cursor-pointer px-3 py-2.5 text-sm hover:bg-primary/5 ${active === index ? 'bg-primary/10 text-primary' : 'text-gray-700'}`}
           onMouseDown={event => event.preventDefault()} onClick={() => select(item)}
           ref={element => { if (element && active === index) element.scrollIntoView({ block: 'nearest' }); }}>
-          <span className="block break-words font-medium">{item.title}</span><span className="text-xs text-gray-400">{item.code || `#${item.id}`} · {item.address}</span>
+          <span className="block break-words font-medium">{item.title}</span><span className="block break-words text-xs text-gray-400">{item.code || `#${item.id}`} · {item.address}</span>
+          {showPropertyDetails && <span className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs"><span className="break-words text-slate-500">Proprietário: {item.ownerName?.trim() || 'Não informado'}</span><strong className="font-semibold text-primary">{propertyMoney(item.price)}</strong></span>}
         </li>)}
       </ul>
       <p role="status" className="px-3 py-2 text-xs text-gray-500">{loading ? 'Buscando imóveis…' : error || (results.length ? `${results.length} sugestão(ões). Selecione um imóvel ou refine a busca.` : 'Nenhum imóvel encontrado.')}</p>

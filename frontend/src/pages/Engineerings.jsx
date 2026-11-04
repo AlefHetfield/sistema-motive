@@ -12,6 +12,8 @@ import { engineeringDate, engineeringMoney } from '../components/engineering/eng
 import { engineeringApi } from '../services/engineeringApi';
 import EngineeringValidity from '../components/engineering/EngineeringValidity';
 import useEngineeringToday from '../hooks/useEngineeringToday';
+import { EngineeringPropertyThumbnail } from '../components/engineering/EngineeringPropertyPreview';
+import { calculateEngineeringFinancing, getEngineeringEntry } from '../utils/engineeringEntry';
 
 const emptyResponse = { items: [], total: 0, page: 1, pageSize: 20, cidades: [], summary: { total: 0, pendentes: 0, avaliadas: 0 } };
 const isAppraised = item => item.valorAvaliado !== null && item.valorAvaliado !== undefined && item.valorAvaliado !== '';
@@ -20,12 +22,56 @@ function Appraisal({ item }) {
   return isAppraised(item) ? <span className="font-semibold text-emerald-700">{engineeringMoney(item.valorAvaliado)}</span> : <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800"><Clock3 size={12} aria-hidden="true" />Aguardando avaliação</span>;
 }
 
-function RowActions({ item, onEdit, onDelete, onPreview }) {
-  return <div className="flex shrink-0 items-center gap-1">
-    {item.propertyId && <Button variant="ghost" size="icon" title="Ver dados do imóvel vinculado" aria-label={`Ver dados do imóvel ${item.imovel}`} onClick={() => onPreview(item.propertyId)}><Eye size={17} aria-hidden="true" /></Button>}
-    <Button variant="ghost" size="icon" title="Editar engenharia" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => onEdit(item)}><FilePenLine size={17} aria-hidden="true" /></Button>
-    <Button variant="ghost" size="icon" title="Excluir engenharia" aria-label={`Excluir engenharia ${item.imovel}`} onClick={() => onDelete(item)} className="text-red-500 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} aria-hidden="true" /></Button>
+function EntryValue({ item, className = '' }) {
+  const value = getEngineeringEntry(item);
+  const financed = calculateEngineeringFinancing(item.valorAvaliado);
+  const manual = item.valorEntradaManual !== null && item.valorEntradaManual !== undefined;
+  return <div className={`rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 ${className}`}>
+    <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Valor de entrada</p>
+    <strong className={`mt-1 block break-words leading-6 ${value == null ? 'text-xs font-medium text-slate-500' : 'text-lg font-bold text-primary'}`}>{value == null ? 'Aguardando valores' : engineeringMoney(value)}</strong>
+    {financed !== null && <p className="mt-1 break-words text-[11px] leading-4 text-slate-600">Financiamento (80%): {engineeringMoney(financed)}</p>}
+    <span className="mt-0.5 block text-[10px] text-slate-500">{manual ? 'Informado manualmente' : 'Cálculo automático'}</span>
   </div>;
+}
+
+function RowActions({ item, onEdit, onDelete, onPreview }) {
+  const sizeClass = '!h-8 !w-8 !rounded-lg';
+  return <div className="flex shrink-0 items-center justify-end">
+    {item.propertyId && <Button variant="ghost" size="icon" className={sizeClass} title="Ver dados do imóvel vinculado" aria-label={`Ver dados do imóvel ${item.imovel}`} onClick={() => onPreview(item.propertyId)}><Eye size={16} aria-hidden="true" /></Button>}
+    <Button variant="ghost" size="icon" className={sizeClass} title="Editar engenharia" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => onEdit(item)}><FilePenLine size={16} aria-hidden="true" /></Button>
+    <Button variant="ghost" size="icon" title="Excluir engenharia" aria-label={`Excluir engenharia ${item.imovel}`} onClick={() => onDelete(item)} className={`${sizeClass} text-red-500 hover:bg-red-50 hover:text-red-600`}><Trash2 size={16} aria-hidden="true" /></Button>
+  </div>;
+}
+
+function EngineeringTableRow({ item, today, onEdit, onDelete, onPreview }) {
+  const entry = getEngineeringEntry(item);
+  const financed = calculateEngineeringFinancing(item.valorAvaliado);
+  const manual = item.valorEntradaManual !== null && item.valorEntradaManual !== undefined;
+  const details = [item.cidade || 'Cidade não informada', item.matricula ? `Mat. ${item.matricula}` : 'Sem matrícula', item.property?.code || (item.propertyId ? 'Vinculado ao mapa' : '')].filter(Boolean).join(' · ');
+
+  return <tr className="align-middle transition hover:bg-slate-50/70">
+    <td className="px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        {item.property && <EngineeringPropertyThumbnail property={item.property} compact className="!h-12 !w-12 !rounded-lg" />}
+        <div className="min-w-0 flex-1">
+          <button type="button" title={item.imovel} onClick={() => onEdit(item)} className="block w-full truncate rounded text-left font-semibold leading-5 text-slate-800 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button>
+          <p title={details} className="mt-1 truncate text-xs leading-5 text-slate-500">{details}</p>
+        </div>
+      </div>
+    </td>
+    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-slate-600">{engineeringDate(item.dataPedido)}</td>
+    <td className="px-3 py-3"><EngineeringValidity date={item.dataPedido} today={today} /></td>
+    <td className="break-words px-3 py-3 text-[13px] font-medium tabular-nums text-slate-700">{engineeringMoney(item.valorImovel)}</td>
+    <td className="px-3 py-3 text-[13px] tabular-nums">
+      <Appraisal item={item} />
+      {financed !== null && <p className="mt-1 break-words text-[11px] leading-4 text-slate-500">Financia {engineeringMoney(financed)}</p>}
+    </td>
+    <td className="px-3 py-3 tabular-nums">
+      <strong title={entry === null ? undefined : engineeringMoney(entry)} className={`block break-words leading-6 ${entry === null ? 'text-xs font-medium text-slate-500' : 'text-base font-bold text-primary 2xl:text-lg'}`}>{entry === null ? 'Aguardando valores' : engineeringMoney(entry)}</strong>
+      {manual && <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Manual</span>}
+    </td>
+    <td className="px-2 py-3"><RowActions item={item} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} /></td>
+  </tr>;
 }
 
 export default function Engineerings() {
@@ -118,10 +164,24 @@ export default function Engineerings() {
     </section>
 
     {error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-5 py-7 text-center"><p className="text-sm text-red-700">{error}</p><Button variant="secondary" className="mt-4" onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} aria-hidden="true" />Tentar novamente</Button></div> : loading ? <LoadingState label="Carregando engenharias…" /> : !items.length ? <EmptyState icon={HardHat} title={hasFilters ? 'Nenhuma engenharia encontrada' : 'Comece pelos seus imóveis exclusivos'} description={hasFilters ? 'Ajuste a busca ou limpe os filtros para ver outros registros.' : 'Cadastre o imóvel, registre o pedido de engenharia e acompanhe o valor avaliado.'} action={<Button variant={hasFilters ? 'secondary' : 'primary'} onClick={hasFilters ? clearFilters : () => setEditor({ item: null })}>{hasFilters ? 'Limpar filtros' : <><Plus size={16} aria-hidden="true" />Cadastrar primeira engenharia</>}</Button>} /> : <>
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white xl:block">
-        <table className="w-full table-fixed text-left text-sm"><caption className="sr-only">Engenharias de imóveis exclusivos</caption><thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><tr><th scope="col" className="w-[24%] px-5 py-3.5">Imóvel / matrícula</th><th scope="col" className="w-[11%] px-3 py-3.5">Cidade</th><th scope="col" className="w-[10%] px-3 py-3.5">Pedido</th><th scope="col" className="w-[16%] px-3 py-3.5">Vencimento</th><th scope="col" className="w-[12%] px-3 py-3.5">Valor do imóvel</th><th scope="col" className="w-[15%] px-3 py-3.5">Valor avaliado</th><th scope="col" className="w-[12%] px-3 py-3.5 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100">{items.map(item => <tr key={item.id} className="align-top transition hover:bg-slate-50/70"><td className="px-5 py-4"><button type="button" onClick={() => edit(item)} className="break-words text-left font-semibold leading-5 text-slate-800 hover:text-primary hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button><p className="mt-1 break-words text-xs text-slate-500">{item.matricula ? `Matrícula ${item.matricula}` : 'Matrícula não informada'}</p>{item.property && <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-primary"><Building2 size={12} aria-hidden="true" />Vinculado ao mapa{item.property.code ? ` · ${item.property.code}` : ''}</p>}{item.descricao && <p className="mt-2 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}</td><td className="break-words px-3 py-4 text-slate-600">{item.cidade || 'Não informada'}</td><td className="px-3 py-4 text-slate-600">{engineeringDate(item.dataPedido)}</td><td className="px-3 py-4"><EngineeringValidity date={item.dataPedido} today={today} /></td><td className="break-words px-3 py-4 font-medium text-slate-700">{engineeringMoney(item.valorImovel)}</td><td className="break-words px-3 py-4"><Appraisal item={item} /></td><td className="px-2 py-2.5"><RowActions item={item} onEdit={edit} onDelete={setDeleting} onPreview={setPreview} /></td></tr>)}</tbody></table>
+      <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white xl:block">
+        <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+          <caption className="sr-only">Engenharias de imóveis exclusivos</caption>
+          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" className="w-[28%] px-4 py-3">Imóvel</th>
+              <th scope="col" className="w-[9%] px-3 py-3">Pedido</th>
+              <th scope="col" className="w-[13%] px-3 py-3">Vencimento</th>
+              <th scope="col" className="w-[13%] px-3 py-3">Valor final</th>
+              <th scope="col" className="w-[14%] px-3 py-3">Avaliação</th>
+              <th scope="col" className="w-[12%] px-3 py-3">Entrada</th>
+              <th scope="col" className="w-[11%] px-2 py-3 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">{items.map(item => <EngineeringTableRow key={item.id} item={item} today={today} onEdit={edit} onDelete={setDeleting} onPreview={setPreview} />)}</tbody>
+        </table>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:hidden">{items.map(item => <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-start gap-2"><div className="min-w-0 flex-1"><button type="button" onClick={() => edit(item)} className="break-words text-left text-sm font-semibold leading-5 text-slate-800 hover:text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button><p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13} className="shrink-0" aria-hidden="true" /><span className="break-words">{item.cidade || 'Cidade não informada'}</span></p></div><Button variant="ghost" size="icon" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => edit(item)}><FilePenLine size={17} aria-hidden="true" /></Button></div><dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-500">Matrícula</dt><dd className="mt-1 break-words font-medium text-slate-700">{item.matricula || 'Não informada'}</dd></div><div><dt className="text-slate-500">Pedido de engenharia</dt><dd className="mt-1 font-medium text-slate-700">{engineeringDate(item.dataPedido)}</dd></div><div><dt className="text-slate-500">Valor do imóvel</dt><dd className="mt-1 break-words font-semibold text-slate-700">{engineeringMoney(item.valorImovel)}</dd></div><div><dt className="text-slate-500">Valor avaliado</dt><dd className="mt-1 break-words"><Appraisal item={item} /></dd></div><div className="col-span-2"><dt className="mb-1.5 text-slate-500">Vencimento da engenharia</dt><dd><EngineeringValidity date={item.dataPedido} today={today} /></dd></div></dl>{item.descricao && <p className="mt-4 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}<footer className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">{item.propertyId ? <button type="button" onClick={() => setPreview(item.propertyId)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Eye size={15} aria-hidden="true" />Ver imóvel vinculado</button> : <span className="text-[11px] text-slate-400">Sem vínculo com o mapa</span>}<Button variant="ghost" size="icon" aria-label={`Excluir engenharia ${item.imovel}`} className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setDeleting(item)}><Trash2 size={16} aria-hidden="true" /></Button></footer></article>)}</div>
+      <div className="grid gap-3 md:grid-cols-2 xl:hidden">{items.map(item => <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-start gap-2">{item.property && <EngineeringPropertyThumbnail property={item.property} compact />}<div className="min-w-0 flex-1"><button type="button" onClick={() => edit(item)} className="break-words text-left text-sm font-semibold leading-5 text-slate-800 hover:text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button><p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13} className="shrink-0" aria-hidden="true" /><span className="break-words">{item.cidade || 'Cidade não informada'}</span></p></div><Button variant="ghost" size="icon" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => edit(item)}><FilePenLine size={17} aria-hidden="true" /></Button></div><EntryValue item={item} className="mt-4" /><dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-500">Matrícula</dt><dd className="mt-1 break-words font-medium text-slate-700">{item.matricula || 'Não informada'}</dd></div><div><dt className="text-slate-500">Pedido de engenharia</dt><dd className="mt-1 font-medium text-slate-700">{engineeringDate(item.dataPedido)}</dd></div><div><dt className="text-slate-500">Valor final do imóvel</dt><dd className="mt-1 break-words font-semibold text-slate-700">{engineeringMoney(item.valorImovel)}</dd></div><div><dt className="text-slate-500">Valor avaliado</dt><dd className="mt-1 break-words"><Appraisal item={item} /></dd></div><div className="col-span-2"><dt className="mb-1.5 text-slate-500">Vencimento da engenharia</dt><dd><EngineeringValidity date={item.dataPedido} today={today} /></dd></div></dl>{item.descricao && <p className="mt-4 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}<footer className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">{item.propertyId ? <button type="button" onClick={() => setPreview(item.propertyId)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Eye size={15} aria-hidden="true" />Ver imóvel vinculado</button> : <span className="text-[11px] text-slate-400">Sem vínculo com o mapa</span>}<Button variant="ghost" size="icon" aria-label={`Excluir engenharia ${item.imovel}`} className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setDeleting(item)}><Trash2 size={16} aria-hidden="true" /></Button></footer></article>)}</div>
       <nav aria-label="Paginação de engenharias" className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">{response.total} registro(s) · Página {page} de {pages}</p><div className="flex gap-2"><Button variant="secondary" size="icon" aria-label="Página anterior" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={18} /></Button><Button variant="secondary" size="icon" aria-label="Próxima página" disabled={page >= pages} onClick={() => setPage(value => value + 1)}><ChevronRight size={18} /></Button></div></nav>
     </>}
     {editor && <EngineeringModal key={editor.item?.id || 'new'} item={editor.item} onClose={() => setEditor(null)} onSaved={saved} />}

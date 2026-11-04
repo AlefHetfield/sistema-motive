@@ -193,6 +193,7 @@ model Engineering {
   dataPedido    DateTime? @db.Date
   valorImovel   Decimal?  @db.Decimal(15, 2)
   valorAvaliado Decimal?  @db.Decimal(15, 2)
+  valorEntradaManual Decimal? @db.Decimal(15, 2)
   descricao     String?
   propertyId    Int?
   createdAt     DateTime  @default(now())

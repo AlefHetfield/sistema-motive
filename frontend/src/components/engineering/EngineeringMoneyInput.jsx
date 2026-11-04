@@ -27,7 +27,7 @@ export default function EngineeringMoneyInput({ value, onValueChange, ...props }
   return <input {...props} ref={inputRef} type="text" inputMode="numeric" value={value}
     onChange={event => update(event.target.value, event.target.selectionStart ?? event.target.value.length)}
     onKeyDown={event => {
-      if (event.ctrlKey || event.metaKey || event.altKey || event.nativeEvent.isComposing) return;
+      if (props.readOnly || props.disabled || event.ctrlKey || event.metaKey || event.altKey || event.nativeEvent.isComposing) return;
       const input = event.currentTarget;
       const cursor = input.selectionStart;
       if (cursor !== input.selectionEnd || cursor === null) return;

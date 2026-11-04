@@ -1,15 +1,19 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Building2, HardHat, Link2, Save, X } from 'lucide-react';
+import { HardHat, Link2, Save, X } from 'lucide-react';
 import Button from '../ui/Button';
 import { controlClass, formLabelClass, textAreaClass } from '../ui/styles';
 import TaskPropertyPicker from '../TaskPropertyPicker';
 import { engineeringApi } from '../../services/engineeringApi';
-import { emptyEngineeringForm, engineeringDate, engineeringMoney, moneyInput, parseEngineeringMoney } from './engineeringForm';
+import { emptyEngineeringForm, engineeringDate, moneyInput, parseEngineeringMoney } from './engineeringForm';
 import EngineeringMoneyInput from './EngineeringMoneyInput';
 import EngineeringValidity from './EngineeringValidity';
 import useEngineeringToday from '../../hooks/useEngineeringToday';
 import { engineeringValidity } from '../../utils/engineeringValidity';
+import { calculateEngineeringEntry, calculateEngineeringFinancing } from '../../utils/engineeringEntry';
+import EngineeringPropertyPreview from './EngineeringPropertyPreview';
+
+const searchEngineeringProperties = (term, { signal }) => engineeringApi(`/properties?q=${encodeURIComponent(term)}`, { signal });
 
 export default function EngineeringModal({ item, onClose, onSaved }) {
   const titleId = useId();
@@ -20,10 +24,19 @@ export default function EngineeringModal({ item, onClose, onSaved }) {
   const savingRef = useRef(false);
   const [form, setForm] = useState(() => emptyEngineeringForm(item));
   const [property, setProperty] = useState(item?.property || null);
+  const [manualEntry, setManualEntry] = useState(item?.valorEntradaManual !== null && item?.valorEntradaManual !== undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const today = useEngineeringToday();
   const { expiresOn } = engineeringValidity(form.dataPedido, today);
+  let calculatedEntry = null;
+  let financedValue = null;
+  try {
+    const appraisal = parseEngineeringMoney(form.valorAvaliado);
+    financedValue = calculateEngineeringFinancing(appraisal);
+    calculatedEntry = calculateEngineeringEntry(parseEngineeringMoney(form.valorImovel), appraisal);
+  } catch { /* Keep the entry empty until both amounts are valid. */ }
+  const entryValue = manualEntry ? form.valorEntradaManual : moneyInput(calculatedEntry);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -51,7 +64,7 @@ export default function EngineeringModal({ item, onClose, onSaved }) {
   const selectProperty = selected => {
     setProperty(selected);
     setForm(current => ({ ...current, propertyId: selected?.id || null,
-      ...(selected ? { imovel: selected.title.slice(0, 250), cidade: selected.city || current.cidade,
+      ...(selected ? { cidade: selected.city || current.cidade,
         valorImovel: selected.price == null ? current.valorImovel : moneyInput(selected.price) } : {}),
     }));
   };
@@ -62,10 +75,12 @@ export default function EngineeringModal({ item, onClose, onSaved }) {
     let payload;
     try {
       if (!form.imovel.trim()) { inputRef.current?.focus(); throw new Error('Informe o imóvel.'); }
+      if (manualEntry && !form.valorEntradaManual.trim()) throw new Error('Informe o valor de entrada ou use o cálculo automático.');
       payload = { ...form, imovel: form.imovel.trim(), matricula: form.matricula.trim() || null,
         cidade: form.cidade.trim() || null, descricao: form.descricao.trim() || null,
         dataPedido: form.dataPedido || null,
         valorImovel: parseEngineeringMoney(form.valorImovel), valorAvaliado: parseEngineeringMoney(form.valorAvaliado),
+        valorEntradaManual: manualEntry ? parseEngineeringMoney(form.valorEntradaManual) : null,
       };
     } catch (reason) { setError(reason.message); return; }
     savingRef.current = true;
@@ -87,9 +102,9 @@ export default function EngineeringModal({ item, onClose, onSaved }) {
           {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4" aria-label="Vínculo com o mapa">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Link2 size={16} aria-hidden="true" />Vincular imóvel do mapa <span className="text-xs font-normal text-slate-500">Opcional</span></h3>
-            <p className="text-xs leading-5 text-slate-500">Ao selecionar, o nome, a cidade e o valor do imóvel são preenchidos. Os dados do mapa permanecem iguais.</p>
-            <TaskPropertyPicker property={property} onSelect={selectProperty} showSelectedProperty={false} />
-            {property && <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3"><Building2 size={19} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-slate-800">{property.code ? `${property.code} · ` : ''}{property.title}</p><p className="mt-0.5 text-xs leading-5 text-slate-500">{property.city || 'Cidade não informada'} · {engineeringMoney(property.price)}</p><button type="button" onClick={() => selectProperty(null)} className="mt-1 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-red-600 underline underline-offset-2"><X size={13} aria-hidden="true" />Remover vínculo</button></div></div>}
+            <p className="text-xs leading-5 text-slate-500">Ao selecionar, a cidade e o valor do imóvel são preenchidos. O nome do imóvel é informado manualmente.</p>
+            <TaskPropertyPicker property={property} onSelect={selectProperty} showSelectedProperty={false} searchProperties={searchEngineeringProperties} showPropertyDetails />
+            {property && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3"><EngineeringPropertyPreview property={property} /><button type="button" onClick={() => selectProperty(null)} className="mt-2 inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-red-600 underline underline-offset-2"><X size={13} aria-hidden="true" />Remover vínculo</button></div>}
           </section>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2"><label htmlFor={`${formId}-imovel`} className={formLabelClass}>Imóvel <span className="text-red-500">*</span></label><input ref={inputRef} id={`${formId}-imovel`} className={controlClass} value={form.imovel} onChange={event => set('imovel', event.target.value)} maxLength={250} required placeholder="Nome ou identificação do imóvel" /></div>
@@ -97,8 +112,18 @@ export default function EngineeringModal({ item, onClose, onSaved }) {
             <div><label htmlFor={`${formId}-cidade`} className={formLabelClass}>Cidade</label><input id={`${formId}-cidade`} className={controlClass} value={form.cidade} onChange={event => set('cidade', event.target.value)} maxLength={150} placeholder="Cidade do imóvel" /></div>
             <div><label htmlFor={`${formId}-dataPedido`} className={formLabelClass}>Data do pedido de engenharia</label><input type="date" id={`${formId}-dataPedido`} className={controlClass} value={form.dataPedido} onChange={event => set('dataPedido', event.target.value)} min="1900-01-01" max="9999-12-31" /></div>
             <div><label htmlFor={`${formId}-vencimento`} className={formLabelClass}>Vencimento da engenharia</label><input id={`${formId}-vencimento`} className={`${controlClass} bg-slate-50 text-slate-600`} value={expiresOn ? engineeringDate(expiresOn) : ''} readOnly placeholder="Vencimento não definido" aria-describedby={`${formId}-validade-hint`} /><p id={`${formId}-validade-hint`} className="mt-1.5 text-xs text-slate-500">180 dias corridos após o pedido.</p>{expiresOn && <div className="mt-2"><EngineeringValidity date={form.dataPedido} today={today} showDate={false} /></div>}</div></div>
-            <div><label htmlFor={`${formId}-valorImovel`} className={formLabelClass}>Valor do imóvel (R$)</label><EngineeringMoneyInput id={`${formId}-valorImovel`} className={controlClass} value={form.valorImovel} onValueChange={value => set('valorImovel', value)} maxLength={24} placeholder="0,00" /></div>
+            <div><label htmlFor={`${formId}-valorImovel`} className={formLabelClass}>Valor final do imóvel (R$)</label><EngineeringMoneyInput id={`${formId}-valorImovel`} className={controlClass} value={form.valorImovel} onValueChange={value => set('valorImovel', value)} maxLength={24} placeholder="0,00" /><p className="mt-1.5 text-xs text-slate-500">Informe o valor final de venda usado para calcular a entrada.</p></div>
             <div><label htmlFor={`${formId}-valorAvaliado`} className={formLabelClass}>Valor avaliado (R$)</label><EngineeringMoneyInput id={`${formId}-valorAvaliado`} className={controlClass} value={form.valorAvaliado} onValueChange={value => set('valorAvaliado', value)} maxLength={24} placeholder="Preencher após avaliação" /><p className="mt-1.5 text-xs text-slate-500">Deixe em branco enquanto aguarda a avaliação.</p></div>
+            <section aria-label="Entrada do imóvel" className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
+              <div className="mb-4"><label htmlFor={`${formId}-valorFinanciado`} className={formLabelClass}>Valor financiado (80% da avaliação)</label><input id={`${formId}-valorFinanciado`} className={`${controlClass} font-semibold`} value={moneyInput(financedValue)} readOnly placeholder="Aguardando avaliação" /></div>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><label htmlFor={`${formId}-valorEntrada`} className="text-sm font-bold text-primary">Valor de entrada (R$)</label><span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-primary">{manualEntry ? 'Preenchimento manual' : 'Cálculo automático'}</span></div>
+              <EngineeringMoneyInput id={`${formId}-valorEntrada`} className={`${controlClass} h-14 !text-2xl font-bold text-primary`} value={entryValue} onValueChange={value => set('valorEntradaManual', value)} readOnly={!manualEntry} maxLength={24} placeholder={manualEntry ? '0,00' : 'Aguardando valores'} aria-describedby={`${formId}-entrada-hint`} />
+              <p id={`${formId}-entrada-hint`} className="mt-2 text-xs leading-5 text-slate-500">{manualEntry ? 'O valor informado será mantido ao alterar o valor final do imóvel ou a avaliação.' : 'Entrada = valor final do imóvel − valor financiado, com mínimo de R$ 0,00.'}</p>
+              <Button variant="ghost" size="sm" className="mt-2 px-0 text-primary" onClick={() => {
+                if (manualEntry) { setManualEntry(false); set('valorEntradaManual', ''); }
+                else { set('valorEntradaManual', moneyInput(calculatedEntry)); setManualEntry(true); }
+              }}>{manualEntry ? 'Usar cálculo automático' : 'Preencher manualmente'}</Button>
+            </section>
             <div className="sm:col-span-2"><label htmlFor={`${formId}-descricao`} className={formLabelClass}>Descrição</label><textarea id={`${formId}-descricao`} rows={4} className={textAreaClass} value={form.descricao} onChange={event => set('descricao', event.target.value)} maxLength={10000} placeholder="Informações e observações sobre a engenharia" /></div>
           </div>
         </fieldset>

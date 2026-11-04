@@ -6,6 +6,25 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { engineeringData, engineeringFilters, createEngineeringRouter } from '../api/engineeringRoutes.js';
 import { addEngineeringDays, engineeringToday, engineeringValidity } from '../frontend/src/utils/engineeringValidity.js';
+import { calculateEngineeringFinancing, calculateEngineeringEntry, getEngineeringEntry } from '../frontend/src/utils/engineeringEntry.js';
+
+test('engenharias: entrada usa 80% da avaliação, preserva centavos e permite substituição manual', () => {
+  assert.equal(calculateEngineeringFinancing('300000.00'), '240000.00');
+  assert.equal(calculateEngineeringFinancing('370000.00'), '296000.00');
+  assert.equal(calculateEngineeringFinancing('100.01'), '80.01');
+  assert.equal(calculateEngineeringFinancing('0.00'), '0.00');
+  assert.equal(calculateEngineeringFinancing(null), null);
+  assert.equal(calculateEngineeringEntry('280000.00', '300000.00'), '40000.00', 'Entrada é o complemento do financiamento até o valor final.');
+  assert.equal(calculateEngineeringEntry('326000.00', '370000.00'), '30000.00');
+  assert.equal(calculateEngineeringEntry('100.00', '100.01'), '19.99');
+  assert.equal(calculateEngineeringEntry('100.00', '200.00'), '0.00', 'Entrada mínima é zero quando a avaliação cobre o preço.');
+  assert.equal(calculateEngineeringEntry('338000.00', '550000.00'), '0.00', 'Cenário do imóvel existente não produz entrada negativa.');
+  assert.equal(calculateEngineeringEntry('0.00', '0.00'), '0.00');
+  assert.equal(calculateEngineeringEntry('326000.00', null), null);
+  assert.equal(calculateEngineeringEntry(null, '370000.00'), null);
+  assert.equal(getEngineeringEntry({ valorImovel: '326000.00', valorAvaliado: '370000.00', valorEntradaManual: '0.00' }), '0.00');
+  assert.equal(getEngineeringEntry({ valorImovel: '326000.00', valorAvaliado: '370000.00', valorEntradaManual: null }), '30000.00');
+});
 
 test('engenharias: vencimento soma 180 dias corridos e usa calendário de São Paulo', () => {
   assert.equal(addEngineeringDays('2026-10-28', 180), '2027-04-26');
@@ -43,6 +62,9 @@ test('engenharias: valores monetários mantêm centavos, zero e limites sem coer
   });
   assert.equal(engineeringData({ valorImovel: '9999999999999.99' }).valorImovel, '9999999999999.99');
   assert.equal(engineeringData({ valorAvaliado: '' }).valorAvaliado, null);
+  assert.equal(engineeringData({ valorEntradaManual: 0 }).valorEntradaManual, '0.00');
+  assert.equal(engineeringData({ valorEntradaManual: null }).valorEntradaManual, null);
+  assert.throws(() => engineeringData({ valorEntradaManual: '-1.00' }), /Valor de entrada manual/);
   for (const value of [-1, Infinity, '1e3', '1000,00', '1.234', true, [], {}, '10000000000000.00']) {
     assert.throws(() => engineeringData({ valorImovel: value }), /Valor do imóvel/);
   }
@@ -93,7 +115,15 @@ function fixture() {
   };
   const prisma = {
     user: { findUnique: async ({ where }) => users.get(where.id) || null },
-    property: { findUnique: async ({ where }) => properties.has(where.id) ? { id: where.id } : null },
+    property: {
+      findUnique: async ({ where, select }) => {
+        const property = properties.get(where.id);
+        return property ? Object.fromEntries(Object.keys(select).map(key => [key, property[key]])) : null;
+      },
+      findMany: async ({ where, select, take = 20 }) => [...properties.values()].filter(item => matches(item, where))
+        .sort((a, b) => a.title.localeCompare(b.title) || a.id - b.id).slice(0, take)
+        .map(item => Object.fromEntries(Object.keys(select).map(key => [key, item[key]]))),
+    },
     engineering: {
       findUnique: async ({ where, include }) => present(records.get(where.id), include),
       findMany: async ({ where, include, orderBy, skip = 0, take, distinct, select }) => {
@@ -109,7 +139,7 @@ function fixture() {
       },
       count: async ({ where } = {}) => [...records.values()].filter(item => matches(item, where)).length,
       create: async ({ data, include }) => {
-        const row = { id: ++sequence, propertyId: null, cidade: null, matricula: null, dataPedido: null, valorImovel: null, valorAvaliado: null, descricao: null, createdAt: new Date(), updatedAt: new Date(), ...data };
+        const row = { id: ++sequence, propertyId: null, cidade: null, matricula: null, dataPedido: null, valorImovel: null, valorAvaliado: null, valorEntradaManual: null, descricao: null, createdAt: new Date(), updatedAt: new Date(), ...data };
         records.set(row.id, row);
         return present(row, include);
       },
@@ -139,7 +169,7 @@ test('API: autenticação, perfil atual e usuário ativo protegem todas as opera
   const base = `http://127.0.0.1:${server.address().port}/engineerings`;
   const request = (user, path = '', method = 'GET') => fetch(`${base}${path}`, { method, headers: { ...(user ? { 'X-User': user } : {}), 'Content-Type': 'application/json' }, ...(method === 'POST' || method === 'PATCH' ? { body: JSON.stringify({ imovel: 'Casa' }) } : {}) });
   assert.equal((await request(null)).status, 401);
-  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '/1'], ['POST', ''], ['PATCH', '/1'], ['DELETE', '/1']]) {
+  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '/1'], ['GET', '/properties?q=Privado'], ['POST', ''], ['PATCH', '/1'], ['DELETE', '/1']]) {
     assert.equal((await request(user, path, method)).status, user === 3 ? 403 : 401);
   }
   assert.equal((await request(1)).status, 200);
@@ -165,11 +195,14 @@ test('API: CRUD independente, vínculo sem alterar mapa, filtros e paginação e
   const independent = await request('', 'POST', { imovel: 'Exclusivo sem mapa', matricula: '12345', cidade: 'Hortolândia', valorImovel: '250000.90', descricao: 'Aguardando avaliação', dataPedido: '2026-10-20' });
   assert.equal(independent.status, 201);
   assert.equal(independent.data.property, null);
+  assert.equal(independent.data.valorEntrada, null, 'Sem avaliação não há entrada automática.');
+  assert.equal(independent.data.valorFinanciado, null, 'Sem avaliação não há financiamento calculado.');
   const id = independent.data.id;
   assert.equal((await request(`/${id}`)).data.valorImovel, '250000.90');
   const linked = await request('', 'POST', { imovel: 'Outro imóvel', cidade: 'Sumaré', propertyId: 10, dataPedido: '2026-10-21', valorAvaliado: 0 });
   assert.equal(linked.data.property.code, 'CA0010');
-  assert.equal('ownerName' in linked.data.property, false);
+  assert.equal(linked.data.property.ownerName, 'Privado');
+  assert.equal(linked.data.valorFinanciado, '0.00', 'Avaliação zero é diferente de não informada.');
   assert.deepEqual(properties.get(10), initialProperty, 'Vincular não muda preço, status ou dados do mapa.');
   const third = await request('', 'POST', { imovel: 'Sem pedido ainda' });
   const page1 = (await request('?pageSize=1')).data;
@@ -191,11 +224,65 @@ test('API: CRUD independente, vínculo sem alterar mapa, filtros e paginação e
   assert.equal(unlinked.data.property, null);
   assert.equal(unlinked.data.dataPedido, null);
   assert.equal(unlinked.data.descricao, null);
+  const automatic = await request(`/${id}`, 'PATCH', { valorImovel: '326000.00', valorAvaliado: '370000.00' });
+  assert.equal(automatic.data.valorEntrada, '30000.00');
+  assert.equal(automatic.data.valorFinanciado, '296000.00');
+  assert.equal(automatic.data.valorEntradaManual, null);
+  const manualEntry = await request(`/${id}`, 'PATCH', { valorEntradaManual: '45123.19' });
+  assert.equal(manualEntry.data.valorEntrada, '45123.19');
+  const changedValues = await request(`/${id}`, 'PATCH', { valorAvaliado: '400000.00' });
+  assert.equal(changedValues.data.valorEntrada, '45123.19', 'Alterar avaliação preserva a entrada manual.');
+  assert.equal(changedValues.data.valorFinanciado, '320000.00', 'Financiamento acompanha avaliação mesmo com entrada manual.');
+  assert.equal((await request(`/${id}`, 'PATCH', { valorEntradaManual: 0 })).data.valorEntrada, '0.00');
+  const automaticAgain = await request(`/${id}`, 'PATCH', { valorEntradaManual: null });
+  assert.equal(automaticAgain.data.valorEntrada, '6000.00', 'Remover substituição volta ao cálculo atual.');
+  assert.equal((await request(`?q=Exclusivo`)).data.items[0].valorEntrada, '6000.00', 'Listagem inclui entrada calculada.');
+  assert.equal((await request(`/${id}`)).data.valorFinanciado, '320000.00', 'Detalhe inclui financiamento calculado.');
+  assert.equal((await request(`?q=Exclusivo`)).data.items[0].valorFinanciado, '320000.00', 'Listagem inclui financiamento calculado.');
+  const fullyCovered = await request(`/${id}`, 'PATCH', { valorImovel: '338000.00', valorAvaliado: '550000.00' });
+  assert.equal(fullyCovered.data.valorEntrada, '0.00', 'Resposta de edição limita a entrada automática ao mínimo zero.');
+  assert.equal((await request(`/${id}`)).data.valorEntrada, '0.00', 'Consulta de detalhe não retorna entrada negativa.');
+  assert.equal((await request('?q=Exclusivo')).data.items[0].valorEntrada, '0.00', 'Listagem também não retorna entrada negativa.');
+  assert.equal((await request(`/${id}`, 'PATCH', { valorEntrada: '999.00' })).status, 400, 'Cliente não grava um valor calculado duplicado.');
+  assert.equal((await request(`/${id}`, 'PATCH', { valorFinanciado: '999.00' })).status, 400, 'Cliente não grava financiamento derivado.');
   assert.equal((await request(`/${id}`, 'DELETE')).status, 204);
   assert.equal((await request(`/${id}`)).status, 404);
   assert.equal((await request(`/${id}`, 'PATCH', { imovel: 'Já excluído' })).status, 404);
   assert.equal((await request(`/${id}`, 'DELETE')).status, 404);
   assert.deepEqual(properties.get(10), initialProperty);
+});
+
+test('API: pesquisa de imóveis inclui proprietário, preço e dados de miniatura', async t => {
+  const { prisma, properties } = fixture();
+  properties.get(10).photoUrl = 'https://example.test/property.jpg';
+  properties.get(10).driveCoverFileId = 'drive-cover-test';
+  const app = express();
+  app.use(express.json());
+  app.use('/engineerings', createEngineeringRouter(prisma, (req, res, next) => { req.user = { id: 2 }; next(); }));
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/engineerings/properties`;
+  const lookup = async query => {
+    const response = await fetch(`${base}?${query}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const found = await lookup(`q=${encodeURIComponent('privado')}`);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].ownerName, 'Privado');
+  assert.equal(found[0].price, 300000);
+  assert.equal(found[0].photoUrl, 'https://example.test/property.jpg');
+  assert.equal(found[0].driveCoverFileId, 'drive-cover-test');
+  assert.equal('ownerWhatsapp' in found[0], false, 'Busca só inclui o nome do proprietário, sem contato.');
+  for (const query of ['CA0010', 'Casa do mapa', 'Rua Dez', '300000', '300.000', '300.000,00', 'R$ 300.000,00', '300000.00']) {
+    assert.equal((await lookup(`q=${encodeURIComponent(query)}`))[0]?.id, 10, `Busca reconhece ${query}`);
+  }
+  assert.equal((await lookup('id=10'))[0].ownerName, 'Privado');
+  assert.deepEqual(await lookup('id=999'), []);
+  assert.deepEqual(await lookup('q=P'), []);
+  assert.equal((await fetch(`${base}?id=0`)).status, 400);
+  assert.equal((await fetch(`${base}?q=a&q=b`)).status, 400);
 });
 
 test('API: validade filtra todas as páginas e distingue vencida, hoje, 30 e 31 dias', async t => {
@@ -242,7 +329,7 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
   let userId, propertyId, server;
   try {
     userId = (await prisma.user.create({ data: { nome: prefix, email: `${prefix}@example.test`, passwordHash: 'not-a-login-hash', role: 'ASSISTENTE' } })).id;
-    propertyId = (await prisma.property.create({ data: { title: prefix, address: 'Endereço de teste', code: prefix, city: 'Sumaré', price: 350000 } })).id;
+    propertyId = (await prisma.property.create({ data: { title: prefix, address: 'Endereço de teste', code: prefix, city: 'Sumaré', price: 350000, ownerName: `owner-${prefix}`, photoUrl: 'https://example.test/photo.jpg' } })).id;
     const app = express();
     app.use(express.json());
     app.use('/engineerings', createEngineeringRouter(prisma, (req, res, next) => { req.user = { id: userId, role: 'ADM' }; next(); }));
@@ -257,8 +344,12 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
     assert.equal(created.status, 201);
     assert.equal(created.data.valorImovel, '350000.91');
     assert.equal(created.data.valorAvaliado, '360000.12');
+    assert.equal(created.data.valorEntrada, '62000.81');
+    assert.equal(created.data.valorFinanciado, '288000.10');
     assert.equal(created.data.dataPedido.slice(0, 10), '2026-10-28');
     assert.equal(created.data.property.id, propertyId);
+    assert.equal(created.data.property.ownerName, `owner-${prefix}`);
+    assert.equal((await request(`/properties?q=owner-${prefix}`)).data[0].photoUrl, 'https://example.test/photo.jpg');
     assert.equal(created.data.matricula, '0000123');
     const independent = await request('', 'POST', { imovel: `${prefix}-independent`, dataPedido: '2026-10-27' });
     assert.equal(independent.status, 201);
@@ -289,11 +380,19 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
     await request(`/${expiryIds.get(-1)}`, 'PATCH', { dataPedido: today });
     assert.equal((await request(`?${expiryQuery}&validade=vencidas`)).data.total, 0, 'Alterar pedido recalcula validade automaticamente.');
     assert.equal((await request(`?${expiryQuery}`)).data.total, 5, 'Registro sem data só participa de Todas.');
+    assert.equal((await request(`/${created.data.id}`, 'PATCH', { valorEntradaManual: '45123.19' })).data.valorEntrada, '45123.19');
+    assert.equal((await prisma.engineering.findUnique({ where: { id: created.data.id } })).valorEntradaManual.toFixed(2), '45123.19');
+    assert.equal((await request(`/${created.data.id}`, 'PATCH', { valorEntradaManual: 0 })).data.valorEntrada, '0.00');
     const updated = await request(`/${created.data.id}`, 'PATCH', { valorAvaliado: '370000.02', descricao: 'Laudo recebido' });
     assert.equal(updated.status, 200);
+    assert.equal(updated.data.valorEntrada, '0.00', 'Entrada manual zero continua definida ao mudar avaliação.');
+    assert.equal(updated.data.valorFinanciado, '296000.02');
+    const automaticAgain = await request(`/${created.data.id}`, 'PATCH', { valorEntradaManual: null });
+    assert.equal(automaticAgain.data.valorEntrada, '54000.89');
     const saved = await prisma.engineering.findUnique({ where: { id: created.data.id } });
     assert.equal(saved.valorAvaliado.toFixed(2), '370000.02');
     assert.equal(saved.descricao, 'Laudo recebido');
+    assert.equal(saved.valorEntradaManual, null);
     const originalProperty = await prisma.property.findUnique({ where: { id: propertyId } });
     assert.equal(originalProperty.price, 350000);
     assert.equal(originalProperty.status, 'Disponível');

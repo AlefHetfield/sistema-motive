@@ -33,4 +33,5 @@ export const emptyEngineeringForm = item => ({
   imovel: item?.imovel || '', matricula: item?.matricula || '', cidade: item?.cidade || '',
   dataPedido: item?.dataPedido?.slice(0, 10) || '', valorImovel: moneyInput(item?.valorImovel),
   valorAvaliado: moneyInput(item?.valorAvaliado), descricao: item?.descricao || '', propertyId: item?.propertyId || null,
+  valorEntradaManual: moneyInput(item?.valorEntradaManual),
 });

@@ -1,5 +1,6 @@
 import express from 'express';
 import { addEngineeringDays, engineeringToday } from '../frontend/src/utils/engineeringValidity.js';
+import { calculateEngineeringFinancing, getEngineeringEntry } from '../frontend/src/utils/engineeringEntry.js';
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const positiveId = value => {
@@ -38,7 +39,7 @@ function money(value, label) {
 
 export function engineeringData(body, creating = false) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail('Dados da engenharia inválidos.');
-  const allowed = new Set(['imovel', 'matricula', 'cidade', 'dataPedido', 'valorImovel', 'valorAvaliado', 'descricao', 'propertyId']);
+  const allowed = new Set(['imovel', 'matricula', 'cidade', 'dataPedido', 'valorImovel', 'valorAvaliado', 'valorEntradaManual', 'descricao', 'propertyId']);
   if (Object.keys(body).some(key => !allowed.has(key))) throw fail('Campo de engenharia inválido.');
   const data = {};
   if (creating || body.imovel !== undefined) data.imovel = text(body.imovel, 'o imóvel', 250, true);
@@ -46,7 +47,7 @@ export function engineeringData(body, creating = false) {
     if (body[key] !== undefined) data[key] = text(body[key], label, max);
   }
   if (body.dataPedido !== undefined) data.dataPedido = date(body.dataPedido);
-  for (const [key, label] of [['valorImovel', 'Valor do imóvel'], ['valorAvaliado', 'Valor avaliado']]) {
+  for (const [key, label] of [['valorImovel', 'Valor do imóvel'], ['valorAvaliado', 'Valor avaliado'], ['valorEntradaManual', 'Valor de entrada manual']]) {
     if (body[key] !== undefined) data[key] = money(body[key], label);
   }
   if (body.propertyId !== undefined) data.propertyId = body.propertyId === null ? null : positiveId(body.propertyId);
@@ -54,8 +55,16 @@ export function engineeringData(body, creating = false) {
   return data;
 }
 
-const propertySelect = { id: true, code: true, title: true, address: true, neighborhood: true, city: true, price: true, photoUrl: true, driveCoverFileId: true, status: true };
+const propertySelect = { id: true, code: true, title: true, address: true, neighborhood: true, city: true, price: true, photoUrl: true, driveCoverFileId: true, status: true, ownerName: true };
 const include = { property: { select: propertySelect } };
+const present = item => ({ ...item, valorFinanciado: calculateEngineeringFinancing(item.valorAvaliado), valorEntrada: getEngineeringEntry(item) });
+
+function lookupPrice(query) {
+  let raw = query.replace(/^R\$\s*/i, '').replace(/\s/g, '');
+  if (raw.includes(',')) raw = raw.replaceAll('.', '').replace(',', '.');
+  else if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) raw = raw.replaceAll('.', '');
+  return /^\d{1,13}(?:\.\d{1,2})?$/.test(raw) && Number.isFinite(Number(raw)) ? Number(raw) : null;
+}
 
 export function engineeringFilters(query, today = engineeringToday()) {
   const value = key => {
@@ -115,23 +124,37 @@ export function createEngineeringRouter(prisma, requireAuth) {
       prisma.engineering.count(),
       prisma.engineering.count({ where: { valorAvaliado: null } }),
     ]);
-    res.json({ items, total, page, pageSize, cidades: cities.map(item => item.cidade), summary: { total: all, pendentes, avaliadas: all - pendentes } });
+    res.json({ items: items.map(present), total, page, pageSize, cidades: cities.map(item => item.cidade), summary: { total: all, pendentes, avaliadas: all - pendentes } });
+  });
+  router.get('/properties', async (req, res) => {
+    if (req.query.id !== undefined) {
+      const property = await prisma.property.findUnique({ where: { id: positiveId(req.query.id) }, select: propertySelect });
+      return res.json(property ? [property] : []);
+    }
+    const q = req.query.q === undefined ? '' : req.query.q;
+    if (typeof q !== 'string' || q.length > 200) throw fail('Busca de imóvel inválida.');
+    const term = q.trim();
+    if (term.length < 2) return res.json([]);
+    const price = lookupPrice(term);
+    const OR = ['title', 'code', 'address', 'ownerName'].map(field => ({ [field]: { contains: term, mode: 'insensitive' } }));
+    if (price !== null) OR.push({ price });
+    res.json(await prisma.property.findMany({ where: { OR }, select: propertySelect, orderBy: [{ title: 'asc' }, { id: 'asc' }], take: 20 }));
   });
   router.get('/:id', async (req, res) => {
     const item = await prisma.engineering.findUnique({ where: { id: positiveId(req.params.id) }, include });
     if (!item) throw fail('Engenharia não encontrada.', 404);
-    res.json(item);
+    res.json(present(item));
   });
   router.post('/', async (req, res) => {
     const data = engineeringData(req.body, true);
     await checkProperty(data);
-    res.status(201).json(await prisma.engineering.create({ data, include }));
+    res.status(201).json(present(await prisma.engineering.create({ data, include })));
   });
   router.patch('/:id', async (req, res) => {
     const id = positiveId(req.params.id);
     const data = engineeringData(req.body);
     await checkProperty(data);
-    res.json(await prisma.engineering.update({ where: { id }, data, include }));
+    res.json(present(await prisma.engineering.update({ where: { id }, data, include })));
   });
   router.delete('/:id', async (req, res) => {
     await prisma.engineering.delete({ where: { id: positiveId(req.params.id) } });
