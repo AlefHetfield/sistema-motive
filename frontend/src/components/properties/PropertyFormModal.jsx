@@ -53,7 +53,7 @@ const motiveReferenceFromUrl = value => {
 const blankProperty = {
   code: '', title: '', description: '', additionalInformation: '', address: '', city: 'Sumaré', neighborhood: '', propertyType: 'Casa', condition: 'Usado', status: 'Disponível',
   price: 0, area: '', landArea: '', landConfiguration: '', floor: '', bedrooms: '', suites: '', bathrooms: '', parkingSpaces: '', photoUrl: '', sourceUrl: '', driveFolderUrl: '', driveCoverFileId: '', captador: '', ownerName: '', ownerWhatsapp: '', latitude: '', longitude: '',
-  lastAvailabilityCheck: new Date().toISOString().slice(0, 10),
+  lastAvailabilityCheck: '',
 };
 
 const initialForm = (property, initialLocation) => {

@@ -287,7 +287,8 @@ const normalizeProperty = (payload, user, { partial = false } = {}) => {
     ownerWhatsapp: nullableText(String(source.ownerWhatsapp ?? '').replace(/\D/g, ''), 20),
     latitude: numberValue(source.latitude),
     longitude: numberValue(source.longitude),
-    lastAvailabilityCheck: dateValue(source.lastAvailabilityCheck),
+    ...(!partial || Object.hasOwn(source, 'lastAvailabilityCheck')
+      ? { lastAvailabilityCheck: dateValue(source.lastAvailabilityCheck) } : {}),
   };
 
   if (!partial) {
@@ -652,7 +653,6 @@ export function createPropertyRouter(prisma, requireAuth) {
             const preview = await listingPreview(property.sourceUrl);
             const data = {
               sourceUrl: preview.sourceUrl || property.sourceUrl,
-              lastAvailabilityCheck: new Date(),
             };
             if (preview.imageUrl) data.photoUrl = preview.imageUrl;
             if (preview.property?.externalReference) data.code = cleanText(preview.property.externalReference, 60).toUpperCase();
