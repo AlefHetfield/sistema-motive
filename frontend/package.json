@@ -16,6 +16,7 @@
     "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "test:engineerings": "node scripts/verify-engineerings-ui.mjs",
     "test:properties-workspace": "node scripts/verify-properties-workspace.mjs",
+    "test:releases": "node scripts/verify-release-announcements.mjs",
     "test:task-refresh": "node scripts/verify-task-refresh.mjs",
     "preview": "vite preview"
   },

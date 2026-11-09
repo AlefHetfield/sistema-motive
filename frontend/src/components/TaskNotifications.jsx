@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { taskApi } from '../services/api';
 import { taskDateLabel } from '../utils/taskDates';
 
-export default function TaskNotifications({ userId }) {
+export default function TaskNotifications({ userId, suppressPrompts = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const rootRef = useRef(null);
@@ -21,6 +21,8 @@ export default function TaskNotifications({ userId }) {
   const [loginPrompt, setLoginPrompt] = useState(null);
   const latest = useRef(null);
   const toastIds = useRef([]);
+  const promptsSuppressed = useRef(suppressPrompts);
+  useEffect(() => { promptsSuppressed.current = suppressPrompts; }, [suppressPrompts]);
   const refresh = () => setRevision(value => value + 1);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function TaskNotifications({ userId }) {
         }
         if (latest.current !== null) {
           const fresh = result.items.filter(item => item.id > latest.current && !item.readAt);
-          if (fresh.length) {
+          if (fresh.length && !promptsSuppressed.current) {
             const item = fresh[0];
             const toastId = toast.info(fresh.length === 1 ? (item.kind === 'COMPLETED' ? 'Tarefa concluída' : 'Nova tarefa para você') : `${fresh.length} novas notificações`, {
               description: item.kind === 'COMPLETED' ? `${item.actorName} concluiu “${item.task.title}”.` : `${item.actorName} atribuiu “${item.task.title}” a você.`,
@@ -61,7 +63,9 @@ export default function TaskNotifications({ userId }) {
             if (toastIds.current.length > 50) toast.dismiss(toastIds.current.shift());
           }
         }
-        latest.current = Math.max(latest.current || 0, newest);
+        if (latest.current === null || !promptsSuppressed.current) {
+          latest.current = Math.max(latest.current || 0, newest);
+        }
         setData(result);
         setLoginPrompt(current => current && result.unreadAssignedCount > 0 ? { count: result.unreadAssignedCount, items: result.items.filter(item => item.kind === 'ASSIGNED').slice(0, 3) } : null);
         setError('');
@@ -74,7 +78,7 @@ export default function TaskNotifications({ userId }) {
     document.addEventListener('visibilitychange', load);
     window.addEventListener('focus', load);
     return () => { disposed = true; clearInterval(timer); controller?.abort(); document.removeEventListener('visibilitychange', load); window.removeEventListener('focus', load); };
-  }, [navigate, revision, userId]);
+  }, [navigate, revision, userId, suppressPrompts]);
 
   useEffect(() => {
     if (!open || view !== 'history') return;
@@ -129,16 +133,16 @@ export default function TaskNotifications({ userId }) {
   };
   const page = view === 'history' ? history : data;
   return <div ref={rootRef} className="relative shrink-0">
-    <button ref={buttonRef} type="button" aria-label={`Notificações${data?.unreadCount ? `: ${data.unreadCount} não lidas` : ''}`} aria-expanded={open} aria-controls="task-notifications"
+    <button ref={buttonRef} type="button" disabled={suppressPrompts} aria-label={`Notificações${data?.unreadCount ? `: ${data.unreadCount} não lidas` : ''}`} aria-expanded={open && !suppressPrompts} aria-controls="task-notifications"
       onClick={() => { setOpen(value => !value); if (!open) { setView('new'); refresh(); } }} className="relative rounded-xl p-3 text-gray-500 hover:bg-primary/5 hover:text-primary">
       <Bell size={21} />{data?.unreadCount > 0 && <span className="absolute -right-1 top-0 min-w-5 rounded-full bg-red-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{data.unreadCount > 99 ? '99+' : data.unreadCount}</span>}
     </button>
-    {loginPrompt && <section role="status" aria-label="Novas tarefas recebidas" className="fixed right-3 top-[76px] z-[90] w-[min(25rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-2xl">
+    {loginPrompt && !suppressPrompts && <section role="status" aria-label="Novas tarefas recebidas" className="fixed right-3 top-[76px] z-[90] w-[min(25rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-2xl">
       <div className="flex items-start gap-3 bg-gradient-to-r from-sky-50 to-white px-4 py-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><ListTodo size={20}/></span><div className="min-w-0 flex-1"><h2 className="font-bold text-slate-900">Você recebeu {loginPrompt.count} {loginPrompt.count === 1 ? 'nova tarefa' : 'novas tarefas'}</h2><p className="mt-1 text-xs text-slate-500">Confira o que foi atribuído a você desde o último acesso.</p></div><button type="button" onClick={()=>setLoginPrompt(null)} aria-label="Fechar aviso de novas tarefas" className="rounded-lg p-1 text-slate-400 hover:bg-white"><X size={18}/></button></div>
       {loginPrompt.items.length>0&&<div className="divide-y divide-slate-100">{loginPrompt.items.map(item=><button key={item.id} type="button" onClick={()=>read(item)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"><span className="h-2 w-2 shrink-0 rounded-full bg-sky-500"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{item.task.title}</span><span className="mt-0.5 block text-xs text-slate-500">Delegada por {item.actorName}{item.task.dueDate?` · ${taskDateLabel(item.task.dueDate)}`:''}</span></span><ArrowRight size={16} className="shrink-0 text-slate-300"/></button>)}</div>}
       <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/70 px-4 py-3"><button type="button" onClick={()=>setLoginPrompt(null)} className="text-xs font-semibold text-slate-500">Agora não</button><button type="button" onClick={()=>{setLoginPrompt(null);navigate('/tasks');}} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary">Ver minhas tarefas <ArrowRight size={14}/></button></div>
     </section>}
-    {open && <section id="task-notifications" aria-label="Notificações" className="fixed right-3 top-[72px] z-[90] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl lg:right-5">
+    {open && !suppressPrompts && <section id="task-notifications" aria-label="Notificações" className="fixed right-3 top-[72px] z-[90] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl lg:right-5">
       <header className="flex items-center justify-between border-b px-4 py-3"><h2 className="font-semibold text-gray-800">Notificações</h2><button type="button" aria-label="Fechar notificações" onClick={() => { setOpen(false); buttonRef.current?.focus(); }} className="rounded-lg p-1 text-gray-400"><X size={18} /></button></header>
       <div className="flex gap-1 border-b px-4 py-2" aria-label="Visualização das notificações">{[['new', 'Novas'], ['history', 'Histórico']].map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => { setView(key); setError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold ${view === key ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50'}`}>{label}{key === 'new' && data?.unreadCount > 0 ? ` (${data.unreadCount})` : ''}</button>)}</div>
       <p className="px-4 py-3 text-xs text-gray-500">Ler um aviso não conclui a tarefa. Ao concluir, o aviso de atribuição vai para o histórico.</p>

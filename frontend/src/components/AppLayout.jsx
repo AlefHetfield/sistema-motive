@@ -8,6 +8,8 @@ import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, Ca
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
+import ReleaseAnnouncementModal from './releases/ReleaseAnnouncementModal';
+import useReleaseAnnouncements from '../hooks/useReleaseAnnouncements';
 import { Suspense } from 'react';
 import LoadingAnimation from './LoadingAnimation';
 import { useTheme } from '../context/ThemeContext';
@@ -182,6 +184,7 @@ const AppLayout = () => {
     const { logout, user, checkAuth, isAuthenticated } = useAuth();
     const location = useLocation();
     const mobile = useMobileLayout();
+    const releases = useReleaseAnnouncements(user?.id, !user?.mustChangePassword);
     const [mobileMenu, setMobileMenu] = useState(false);
     const sidebarRef = useRef(null);
     const menuButtonRef = useRef(null);
@@ -221,6 +224,12 @@ const AppLayout = () => {
     });
     const sidebarExpanded = mobile || sidebarPinned || sidebarHovered;
     const showPasswordModal = Boolean(user?.mustChangePassword);
+    const showReleaseModal = !showPasswordModal && !mobileOpen && releases.items.length > 0;
+    const suppressTaskPrompts = showPasswordModal || releases.checking || releases.items.length > 0;
+    const closeRelease = () => {
+        if (releases.error) releases.dismiss();
+        else releases.acknowledge();
+    };
     
     // Redireciona para login se deslogou
     useEffect(() => {
@@ -382,7 +391,7 @@ const AppLayout = () => {
                     </div>
                     <div className="flex shrink-0 items-center gap-2 lg:gap-3">
                         <ThemeMenu />
-                        {isAuthenticated && user?.id && <TaskNotifications key={user.id} userId={user.id} />}
+                        {isAuthenticated && user?.id && <TaskNotifications key={user.id} userId={user.id} suppressPrompts={suppressTaskPrompts} />}
                         <div className="hidden border-l border-[#DDE4E8] pl-4 text-right lg:block">
                             <p className="font-semibold text-sm text-gray-800">{user?.nome || 'Usuário'}</p>
                             <p className="text-xs text-gray-500">
@@ -411,6 +420,7 @@ const AppLayout = () => {
                 </div>
             </main>
 
+            {showReleaseModal && <ReleaseAnnouncementModal items={releases.items} busy={releases.busy} error={releases.error} onConfirm={releases.acknowledge} onClose={closeRelease} onDefer={releases.dismiss} />}
             {/* Modal de Troca de Senha Obrigatória */}
             {showPasswordModal && user && (
                 <ChangePasswordModal
