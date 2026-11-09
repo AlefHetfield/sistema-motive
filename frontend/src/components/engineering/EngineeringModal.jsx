@@ -15,15 +15,19 @@ import EngineeringPropertyPreview from './EngineeringPropertyPreview';
 
 const searchEngineeringProperties = (term, { signal }) => engineeringApi(`/properties?q=${encodeURIComponent(term)}`, { signal });
 
-export default function EngineeringModal({ item, onClose, onSaved }) {
+export default function EngineeringModal({ item, initialProperty, onClose, onSaved }) {
   const titleId = useId();
   const formId = useId();
   const dialogRef = useRef(null);
   const inputRef = useRef(null);
   const closeRef = useRef(onClose);
   const savingRef = useRef(false);
-  const [form, setForm] = useState(() => emptyEngineeringForm(item));
-  const [property, setProperty] = useState(item?.property || null);
+  const [form, setForm] = useState(() => {
+    const values = emptyEngineeringForm(item);
+    if (item || !initialProperty) return values;
+    return { ...values, propertyId: initialProperty.id, cidade: initialProperty.city || '', valorImovel: moneyInput(initialProperty.price) };
+  });
+  const [property, setProperty] = useState(item ? item.property || null : initialProperty || null);
   const [manualEntry, setManualEntry] = useState(item?.valorEntradaManual !== null && item?.valorEntradaManual !== undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -13,17 +13,23 @@ const AppLayout = lazy(() => import('./components/AppLayout'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ClientsList = lazy(() => import('./pages/ClientsList'));
-const Engineerings = lazy(() => import('./pages/Engineerings'));
 const PdfEditor = lazy(() => import('./pages/PdfEditor'));
 const ReceiptGenerator = lazy(() => import('./pages/ReceiptGenerator'));
 const MatriculaSearch = lazy(() => import('./pages/MatriculaSearch'));
 const Settings = lazy(() => import('./pages/Settings'));
 const HousingSimulator = lazy(() => import('./pages/HousingSimulator'));
 const ContractGenerator = lazy(() => import('./pages/ContractGenerator'));
-const PropertiesMap = lazy(() => import('./pages/PropertiesMap'));
+const PropertiesWorkspace = lazy(() => import('./pages/PropertiesWorkspace'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
 const Notes = lazy(() => import('./pages/Notes'));
+
+function EngineeringRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set('tab', 'engineerings');
+  return <Navigate to={`/properties-map?${params}`} replace />;
+}
 
 // A data router lets the note editor protect pending changes on links and browser Back.
 const router = createBrowserRouter(createRoutesFromElements(
@@ -33,11 +39,11 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route index element={<Navigate to="/pdf-editor" replace />} />
       <Route path="dashboard" element={<PrivateRoute requiredRole="ADM"><Dashboard /></PrivateRoute>} />
       <Route path="clients" element={<PrivateRoute><ClientsList /></PrivateRoute>} />
-      <Route path="engineerings" element={<PrivateRoute requiredRole={['ADM', 'ASSISTENTE']}><Engineerings /></PrivateRoute>} />
+      <Route path="engineerings" element={<PrivateRoute requiredRole={['ADM', 'ASSISTENTE']}><EngineeringRedirect /></PrivateRoute>} />
       <Route path="pdf-editor" element={<PdfEditor />} />
       <Route path="receipt-generator" element={<ReceiptGenerator />} />
       <Route path="contract-generator" element={<ContractGenerator />} />
-      <Route path="properties-map" element={<PropertiesMap />} />
+      <Route path="properties-map" element={<PropertiesWorkspace />} />
       <Route path="simulador" element={<HousingSimulator />} />
       <Route path="matriculas" element={<MatriculaSearch />} />
       <Route path="tasks" element={<Tasks />} />

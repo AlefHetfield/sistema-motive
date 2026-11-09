@@ -56,6 +56,16 @@ test('engenharias: filtros de validade incluem limites antes de paginar e combin
   for (const validade of ['invalid', ['validas'], { value: 'validas' }]) assert.throws(() => engineeringFilters({ validade }, today));
 });
 
+test('engenharias: filtro do imóvel vinculado aceita somente identificadores positivos e combina filtros', () => {
+  assert.deepEqual(engineeringFilters({ propertyId: '27', cidade: 'Sumaré', avaliacao: 'avaliada', pageSize: '1' }).where, {
+    propertyId: 27, cidade: { equals: 'Sumaré', mode: 'insensitive' }, valorAvaliado: { not: null },
+  });
+  assert.deepEqual(engineeringFilters({}).where, {}, 'Ausência do filtro inclui registros com e sem vínculo.');
+  for (const propertyId of ['', '0', '-1', '27x', '1.5', '2147483648', ['27', '28'], { id: '27' }]) {
+    assert.throws(() => engineeringFilters({ propertyId }), undefined, `Identificador inválido: ${JSON.stringify(propertyId)}`);
+  }
+});
+
 test('engenharias: valores monetários mantêm centavos, zero e limites sem coerção', () => {
   assert.deepEqual(engineeringData({ imovel: ' Casa ', valorImovel: '222000.10', valorAvaliado: 0 }, true), {
     imovel: 'Casa', valorImovel: '222000.10', valorAvaliado: '0.00',
@@ -169,7 +179,8 @@ test('API: autenticação, perfil atual e usuário ativo protegem todas as opera
   const base = `http://127.0.0.1:${server.address().port}/engineerings`;
   const request = (user, path = '', method = 'GET') => fetch(`${base}${path}`, { method, headers: { ...(user ? { 'X-User': user } : {}), 'Content-Type': 'application/json' }, ...(method === 'POST' || method === 'PATCH' ? { body: JSON.stringify({ imovel: 'Casa' }) } : {}) });
   assert.equal((await request(null)).status, 401);
-  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '/1'], ['GET', '/properties?q=Privado'], ['POST', ''], ['PATCH', '/1'], ['DELETE', '/1']]) {
+  assert.equal((await request(null, '?propertyId=10&pageSize=1')).status, 401);
+  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '?propertyId=10&pageSize=1'], ['GET', '/1'], ['GET', '/properties?q=Privado'], ['POST', ''], ['PATCH', '/1'], ['DELETE', '/1']]) {
     assert.equal((await request(user, path, method)).status, user === 3 ? 403 : 401);
   }
   assert.equal((await request(1)).status, 200);
@@ -218,7 +229,21 @@ test('API: CRUD independente, vínculo sem alterar mapa, filtros e paginação e
   assert.equal((await request('?avaliacao=pendente')).data.total, 2);
   assert.equal((await request('', 'POST', { imovel: 'Inválido', propertyId: 999 })).status, 404);
   assert.equal((await request('?pageSize=0')).status, 400);
+  const linkedFilter = (await request('?propertyId=10&pageSize=1')).data;
+  assert.equal(linkedFilter.total, 1);
+  assert.equal(linkedFilter.items[0].id, linked.data.id);
+  assert.equal((await request('?propertyId=10&cidade=sumar%C3%A9&avaliacao=avaliada')).data.total, 1);
+  assert.equal((await request('?propertyId=10&avaliacao=pendente')).data.total, 0);
+  assert.equal((await request('?propertyId=999')).data.total, 0);
+  for (const query of ['propertyId=', 'propertyId=0', 'propertyId=10x', 'propertyId=10&propertyId=11']) {
+    assert.equal((await request(`?${query}`)).status, 400, `Filtro inválido recebe 400: ${query}`);
+  }
   assert.equal((await request(`/${id}`, 'PATCH', { valorAvaliado: '260001.12', propertyId: 10 })).data.valorAvaliado, '260001.12');
+  const multipleLinked = (await request('?propertyId=10&pageSize=1')).data;
+  assert.equal(multipleLinked.total, 2, 'O total inclui todas as engenharias do imóvel, mesmo com uma por página.');
+  assert.equal(multipleLinked.items[0].id, linked.data.id, 'Filtro mantém a ordem dos pedidos mais recentes.');
+  assert.equal((await request('?propertyId=10&pageSize=1&page=2')).data.items[0].id, id);
+  assert.equal((await request('?propertyId=10&sort=antigos&pageSize=1')).data.items[0].id, id);
   const unlinked = await request(`/${id}`, 'PATCH', { propertyId: null, dataPedido: null, descricao: '' });
   assert.equal(unlinked.data.propertyId, null);
   assert.equal(unlinked.data.property, null);
@@ -359,6 +384,9 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
     assert.equal(firstPage.total, 2);
     assert.equal(firstPage.items[0].id, created.data.id);
     assert.equal(secondPage.items[0].id, independent.data.id);
+    const linkedPage = (await request(`?propertyId=${propertyId}&pageSize=1`)).data;
+    assert.equal(linkedPage.total, 1, 'Filtro do imóvel é aplicado pelo PostgreSQL antes da paginação.');
+    assert.equal(linkedPage.items[0].id, created.data.id);
     assert.equal((await request(`?q=${prefix}&avaliacao=pendente`)).data.total, 1);
     assert.equal((await request(`?q=${prefix}&cidade=Sumar%C3%A9&avaliacao=avaliada`)).data.total, 1);
     const today = engineeringToday();

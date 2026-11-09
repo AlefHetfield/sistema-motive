@@ -4,7 +4,7 @@ import useMobileLayout from '../hooks/useMobileLayout';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import NoteSyncStatus from './notes/NoteSyncStatus';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Users, HardHat, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, FileText, FileSignature, Calculator, CalendarDays, Landmark, MapPinned, ListTodo, StickyNote, FileSearch, Pin, PinOff, Settings as SettingsIcon } from 'lucide-react';
 import logoLight from '../assets/logo-light.png';
 import ChangePasswordModal from './ChangePasswordModal';
 import TaskNotifications from './TaskNotifications';
@@ -58,7 +58,7 @@ const corretorNavItems = [
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
-    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
+    { to: '/properties-map', label: 'Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
@@ -69,11 +69,10 @@ const corretorNavItems = [
 
 const assistenteNavItems = [
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
-    { to: '/engineerings', label: 'Engenharias', icon: HardHat, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
-    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
+    { to: '/properties-map', label: 'Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
@@ -85,11 +84,10 @@ const assistenteNavItems = [
 const adminNavItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operação' },
     { to: '/clients', label: 'Clientes', icon: Users, group: 'Operação' },
-    { to: '/engineerings', label: 'Engenharias', icon: HardHat, group: 'Operação' },
     { to: '/tasks', label: 'Tarefas', icon: ListTodo, group: 'Operação' },
     { to: '/notes', label: 'Notas', icon: StickyNote, group: 'Operação' },
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, group: 'Operação' },
-    { to: '/properties-map', label: 'Mapa de Imóveis', icon: MapPinned, group: 'Operação' },
+    { to: '/properties-map', label: 'Imóveis', icon: MapPinned, group: 'Operação' },
     { to: '/simulador', label: 'Simulador Habitacional', icon: Landmark, group: 'Ferramentas comerciais' },
     { to: '/receipt-generator', label: 'Gerador de Recibos', icon: Calculator, group: 'Ferramentas comerciais' },
     { to: '/contract-generator', label: 'Gerador de Contratos', icon: FileSignature, group: 'Ferramentas comerciais' },
@@ -105,7 +103,7 @@ const pageDescriptions = {
     '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
     '/notes': 'Guarde ideias, organize anotações e compartilhe com sua equipe.',
     '/agenda': 'Organize visitas e compromissos sincronizados com o Google Agenda.',
-    '/properties-map': 'Localize, organize e atualize os imóveis disponíveis no mapa.',
+    '/properties-map': 'Consulte o portfólio de imóveis e acompanhe as engenharias.',
     '/simulador': 'Compare condições de financiamento e gere propostas para seus clientes.',
     '/receipt-generator': 'Calcule valores e gere recibos de pró-labore em PDF.',
     '/contract-generator': 'Preencha, revise e gere contratos de compra e venda em Word.',

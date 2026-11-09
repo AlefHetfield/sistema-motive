@@ -88,7 +88,7 @@ try {
   const { createRoot } = await import('react-dom/client');
   root = createRoot(document.getElementById('root'));
   let sequence = 0, closes = 0, saved = null;
-  const mount = async item => act(async () => root.render(React.createElement(EngineeringModal, { key: ++sequence, item, onClose: () => { closes++; }, onSaved: value => { saved = value; } })));
+  const mount = async (item, props = {}) => act(async () => root.render(React.createElement(EngineeringModal, { key: ++sequence, item, ...props, onClose: () => { closes++; }, onSaved: value => { saved = value; } })));
   const input = name => document.querySelector(`[id$="-${name}"]`);
   const button = text => [...document.querySelectorAll('button')].find(element => element.textContent.trim() === text);
   const fill = async (name, value, cursor) => {
@@ -294,13 +294,59 @@ try {
   assert.equal(requests.at(-1).method, 'POST');
   assert.equal(requests.at(-1).body.valorEntradaManual, '12500.00', 'Cadastro novo aceita entrada manual independente de avaliação');
 
+  const beforeMapRegistration = requests.length;
+  await mount(undefined, { initialProperty: property });
+  assert.equal(document.querySelector('h2').textContent, 'Nova engenharia', 'Vínculo inicial do mapa abre um cadastro novo');
+  assert.equal(input('imovel').value, '', 'Abrir pelo mapa mantém o nome para preenchimento manual');
+  assert.equal(input('imovel').validity.valueMissing, true, 'Nome manual continua obrigatório no cadastro pelo mapa');
+  assert.equal(input('cidade').value, property.city, 'Cadastro pelo mapa já traz a cidade do imóvel');
+  assert.equal(input('valorImovel').value, '222.000,90', 'Cadastro pelo mapa já traz o valor do imóvel com centavos');
+  assert.equal(input('valorAvaliado').value, '', 'Valor do mapa não preenche a avaliação de engenharia');
+  assert.ok(document.querySelector('img[alt="Foto do imóvel AP0196"]'), 'Cadastro pelo mapa apresenta a miniatura do vínculo inicial');
+  assert.ok(button('Remover vínculo'), 'Vínculo inicial pode ser removido pelo formulário');
+  await submit();
+  assert.equal(requests.length, beforeMapRegistration, 'Nome vazio impede gravação mesmo quando o formulário vem do mapa');
+  await fill('imovel', 'Engenharia do mapa com nome manual');
+  await submit();
+  assert.equal(requests.length, beforeMapRegistration + 1);
+  assert.equal(requests.at(-1).path, '', 'Cadastro com imóvel inicial usa a rota de criação');
+  assert.equal(requests.at(-1).method, 'POST', 'ID do imóvel vinculado nunca transforma o cadastro em edição');
+  assert.equal(requests.at(-1).body.propertyId, property.id);
+  assert.equal(requests.at(-1).body.imovel, 'Engenharia do mapa com nome manual');
+  assert.equal(requests.at(-1).body.cidade, property.city);
+  assert.equal(requests.at(-1).body.valorImovel, '222000.90');
+  assert.equal(requests.at(-1).body.valorAvaliado, null);
+
+  globalThis.__engineeringProperty = { ...property, id: 44, title: 'Outro imóvel do mapa', city: 'Hortolândia', price: 280000 };
+  await click(button('Escolher imóvel de teste'));
+  assert.equal(input('imovel').value, 'Engenharia do mapa com nome manual', 'Trocar o vínculo inicial preserva o nome manual');
+  assert.equal(input('cidade').value, 'Hortolândia');
+  assert.equal(input('valorImovel').value, '280.000,00');
+  await submit();
+  assert.equal(requests.at(-1).method, 'POST');
+  assert.equal(requests.at(-1).body.propertyId, 44, 'Cadastro envia o vínculo substituído no formulário');
+  await click(button('Remover vínculo'));
+  assert.equal(input('imovel').value, 'Engenharia do mapa com nome manual', 'Remover o vínculo inicial preserva o nome manual');
+  await submit();
+  assert.equal(requests.at(-1).body.propertyId, null, 'Vínculo inicial removido não retorna ao payload');
+  globalThis.__engineeringProperty = property;
+
+  await mount({ id: 71, imovel: 'Nome salvo na engenharia', cidade: 'Americana', valorImovel: '310000.00', propertyId: null }, { initialProperty: property });
+  assert.equal(input('imovel').value, 'Nome salvo na engenharia', 'Edição preserva o nome já salvo');
+  assert.equal(input('cidade').value, 'Americana', 'Edição prioriza a cidade salva sobre o imóvel inicial');
+  assert.equal(input('valorImovel').value, '310.000,00', 'Edição prioriza o valor salvo sobre o imóvel inicial');
+  await submit();
+  assert.equal(requests.at(-1).path, '/71');
+  assert.equal(requests.at(-1).method, 'PATCH');
+  assert.equal(requests.at(-1).body.propertyId, null, 'Propriedade inicial não cria vínculo durante edição');
+
   await mount();
   await fill('imovel', 'Rascunho para cancelar');
   const beforeCancel = requests.length;
   await click(button('Cancelar'));
   assert.equal(closes, 1);
   assert.equal(requests.length, beforeCancel, 'Cancelar não grava dados');
-  console.log('Engenharias UI validada: entrada automática não negativa com centavos exatos e opção manual; nome preenchido somente manualmente e preservado ao vincular/trocar/remover imóvel; payloads, vencimento, máscara e submissão única.');
+  console.log('Engenharias UI validada: cadastro pelo mapa com vínculo inicial e nome manual; entrada automática não negativa com centavos exatos e opção manual; nome preservado ao vincular/trocar/remover imóvel; payloads, vencimento, máscara e submissão única.');
 } finally {
   if (root) await act(async () => root.unmount());
   await unlink(bundlePath).catch(() => {});

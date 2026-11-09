@@ -2,6 +2,8 @@ import useMobileLayout from '../hooks/useMobileLayout';
 import FancySelect from '../components/FancySelect';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import PropertyEngineeringSummary from '../components/engineering/PropertyEngineeringSummary';
 import {
   AlertTriangle,
   Bath,
@@ -164,7 +166,7 @@ function DetailMetric({ icon, label, value }) {
   return <div className="min-w-0 bg-white p-3">{icon}<p className="mt-2 text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">{label}</p><p className="mt-0.5 truncate text-sm font-bold text-slate-800">{value ?? '—'}</p></div>;
 }
 
-function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite, isFavoriteUpdating }) {
+function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite, isFavoriteUpdating, canManageEngineerings, onOpenEngineering, onCreateEngineering, engineeringRevision, active }) {
   const mobile = useMobileLayout();
   const [drivePhotos, setDrivePhotos] = useState([]);
   const [activePhoto, setActivePhoto] = useState(0);
@@ -216,7 +218,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
       <div className="relative h-36 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100 sm:h-48">
         {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setFailedPhotoIds(current => new Set(current).add(displayedPhoto.id))} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
         {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
-        <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
+        <button type="button" onClick={onClose} aria-label="Fechar dados do imóvel" className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
         <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
       </div>
       <div className="flex-1 overflow-y-auto p-4 sm:p-5">
@@ -234,6 +236,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
           <DetailMetric icon={<Maximize2 className="h-4 w-4 text-primary" />} label="Área" value={property.area ? `${number.format(property.area)} m²` : null} />
         </div>
 
+        {canManageEngineerings && <div className="mt-4"><PropertyEngineeringSummary property={property} onOpen={onOpenEngineering} onCreate={onCreateEngineering} revision={engineeringRevision} active={active} /></div>}
         <div className={`${mobile && sheetLevel < 2 ? 'hidden' : 'space-y-2.5'} mt-5 border-t border-slate-100 pt-4`}>
           <details open className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"><span>Dados do imóvel</span><ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-90" /></summary>
@@ -298,7 +301,9 @@ function DeleteModal({ property, onClose, onConfirm, isDeleting }) {
   return <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Cancelar exclusão" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="h-5 w-5" /></span><h2 className="mt-4 text-lg font-bold text-gray-900">Excluir imóvel?</h2><p className="mt-2 text-sm leading-6 text-gray-500">O imóvel <strong>{cleanPropertyTitle(property.title)}</strong> será removido do mapa e não poderá ser recuperado.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="button" disabled={isDeleting} onClick={onConfirm} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">{isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}Excluir imóvel</button></div></div></div>;
 }
 
-export default function PropertiesMap() {
+export default function PropertiesMap({ active = true, onOpenEngineering, onCreateEngineering, engineeringRevision = 0 }) {
+  const { user } = useAuth();
+  const canManageEngineerings = ['ADM', 'ASSISTENTE'].includes(user?.role);
   const mobile = useMobileLayout();
   const [mobileView, setMobileView] = useState('map');
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -340,7 +345,7 @@ export default function PropertiesMap() {
   useEffect(() => { loadProperties(); }, [loadProperties]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!active || isLoading) return;
     const requestedPropertyId = Number(searchParams.get('property'));
     if (!requestedPropertyId) return;
     const property = properties.find(item => item.id === requestedPropertyId);
@@ -349,7 +354,7 @@ export default function PropertiesMap() {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('property');
     setSearchParams(nextParams, { replace: true });
-  }, [isLoading, properties, searchParams, setSearchParams]);
+  }, [active, isLoading, properties, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedProperty?.id || !propertyListRef.current) return undefined;
@@ -627,7 +632,7 @@ export default function PropertiesMap() {
             <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
           </div>
         </div>
-        <div className="mt-3 hidden gap-2 border-t border-slate-100 pt-3 lg:grid xl:grid-cols-[minmax(260px,1fr)_180px_160px_160px_120px_150px]">
+        <div className="mt-3 hidden gap-2 border-t border-slate-100 pt-3 lg:grid lg:grid-cols-3 xl:grid-cols-[minmax(180px,1fr)_minmax(120px,180px)_minmax(120px,160px)_minmax(120px,160px)_110px_140px]">
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <FancySelect size="compact" ariaLabel="Filtrar por status" value={filters.status} onChange={value => updateFilter('status', value)} placeholder="Todos os status" options={[{ value: '', label: 'Todos os status' }, ...PROPERTY_STATUSES.map(item => ({ value: item, label: item }))]} />
           <FancySelect size="compact" ariaLabel="Filtrar por cidade" value={filters.city} onChange={value => updateFilter('city', value)} placeholder="Todas as cidades" options={[{ value: '', label: 'Todas as cidades' }, ...cities.map(item => ({ value: item, label: item }))]} />
@@ -688,12 +693,12 @@ export default function PropertiesMap() {
             )}
           </div>
           <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100%-32px)] flex-wrap gap-x-3 gap-y-2 rounded-xl border border-gray-200 bg-white/95 p-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur sm:flex">{cityGroups.map(group => <span key={group.city} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />{group.city}</span>)}</div>
-          {selectedProperty && !mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} />}
+          {selectedProperty && !mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} canManageEngineerings={canManageEngineerings} onOpenEngineering={onOpenEngineering} onCreateEngineering={onCreateEngineering} engineeringRevision={engineeringRevision} active={active} />}
         </main>
       </div>
 
-      {selectedProperty && mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} />}
-      {editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
+      {selectedProperty && mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} canManageEngineerings={canManageEngineerings} onOpenEngineering={onOpenEngineering} onCreateEngineering={onCreateEngineering} engineeringRevision={engineeringRevision} active={active} />}
+      {active && editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
       {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}
       {deletePending && <DeleteModal property={deletePending} onClose={() => setDeletePending(null)} onConfirm={confirmDelete} isDeleting={isDeleting} />}
     </div>

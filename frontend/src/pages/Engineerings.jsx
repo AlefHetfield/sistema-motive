@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Building2, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Eye, FilePenLine, Filter, HardHat, MapPin, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Button from '../components/ui/Button';
@@ -74,7 +75,8 @@ function EngineeringTableRow({ item, today, onEdit, onDelete, onPreview }) {
   </tr>;
 }
 
-export default function Engineerings() {
+export default function Engineerings({ active = true, onChanged }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [city, setCity] = useState('');
@@ -90,6 +92,8 @@ export default function Engineerings() {
   const [editor, setEditor] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [preview, setPreview] = useState(null);
+  const requestedEngineering = searchParams.get('engineering');
+  const requestedProperty = searchParams.get('newProperty');
   const requestKey = JSON.stringify([search, city, appraisal, validity, sort, page, revision, today]);
   const loading = request.key !== requestKey;
   const error = loading ? '' : request.error;
@@ -99,6 +103,7 @@ export default function Engineerings() {
     return () => clearTimeout(timer);
   }, [query, search]);
   useEffect(() => {
+    if (!active) return;
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), pageSize: '20', sort });
     if (search) params.set('q', search);
@@ -113,7 +118,39 @@ export default function Engineerings() {
       } })
       .catch(reason => { if (!controller.signal.aborted) setRequest({ key: requestKey, error: reason.message }); });
     return () => controller.abort();
-  }, [search, city, appraisal, validity, sort, page, revision, requestKey]);
+  }, [active, search, city, appraisal, validity, sort, page, revision, requestKey]);
+
+  useEffect(() => {
+    if (!active || (!requestedEngineering && !requestedProperty)) return;
+    const controller = new AbortController();
+    const openRequestedRecord = async () => {
+      try {
+        const id = requestedEngineering || requestedProperty;
+        if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) > 2147483647) {
+          throw new Error('Identificador inválido.');
+        }
+        if (requestedEngineering) {
+          const item = await engineeringApi(`/${id}`, { signal: controller.signal });
+          if (!controller.signal.aborted) setEditor({ item });
+        } else {
+          const properties = await engineeringApi(`/properties?id=${id}`, { signal: controller.signal });
+          if (!properties.length) throw new Error('O imóvel vinculado não foi encontrado.');
+          if (!controller.signal.aborted) setEditor({ item: null, property: properties[0] });
+        }
+      } catch (reason) {
+        if (!controller.signal.aborted) toast.error(reason.message);
+      } finally {
+        if (!controller.signal.aborted) setSearchParams(current => {
+          const params = new URLSearchParams(current);
+          if (params.get('engineering') === requestedEngineering) params.delete('engineering');
+          if (params.get('newProperty') === requestedProperty) params.delete('newProperty');
+          return params;
+        }, { replace: true });
+      }
+    };
+    openRequestedRecord();
+    return () => controller.abort();
+  }, [active, requestedEngineering, requestedProperty, setSearchParams]);
 
   const items = response.items || [];
   const summary = response.summary || emptyResponse.summary;
@@ -126,6 +163,7 @@ export default function Engineerings() {
   const saved = item => {
     toast.success(editor?.item ? 'Engenharia atualizada.' : 'Engenharia cadastrada.');
     setEditor(null); setPage(1); setRevision(value => value + 1);
+    onChanged?.();
     // The list stays governed by the current filters after a save.
     return item;
   };
@@ -135,6 +173,7 @@ export default function Engineerings() {
       toast.success('Engenharia excluída.');
       if (items.length === 1 && page > 1) setPage(value => value - 1);
       setRevision(value => value + 1);
+      onChanged?.();
     } catch (reason) { toast.error(reason.message); }
   };
   return <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 lg:p-7">
@@ -184,8 +223,9 @@ export default function Engineerings() {
       <div className="grid gap-3 md:grid-cols-2 xl:hidden">{items.map(item => <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-start gap-2">{item.property && <EngineeringPropertyThumbnail property={item.property} compact />}<div className="min-w-0 flex-1"><button type="button" onClick={() => edit(item)} className="break-words text-left text-sm font-semibold leading-5 text-slate-800 hover:text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button><p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13} className="shrink-0" aria-hidden="true" /><span className="break-words">{item.cidade || 'Cidade não informada'}</span></p></div><Button variant="ghost" size="icon" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => edit(item)}><FilePenLine size={17} aria-hidden="true" /></Button></div><EntryValue item={item} className="mt-4" /><dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-500">Matrícula</dt><dd className="mt-1 break-words font-medium text-slate-700">{item.matricula || 'Não informada'}</dd></div><div><dt className="text-slate-500">Pedido de engenharia</dt><dd className="mt-1 font-medium text-slate-700">{engineeringDate(item.dataPedido)}</dd></div><div><dt className="text-slate-500">Valor final do imóvel</dt><dd className="mt-1 break-words font-semibold text-slate-700">{engineeringMoney(item.valorImovel)}</dd></div><div><dt className="text-slate-500">Valor avaliado</dt><dd className="mt-1 break-words"><Appraisal item={item} /></dd></div><div className="col-span-2"><dt className="mb-1.5 text-slate-500">Vencimento da engenharia</dt><dd><EngineeringValidity date={item.dataPedido} today={today} /></dd></div></dl>{item.descricao && <p className="mt-4 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}<footer className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">{item.propertyId ? <button type="button" onClick={() => setPreview(item.propertyId)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Eye size={15} aria-hidden="true" />Ver imóvel vinculado</button> : <span className="text-[11px] text-slate-400">Sem vínculo com o mapa</span>}<Button variant="ghost" size="icon" aria-label={`Excluir engenharia ${item.imovel}`} className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setDeleting(item)}><Trash2 size={16} aria-hidden="true" /></Button></footer></article>)}</div>
       <nav aria-label="Paginação de engenharias" className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">{response.total} registro(s) · Página {page} de {pages}</p><div className="flex gap-2"><Button variant="secondary" size="icon" aria-label="Página anterior" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={18} /></Button><Button variant="secondary" size="icon" aria-label="Próxima página" disabled={page >= pages} onClick={() => setPage(value => value + 1)}><ChevronRight size={18} /></Button></div></nav>
     </>}
-    {editor && <EngineeringModal key={editor.item?.id || 'new'} item={editor.item} onClose={() => setEditor(null)} onSaved={saved} />}
-    {preview && <PropertyDetailsModal propertyId={preview} onClose={() => setPreview(null)} />}
-    <ConfirmModal isOpen={Boolean(deleting)} title="Excluir engenharia?" message={`O registro de ${deleting?.imovel || 'engenharia'} será excluído.`} warning="O imóvel vinculado continuará disponível no mapa." confirmText="Excluir engenharia" confirmColor="red" onClose={() => setDeleting(null)} onConfirm={remove} />
+    {active && (requestedEngineering || requestedProperty) && <p role="status" className="text-sm text-slate-500">Abrindo engenharia…</p>}
+    {active && editor && <EngineeringModal key={editor.item?.id || `new:${editor.property?.id || ''}`} item={editor.item} initialProperty={editor.property} onClose={() => setEditor(null)} onSaved={saved} />}
+    {active && preview && <PropertyDetailsModal propertyId={preview} onClose={() => setPreview(null)} />}
+    <ConfirmModal isOpen={active && Boolean(deleting)} title="Excluir engenharia?" message={`O registro de ${deleting?.imovel || 'engenharia'} será excluído.`} warning="O imóvel vinculado continuará disponível no mapa." confirmText="Excluir engenharia" confirmColor="red" onClose={() => setDeleting(null)} onConfirm={remove} />
   </div>;
 }

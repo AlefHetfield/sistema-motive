@@ -82,6 +82,7 @@ export function engineeringFilters(query, today = engineeringToday()) {
   const sort = value('sort') || 'recentes';
   if (q.length > 200 || cidade.length > 150 || !['', 'pendente', 'avaliada'].includes(avaliacao) || !['', 'validas', 'proximas', 'vencidas'].includes(validade) || !['recentes', 'antigos'].includes(sort)) throw fail('Filtro inválido.');
   const where = {};
+  if (query.propertyId !== undefined) where.propertyId = positiveId(value('propertyId'));
   if (q) where.OR = [
     ...['imovel', 'matricula', 'cidade', 'descricao'].map(field => ({ [field]: { contains: q, mode: 'insensitive' } })),
     ...['title', 'code', 'address'].map(field => ({ property: { is: { [field]: { contains: q, mode: 'insensitive' } } } })),
