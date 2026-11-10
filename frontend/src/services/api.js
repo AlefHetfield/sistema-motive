@@ -97,6 +97,18 @@ export async function fetchClient(clientId) {
     return response.json();
 }
 
+export async function fetchClientCommissionReport(ids, scope, signal) {
+    const response = await fetch(`${API_BASE_URL}/api/clients/commission-report`, {
+        method: 'POST',
+        credentials: 'include',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, scope }),
+    });
+    if (!response.ok) throw await apiError(response, 'Não foi possível gerar o relatório de comissões.');
+    return response.json();
+}
+
 export async function fetchClientActivities(clientId) {
     const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/activities`, {
         credentials: 'include',
@@ -475,8 +487,7 @@ export async function saveClient(clientData) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Falha ao salvar cliente (${response.status})`);
+            throw await apiError(response, `Falha ao salvar cliente (${response.status})`);
         }
         
         const result = await response.json();

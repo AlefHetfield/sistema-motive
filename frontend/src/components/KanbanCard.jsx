@@ -7,6 +7,8 @@ import StatusBadge from './ui/StatusBadge';
 import FancySelect from './FancySelect';
 import ClientStatusAge from './ClientStatusAge';
 import ClientAgeAvatar from './ClientAgeAvatar';
+import { useAuth } from '../context/AuthContext';
+import { formatClientCommission, getClientCommissionBreakdown } from '../utils/clientCommission';
 
 const compactCurrency = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -27,6 +29,8 @@ export default function KanbanCard({
   onMoveClient,
   statusOptions = [],
 }) {
+  const { user } = useAuth();
+  const commission = user?.role === 'ADM' && client.venda ? getClientCommissionBreakdown(client) : null;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cpfCopied, setCpfCopied] = useState(false);
   const [matriculaCopied, setMatriculaCopied] = useState(false);
@@ -165,6 +169,8 @@ export default function KanbanCard({
         <div className="min-w-0"><span className="flex items-center gap-1 text-slate-400"><UserRound className="h-3 w-3" />Responsável</span><p className="mt-0.5 truncate font-semibold text-slate-700" title={responsible}>{responsible}</p></div>
         <div className="min-w-0"><span className="flex items-center gap-1 text-slate-400"><Banknote className="h-3 w-3" />Financiamento</span><p className="mt-0.5 truncate font-semibold text-slate-700">{client.valorFinanciado ? compactCurrency.format(Number(client.valorFinanciado)) : 'Não informado'}</p></div>
       </div>
+
+      {commission && <p className={`mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] ${commission.requiresReview ? 'text-amber-700' : 'text-primary'}`}><span>Comissão líquida estimada</span><span className="font-semibold tabular-nums">{commission.requiresReview ? 'Revisar valores' : formatClientCommission(commission.net)}</span></p>}
 
       {isMenuOpen && (
         <Motion.div

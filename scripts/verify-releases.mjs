@@ -98,6 +98,58 @@ test('novidades: catálogo publicado possui título genérico, IDs estáveis e t
   assert.ok(Object.isFrozen(item) && Object.isFrozen(item.highlights));
 });
 
+test('novidades: nota de comissões possui público exclusivo ADM e quatro destaques', () => {
+  const item = releaseAnnouncements.find(release => release.id === '2026-11-comissoes-clientes');
+  assert.ok(item, 'A atualização de comissões deve estar publicada no catálogo.');
+  assert.equal(item.publishedAt, '2026-11-10T03:00:00.000Z');
+  assert.deepEqual(item.audience, ['ADM']);
+  assert.equal(item.title, 'Atualização do sistema');
+  assert.equal(item.highlights.length, 4);
+  assert.ok(item.highlights.every(highlight => typeof highlight === 'string' && highlight.trim()));
+  assert.equal(item.action, undefined);
+  assert.ok(Object.isFrozen(item) && Object.isFrozen(item.audience) && Object.isFrozen(item.highlights));
+});
+
+test('API: catálogo real entrega a nota de comissões apenas ao perfil ADM atual', async t => {
+  const { prisma, users, receipts } = fixture();
+  const request = await serve(t, prisma, releaseAnnouncements);
+  const commissionId = '2026-11-comissoes-clientes';
+  const propertyId = '2026-11-imoveis-engenharias';
+  const admin = await read(await request(1));
+  assert.deepEqual(admin.items.map(item => item.id), [commissionId, propertyId]);
+  assert.equal(admin.items[0].highlights.length, 4);
+  assert.deepEqual((await read(await request(2))).items.map(item => item.id), [propertyId]);
+  assert.deepEqual((await read(await request(3))).items, []);
+  for (const user of [2, 3]) {
+    assert.equal((await request(user, '/acknowledge', { ids: [commissionId] })).status, 404);
+  }
+  assert.equal(receipts.size, 0, 'Outros perfis não podem confirmar a atualização administrativa.');
+
+  users.get(1).role = 'ASSISTENTE';
+  assert.deepEqual((await read(await request(1))).items.map(item => item.id), [propertyId]);
+  assert.equal((await request(1, '/acknowledge', { ids: [commissionId] })).status, 404,
+    'O perfil ADM antigo da sessão não concede acesso após a troca de função.');
+  assert.equal(receipts.size, 0);
+});
+
+test('API: nota real de comissões deixa de aparecer para o administrador após confirmar', async t => {
+  const { prisma, receipts } = fixture();
+  const request = await serve(t, prisma, releaseAnnouncements);
+  const commissionId = '2026-11-comissoes-clientes';
+  const propertyId = '2026-11-imoveis-engenharias';
+  assert.deepEqual(await read(await request(1, '/acknowledge', { ids: [commissionId] })), {
+    acknowledgedIds: [commissionId],
+  });
+  assert.deepEqual((await read(await request(1))).items.map(item => item.id), [propertyId]);
+  await read(await request(1, '/acknowledge', { ids: [commissionId] }));
+  assert.equal(receipts.size, 1, 'Confirmar novamente preserva um único registro por conta.');
+  assert.deepEqual((await read(await request(5))).items.map(item => item.id), [commissionId],
+    'A confirmação de um administrador não oculta a nota de outro administrador.');
+  await read(await request(5, '/acknowledge', { ids: [commissionId] }));
+  assert.deepEqual((await read(await request(5))).items, [],
+    'Após reconhecer a nota mais recente, a conta nova não recebe anúncios antigos.');
+});
+
 test('API: exige sessão válida, usuário ativo e consulta o perfil atual', async t => {
   const { prisma, users, state } = fixture();
   const request = await serve(t, prisma);

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test:clients": "node --test scripts/verify-client-status-age.mjs",
+    "test:client-commissions": "node --test scripts/verify-client-commissions.mjs",
     "test:engineerings": "node --test scripts/verify-engineerings.mjs",
     "test:releases": "node --test scripts/verify-releases.mjs",
     "test:property-availability": "node --test scripts/verify-property-availability.mjs",

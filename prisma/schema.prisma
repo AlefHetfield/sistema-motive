@@ -26,6 +26,9 @@ model Client {
   venda                  Boolean             @default(false)
   remuneracaoPaga        Boolean             @default(false)
   comissaoPaga           Boolean             @default(false)
+  comissaoEstimada       Decimal?            @db.Decimal(15, 2)
+  visitaDiego            Boolean             @default(false)
+  descontosComissao      Json                @default("[]")
   createdAt              DateTime            @default(now()) @map("createdAt")
   ultimaAtualizacao      DateTime?           @updatedAt @map("ultimaAtualizacao")
   dataAssinaturaContrato DateTime?           @db.Date

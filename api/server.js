@@ -19,6 +19,7 @@ import { createEngineeringRouter } from './engineeringRoutes.js';
 import { createReleaseRouter } from './releaseRoutes.js';
 import { encodeSession, decodeSession } from './session.js';
 import { withClientStatusSince } from './clientStatusAge.js';
+import { clientWriteData, presentClient, currentClientUser, createCommissionReportHandler } from './clientCommission.js';
 
 // Configurar Prisma com pool de conexões para Vercel
 const prisma = new PrismaClient({
@@ -120,6 +121,8 @@ app.use('/api/note-labels', createNoteLabelRouter(prisma, requireAuth));
 app.use('/api/calendar', createCalendarRouter(requireAuth));
 app.use('/api/engineerings', createEngineeringRouter(prisma, requireAuth));
 app.use('/api/releases', createReleaseRouter(prisma, requireAuth));
+const resolveClientUser = currentClientUser(prisma);
+app.use('/api/clients', requireAuth, resolveClientUser);
 
 async function getUsersTableColumns() {
   const rows = await prisma.$queryRaw`
@@ -679,7 +682,7 @@ app.post('/api/contracts/standalone', requireAuth, async (req, res) => {
 });
 
 // [CREATE] Cadastrar o primeiro comprador como cliente e vincular o contrato
-app.post('/api/contracts/from-new-client', requireAuth, async (req, res) => {
+app.post('/api/contracts/from-new-client', requireAuth, resolveClientUser, async (req, res) => {
   if (JSON.stringify(req.body || {}).length > 100000) {
     return res.status(413).json({ error: 'Os dados do contrato excedem o limite permitido.' });
   }
@@ -739,7 +742,7 @@ app.post('/api/contracts/from-new-client', requireAuth, async (req, res) => {
       });
       return { client, contract };
     });
-    res.status(201).json(result);
+    res.status(201).json({ ...result, client: presentClient(result.client, req.user) });
   } catch (error) {
     console.error('Erro ao cadastrar comprador a partir do contrato:', error);
     res.status(500).json({ error: 'Não foi possível cadastrar o comprador e gerar o contrato.' });
@@ -855,6 +858,8 @@ app.delete('/api/contracts/:id', requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/clients/commission-report', createCommissionReportHandler(prisma));
+
 // [READ] Listar todos os clientes
 app.get('/api/clients', async (req, res) => {
   try {
@@ -863,7 +868,7 @@ app.get('/api/clients', async (req, res) => {
         createdAt: 'desc', // Ordena os mais recentes primeiro
       },
     });
-    res.json(await withClientStatusSince(prisma, clients));
+    res.json((await withClientStatusSince(prisma, clients)).map(client => presentClient(client, req.user)));
   } catch (error) {
     res.status(500).json({ error: 'Não foi possível buscar os clientes.' });
   }
@@ -879,14 +884,14 @@ app.get('/api/clients/:id', async (req, res) => {
     if (!client) {
       return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
-    res.json((await withClientStatusSince(prisma, [client]))[0]);
+    res.json(presentClient((await withClientStatusSince(prisma, [client]))[0], req.user));
   } catch (error) {
     res.status(500).json({ error: 'Não foi possível buscar o cliente.' });
   }
 });
 
 // [CREATE] Criar um novo cliente
-app.post('/api/clients', requireAuth, async (req, res) => {
+app.post('/api/clients', async (req, res) => {
   const { nome, corretor } = req.body;
 
   // Validação básica no backend
@@ -898,40 +903,42 @@ app.post('/api/clients', requireAuth, async (req, res) => {
   }
 
   try {
-    const newClient = await prisma.client.create({
-      data: {
-        ...req.body,
-        ultimoUsuarioAlteracao: req.user.nome // Salva o nome do usuário que criou
-      },
-    });
-    
-    // Registra a atividade
-    await prisma.activityLog.create({
-      data: {
-        clientId: newClient.id,
-        clientNome: newClient.nome || 'Cliente sem nome',
-        action: 'created',
-        statusDepois: newClient.status,
-        userName: req.user.nome
-      }
+    const newClient = await prisma.$transaction(async tx => {
+      const created = await tx.client.create({
+        data: {
+          ...clientWriteData(req.body, req.user),
+          ultimoUsuarioAlteracao: req.user.nome
+        },
+      });
+      await tx.activityLog.create({
+        data: {
+          clientId: created.id,
+          clientNome: created.nome || 'Cliente sem nome',
+          action: 'created',
+          statusDepois: created.status,
+          userName: req.user.nome
+        }
+      });
+      return created;
     });
     
     // Log para confirmar a criação no terminal
     console.log('Novo cliente criado com sucesso:', newClient);
-    res.status(201).json((await withClientStatusSince(prisma, [newClient]))[0]);
+    res.status(201).json(presentClient((await withClientStatusSince(prisma, [newClient]))[0], req.user));
   } catch (error) {
     // Log detalhado do erro no servidor (Vercel Logs ou terminal local)
     console.error("Erro ao criar cliente:", error);
     // Envia uma resposta de erro mais específica para o frontend
-    res.status(400).json({ 
-        error: 'Dados inválidos para criar o cliente.',
-        details: error.message 
+    res.status(error.status || 400).json({
+        error: error.status ? error.message : 'Dados inválidos para criar o cliente.',
+        details: error.message,
+        ...(error.code ? { code: error.code } : {})
     });
   }
 });
 
 // [UPDATE] Atualizar um cliente por ID
-app.put('/api/clients/:id', requireAuth, async (req, res) => {
+app.put('/api/clients/:id', async (req, res) => {
   const { id } = req.params;
   
   // Validação básica
@@ -942,72 +949,64 @@ app.put('/api/clients/:id', requireAuth, async (req, res) => {
   }
   
   try {
-    // Busca o cliente antes da atualização para comparar o status
-    const clienteAntes = await prisma.client.findUnique({
-      where: { id: parseInt(id) }
-    });
-    
-    if (!clienteAntes) {
-      return res.status(404).json({ 
-        error: 'Cliente não encontrado.' 
-      });
-    }
-    
-    const updateData = {
-      ...req.body,
-      ultimoUsuarioAlteracao: req.user.nome
-    };
+    const updatedClient = await prisma.$transaction(async tx => {
+      // Serialize changes so broker and private commission edits validate the same record.
+      await tx.$queryRaw`SELECT "id" FROM "clients" WHERE "id" = ${parseInt(id)} FOR UPDATE`;
+      const clienteAntes = await tx.client.findUnique({ where: { id: parseInt(id) } });
+      if (!clienteAntes) throw Object.assign(new Error('Cliente não encontrado.'), { status: 404 });
+      const updateData = {
+        ...clientWriteData(req.body, req.user, clienteAntes),
+        ultimoUsuarioAlteracao: req.user.nome
+      };
 
-    if (req.body.emEspera === true && !clienteAntes.emEspera) {
-      updateData.pausadoEm = new Date();
-      updateData.pausadoPor = req.user.nome;
-    }
-
-    if (req.body.emEspera === false && clienteAntes.emEspera) {
-      updateData.motivoEspera = null;
-      updateData.observacaoEspera = null;
-      updateData.dataRetomada = null;
-      updateData.pausadoEm = null;
-      updateData.pausadoPor = null;
-    }
-
-    if (['Assinado-Movido', 'Assinado', 'Arquivado'].includes(req.body.status)) {
-      updateData.emEspera = false;
-      updateData.motivoEspera = null;
-      updateData.observacaoEspera = null;
-      updateData.dataRetomada = null;
-      updateData.pausadoEm = null;
-      updateData.pausadoPor = null;
-    }
-
-    const updatedClient = await prisma.client.update({
-      where: { id: parseInt(id) },
-      data: updateData,
-    });
-    
-    // Registra a atividade
-    const statusMudou = clienteAntes.status !== updatedClient.status;
-    const foiPausado = !clienteAntes.emEspera && updatedClient.emEspera;
-    const foiRetomado = clienteAntes.emEspera && !updatedClient.emEspera;
-    const activityAction = foiPausado ? 'paused' : foiRetomado ? 'resumed' : statusMudou ? 'status_changed' : 'updated';
-    await prisma.activityLog.create({
-      data: {
-        clientId: updatedClient.id,
-        clientNome: updatedClient.nome || 'Cliente sem nome',
-        action: activityAction,
-        statusAntes: clienteAntes.status,
-        statusDepois: updatedClient.status,
-        userName: req.user.nome
+      if (req.body.emEspera === true && !clienteAntes.emEspera) {
+        updateData.pausadoEm = new Date();
+        updateData.pausadoPor = req.user.nome;
       }
+
+      if (req.body.emEspera === false && clienteAntes.emEspera) {
+        updateData.motivoEspera = null;
+        updateData.observacaoEspera = null;
+        updateData.dataRetomada = null;
+        updateData.pausadoEm = null;
+        updateData.pausadoPor = null;
+      }
+
+      if (['Assinado-Movido', 'Assinado', 'Arquivado'].includes(req.body.status)) {
+        updateData.emEspera = false;
+        updateData.motivoEspera = null;
+        updateData.observacaoEspera = null;
+        updateData.dataRetomada = null;
+        updateData.pausadoEm = null;
+        updateData.pausadoPor = null;
+      }
+
+      const updated = await tx.client.update({ where: { id: parseInt(id) }, data: updateData });
+      const statusMudou = clienteAntes.status !== updated.status;
+      const foiPausado = !clienteAntes.emEspera && updated.emEspera;
+      const foiRetomado = clienteAntes.emEspera && !updated.emEspera;
+      const activityAction = foiPausado ? 'paused' : foiRetomado ? 'resumed' : statusMudou ? 'status_changed' : 'updated';
+      await tx.activityLog.create({
+        data: {
+          clientId: updated.id,
+          clientNome: updated.nome || 'Cliente sem nome',
+          action: activityAction,
+          statusAntes: clienteAntes.status,
+          statusDepois: updated.status,
+          userName: req.user.nome
+        }
+      });
+      return updated;
     });
     
     console.log('Cliente atualizado com sucesso:', updatedClient);
-    res.json((await withClientStatusSince(prisma, [updatedClient]))[0]);
+    res.json(presentClient((await withClientStatusSince(prisma, [updatedClient]))[0], req.user));
   } catch (error) {
     console.error("Erro ao atualizar cliente:", error);
-    res.status(400).json({ 
-      error: 'Não foi possível atualizar o cliente.',
-      details: error.message 
+    res.status(error.status || 400).json({
+      error: error.status ? error.message : 'Não foi possível atualizar o cliente.',
+      details: error.message,
+      ...(error.code ? { code: error.code } : {})
     });
   }
 });

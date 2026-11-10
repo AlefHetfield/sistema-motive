@@ -17,6 +17,7 @@
     "test:engineerings": "node scripts/verify-engineerings-ui.mjs",
     "test:properties-workspace": "node scripts/verify-properties-workspace.mjs",
     "test:releases": "node scripts/verify-release-announcements.mjs",
+    "test:client-commissions": "node scripts/verify-client-commissions-ui.mjs && node scripts/verify-client-commission-form.mjs",
     "test:task-refresh": "node scripts/verify-task-refresh.mjs",
     "preview": "vite preview"
   },

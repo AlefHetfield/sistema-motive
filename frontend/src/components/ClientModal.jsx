@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { useToast } from '../hooks/useToast'; // Importar toast
-import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin, Loader2 } from 'lucide-react';
+import { X, User, FileText, Home, Briefcase, Hash, AlignLeft, Check, Trash2, MapPin, Loader2, LockKeyhole } from 'lucide-react';
 import ModernInput, { ModernTextArea } from './ModernInput';
 import FancySelect from './FancySelect';
 import { fetchProperties } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { formatClientCommission, getClientCommissionBreakdown, isVaniaBroker } from '../utils/clientCommission';
 
 // A função de formatação de CPF pode ser movida para um arquivo 'utils' no futuro
 const formatCPF = (cpf) => {
@@ -66,6 +68,13 @@ const parseCurrencyBR = (value) => {
     return result;
 };
 
+const parseCommissionBR = value => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return null;
+    const padded = digits.padStart(3, '0');
+    return `${padded.slice(0, -2)}.${padded.slice(-2)}`;
+};
+
 const cleanPropertyTitle = value => String(value || '')
     .replace(/^\s*\d+(?:[.,]\d+)?\s*[-–]\s*/i, '')
     .replace(/\s*[-–]\s*\d+\s*(?:dorm(?:it[oó]rios?)?|quartos?).*$/i, '')
@@ -112,24 +121,57 @@ const initialFormData = {
     modalidade: '',
     observacoes: '',
     valorFinanciado: '',
+    comissaoEstimada: '',
+    visitaDiego: false,
+    descontosComissao: [],
     matricula: '',
     cidade: '',
     venda: false,
 };
 
-const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
+const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete, brokerSuggestions = [] }) => {
+    const { user } = useAuth();
+    const canManageCommission = user?.role === 'ADM';
     const [formData, setFormData] = useState(initialFormData);
     const [propertyMode, setPropertyMode] = useState('map');
     const [properties, setProperties] = useState([]);
     const [loadingProperties, setLoadingProperties] = useState(false);
     const [propertiesError, setPropertiesError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [discountErrors, setDiscountErrors] = useState({});
+    const brokerListId = useId();
+    const discountId = useId();
+    const nextDiscountKey = useRef(0);
+    const addDiscountButton = useRef(null);
     const notify = useToast(); // Usar toast notifications
+
+    const commissionDiscounts = formData.descontosComissao.map(discount => ({
+        descricao: discount.descricao.trim(),
+        valor: parseCommissionBR(discount.valor),
+    }));
+    const commission = canManageCommission ? getClientCommissionBreakdown({
+        venda: formData.venda,
+        corretor: formData.corretor,
+        comissaoEstimada: parseCommissionBR(formData.comissaoEstimada),
+        visitaDiego: formData.visitaDiego,
+        descontosComissao: commissionDiscounts,
+    }) : null;
+    const requiresCommissionReview = Boolean(canManageCommission && formData.venda && commission.requiresReview);
+    const hasDiscountErrors = Object.values(discountErrors).some(errors => errors.descricao || errors.valor);
+    const brokerOptions = new Map();
+    for (const value of ['Vânia', ...brokerSuggestions]) {
+        const name = String(value || '').trim().replace(/\s+/g, ' ');
+        if (name) {
+            const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+            brokerOptions.set(key, isVaniaBroker(name) ? 'Vânia' : name);
+        }
+    }
 
     useEffect(() => {
         // Popula o formulário quando um cliente é passado para edição,
         // ou limpa quando o modal é aberto para um novo cliente.
         if (isOpen) {
+            setDiscountErrors({});
             if (clientToEdit) {
                 setFormData({
                     id: clientToEdit.id,
@@ -143,6 +185,11 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                     modalidade: clientToEdit.modalidade || '',
                     observacoes: clientToEdit.observacoes || '',
                     valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyFromDB(clientToEdit.valorFinanciado) : '',
+                    comissaoEstimada: canManageCommission ? formatCurrencyFromDB(clientToEdit.comissaoEstimada) : '',
+                    visitaDiego: canManageCommission && clientToEdit.visitaDiego === true,
+                    descontosComissao: canManageCommission && Array.isArray(clientToEdit.descontosComissao)
+                        ? clientToEdit.descontosComissao.map(discount => ({ key: nextDiscountKey.current++, descricao: discount.descricao || '', valor: formatCurrencyFromDB(discount.valor) }))
+                        : [],
                     matricula: clientToEdit.matricula || '',
                     cidade: clientToEdit.cidade || '',
                     venda: clientToEdit.venda || false,
@@ -155,7 +202,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                 setPropertyMode('map');
             }
         }
-    }, [isOpen, clientToEdit]);
+    }, [isOpen, clientToEdit, canManageCommission]);
 
     useEffect(() => {
         if (!isOpen) return undefined;
@@ -193,6 +240,10 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             setFormData({ ...formData, [id]: formatCPF(value) });
         } else if (id === 'valorFinanciado') {
             setFormData({ ...formData, [id]: formatCurrencyBR(value) });
+        } else if (id === 'comissaoEstimada') {
+            const digits = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            if (digits.length > 15) return;
+            setFormData({ ...formData, [id]: formatCurrencyBR(digits) });
         } else if (type === 'checkbox') {
             setFormData({ ...formData, [id]: checked });
         } else {
@@ -202,6 +253,33 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
 
     const handleStatusChange = (value) => {
         setFormData({ ...formData, status: value });
+    };
+
+    const addDiscount = () => {
+        const key = nextDiscountKey.current++;
+        setFormData(current => ({ ...current, descontosComissao: [...current.descontosComissao, { key, descricao: '', valor: '' }] }));
+        requestAnimationFrame(() => document.getElementById(`${discountId}-${key}-descricao`)?.focus());
+    };
+
+    const updateDiscount = (key, field, value) => {
+        let formatted = value;
+        if (field === 'valor') {
+            const digits = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            if (digits.length > 15) return;
+            formatted = formatCurrencyBR(digits);
+        }
+        setFormData(current => ({ ...current, descontosComissao: current.descontosComissao.map(discount => discount.key === key ? { ...discount, [field]: formatted } : discount) }));
+        setDiscountErrors(current => ({ ...current, [key]: { ...current[key], [field]: undefined } }));
+    };
+
+    const removeDiscount = key => {
+        setFormData(current => ({ ...current, descontosComissao: current.descontosComissao.filter(discount => discount.key !== key) }));
+        setDiscountErrors(current => {
+            const next = { ...current };
+            delete next[key];
+            return next;
+        });
+        addDiscountButton.current?.focus();
     };
 
     const handleModalidadeChange = (value) => {
@@ -225,6 +303,27 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (canManageCommission) {
+            const errors = {};
+            formData.descontosComissao.forEach((discount, index) => {
+                const value = commissionDiscounts[index].valor;
+                const fields = {};
+                if (!discount.descricao.trim()) fields.descricao = 'Informe a descrição do desconto.';
+                if (value === null || value === '0.00') fields.valor = 'Informe um valor maior que zero.';
+                if (Object.keys(fields).length) errors[discount.key] = fields;
+            });
+            setDiscountErrors(errors);
+            const [invalidKey] = Object.keys(errors);
+            if (invalidKey) {
+                const field = errors[invalidKey].descricao ? 'descricao' : 'valor';
+                requestAnimationFrame(() => document.getElementById(`${discountId}-${invalidKey}-${field}`)?.focus());
+                return;
+            }
+            if (requiresCommissionReview) {
+                document.getElementById('comissaoEstimada')?.focus();
+                return;
+            }
+        }
         setIsSaving(true);
 
         const valorFinanciadoParsed = parseCurrencyBR(formData.valorFinanciado);
@@ -238,11 +337,14 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
             });
         }
 
+        const { comissaoEstimada, visitaDiego, descontosComissao: _discountDrafts, ...clientData } = formData;
+        void _discountDrafts;
         const clientPayload = {
-            ...formData,
+            ...clientData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
             agencia: formData.agencia.replace(/\D/g, '') || null,
             valorFinanciado: valorFinanciadoParsed,
+            ...(canManageCommission ? { comissaoEstimada: parseCommissionBR(comissaoEstimada), visitaDiego, descontosComissao: commissionDiscounts } : {}),
         };
 
         // Adiciona status 'Documentação Recebida' para novos clientes
@@ -329,7 +431,10 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                                 {propertiesError && <p className="mt-1.5 text-[11px] text-red-500">{propertiesError} Você ainda pode usar a opção “Digitar”.</p>}
                             </> : <ModernInput id="imovel" Icon={Home} value={formData.imovel} onChange={handleInputChange} placeholder="Digite o imóvel, condomínio ou endereço" />}
                         </div>
-                        <ModernInput id="corretor" label="Corretor" Icon={Briefcase} value={formData.corretor} onChange={handleInputChange} required />
+                        <div>
+                            <ModernInput id="corretor" label="Corretor" Icon={Briefcase} value={formData.corretor} onChange={handleInputChange} list={brokerListId} required />
+                            <datalist id={brokerListId}>{[...brokerOptions.values()].map(name => <option key={name} value={name} />)}</datalist>
+                        </div>
                         <ModernInput id="responsavel" label="Responsável" Icon={User} value={formData.responsavel} onChange={handleInputChange} />
                         <ModernInput id="agencia" label="Agência (Nº)" Icon={Hash} value={formData.agencia} onChange={handleInputChange} placeholder="Apenas números" />
                         
@@ -378,6 +483,62 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                             </label>
                         </div>
                     </div>
+                    {canManageCommission && (formData.venda || hasDiscountErrors) && (
+                        <section aria-label="Comissão administrativa" className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                            <ModernInput
+                                id="comissaoEstimada"
+                                label="Comissão bruta (R$)"
+                                value={formData.comissaoEstimada}
+                                onChange={handleInputChange}
+                                placeholder="0,00"
+                                inputMode="numeric"
+                                inputClassName="font-semibold text-primary"
+                                aria-invalid={requiresCommissionReview}
+                                aria-describedby={requiresCommissionReview ? 'commission-estimate-help commission-review-error' : 'commission-estimate-help'}
+                            />
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                <p id="commission-estimate-help" className="text-xs text-gray-500">Valor previsto antes dos descontos</p>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary"><LockKeyhole size={12} aria-hidden="true" />Administrativo</span>
+                            </div>
+                            <label className="mt-4 flex items-center gap-2.5 text-sm font-medium text-gray-700">
+                                <input id="visitaDiego" type="checkbox" checked={formData.visitaDiego} onChange={handleInputChange} className="h-4 w-4 accent-primary" />
+                                <span>Visita Diego<span className="mt-0.5 block text-xs font-normal text-gray-500">Desconto de R$ 1.000,00</span></span>
+                            </label>
+                            <div className="mt-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <h4 className="text-sm font-semibold text-gray-800">Outros descontos</h4>
+                                    <button ref={addDiscountButton} type="button" onClick={addDiscount} disabled={formData.descontosComissao.length >= 100} className="min-h-10 rounded-lg px-2 text-xs font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50">+ Adicionar desconto</button>
+                                </div>
+                                <div className="space-y-3">
+                                    {formData.descontosComissao.map((discount, index) => {
+                                        const descriptionId = `${discountId}-${discount.key}-descricao`;
+                                        const valueId = `${discountId}-${discount.key}-valor`;
+                                        const errors = discountErrors[discount.key] || {};
+                                        return <div key={discount.key} data-discount-row className="grid grid-cols-[minmax(0,1fr)_44px] items-start gap-2 border-b border-primary/10 pb-3 sm:grid-cols-[minmax(0,1fr)_9rem_44px]">
+                                            <div className="col-span-2 sm:col-span-1">
+                                                <ModernInput id={descriptionId} label="Descrição" aria-label={`Descrição do desconto ${index + 1}`} value={discount.descricao} onChange={event => updateDiscount(discount.key, 'descricao', event.target.value)} maxLength={100} placeholder="Ex. ajuste comercial" aria-invalid={Boolean(errors.descricao)} aria-describedby={errors.descricao ? `${descriptionId}-error` : undefined} />
+                                                {errors.descricao && <p id={`${descriptionId}-error`} role="alert" className="mt-1 text-xs text-red-600">{errors.descricao}</p>}
+                                            </div>
+                                            <div>
+                                                <ModernInput id={valueId} label="Valor (R$)" aria-label={`Valor do desconto ${index + 1} (R$)`} value={discount.valor} onChange={event => updateDiscount(discount.key, 'valor', event.target.value)} inputMode="numeric" placeholder="0,00" aria-invalid={Boolean(errors.valor)} aria-describedby={errors.valor ? `${valueId}-error` : undefined} />
+                                                {errors.valor && <p id={`${valueId}-error`} role="alert" className="mt-1 text-xs text-red-600">{errors.valor}</p>}
+                                            </div>
+                                            <button type="button" onClick={() => removeDiscount(discount.key)} aria-label={`Remover desconto ${index + 1}`} className="mt-5 flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"><Trash2 size={17} aria-hidden="true" /></button>
+                                        </div>;
+                                    })}
+                                </div>
+                            </div>
+                            <div className="mt-4 rounded-xl border border-primary/15 bg-white/60 p-3.5 text-sm" aria-label="Cálculo da comissão" aria-live="polite">
+                                <div className="flex flex-wrap justify-between gap-x-3 gap-y-1"><span className="text-gray-500">Comissão bruta</span><span className="font-semibold tabular-nums text-gray-800">{formatClientCommission(commission.gross)}</span></div>
+                                {commission.discounts.map((discount, index) => <div key={`${index}-${discount.descricao}`} className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-gray-500"><span className="min-w-0 break-words">{discount.descricao}</span><span className="tabular-nums">− {formatClientCommission(discount.valor)}</span></div>)}
+                                <div className="mt-3 flex flex-wrap justify-between gap-x-3 gap-y-1 border-t border-primary/10 pt-3 text-xs text-gray-500"><span>Total de descontos</span><span className="font-semibold tabular-nums">{formatClientCommission(commission.discountTotal)}</span></div>
+                                <p className="mt-3 text-xs font-semibold text-primary">Comissão líquida estimada</p>
+                                <p className={`mt-1 text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${requiresCommissionReview ? 'text-red-600' : 'text-primary'}`}>{formatClientCommission(commission.net)}</p>
+                            </div>
+                            {requiresCommissionReview && <p id="commission-review-error" role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Os descontos superam a comissão bruta em {formatClientCommission(commission.excess)}. Revise os valores antes de salvar.</p>}
+                        </section>
+                    )}
+                    {canManageCommission && !formData.venda && Object.values(discountErrors).some(errors => errors.descricao || errors.valor) && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Há descontos incompletos. Marque Venda para revisar ou remover essas linhas antes de salvar.</p>}
                     <div>
                         <ModernTextArea id="observacoes" label="Observações" Icon={AlignLeft} value={formData.observacoes} onChange={handleInputChange} rows={1} placeholder="Adicionar uma observação (opcional)" />
                     </div>
@@ -410,7 +571,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete }) => {
                             <button
                                 type="submit"
                                 className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-2.5 text-white shadow-lg shadow-blue-500/30 transform transition-all duration-200 sm:flex-none ${isSaving ? 'opacity-60 pointer-events-none' : 'hover:-translate-y-0.5'}`}
-                                disabled={isSaving}
+                                disabled={isSaving || requiresCommissionReview}
                             >
                                 <Check size={16} />
                                 {isSaving ? 'Salvando...' : 'Salvar Cliente'}

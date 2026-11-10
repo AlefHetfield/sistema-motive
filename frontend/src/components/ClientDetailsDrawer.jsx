@@ -29,6 +29,7 @@ import { deleteClientSimulation, downloadContractDocx, fetchClientActivities, fe
 import DeleteSimulationModal from './DeleteSimulationModal';
 import StatusBadge from './ui/StatusBadge';
 import ClientTasks from './ClientTasks';
+import { formatClientCommission, getClientCommissionBreakdown } from '../utils/clientCommission';
 
 const SIGNED_STATUSES = ['Assinado', 'Assinado-Movido'];
 
@@ -94,6 +95,7 @@ export default function ClientDetailsDrawer({
 }) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const commission = user?.role === 'ADM' && client.venda ? getClientCommissionBreakdown(client) : null;
     const [activities, setActivities] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [simulations, setSimulations] = useState([]);
@@ -283,6 +285,16 @@ export default function ClientDetailsDrawer({
                                 <DetailItem icon={<CheckCircle2 size={17} />} label="Remuneração" value={client.remuneracaoPaga ? 'Paga' : 'Pendente'} />
                                 <DetailItem icon={<CheckCircle2 size={17} />} label="Comissão" value={!client.venda ? 'Não se aplica' : client.comissaoPaga ? 'Paga' : 'Pendente'} />
                             </div>
+                            {commission && <div className="mt-3 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                                <h4 className="text-sm font-bold text-primary">Comissão da venda</h4>
+                                <dl className="space-y-2 text-sm">
+                                    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1"><dt className="text-gray-500">Comissão bruta</dt><dd className="font-semibold tabular-nums text-gray-800">{formatClientCommission(commission.gross)}</dd></div>
+                                    {commission.discounts.map((discount, index) => <div key={`${index}-${discount.descricao}`} className="flex flex-wrap justify-between gap-x-4 gap-y-1"><dt className="min-w-0 text-gray-500 [overflow-wrap:anywhere]">{discount.descricao}</dt><dd className="font-medium tabular-nums text-gray-700">− {formatClientCommission(discount.valor)}</dd></div>)}
+                                    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1"><dt className="text-gray-500">Total de descontos</dt><dd className="font-semibold tabular-nums text-gray-800">{formatClientCommission(commission.discountTotal)}</dd></div>
+                                    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-primary/15 pt-3 text-primary"><dt className="font-semibold">Comissão líquida estimada</dt><dd className="font-bold tabular-nums [overflow-wrap:anywhere]">{commission.requiresReview ? 'Revisar valores' : formatClientCommission(commission.net)}</dd></div>
+                                </dl>
+                                {commission.requiresReview && <p role="alert" className="text-xs font-medium text-amber-700">Os descontos superam a comissão bruta. Revise os valores no cadastro.</p>}
+                            </div>}
                         </section>
                     )}
 

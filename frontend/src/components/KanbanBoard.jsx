@@ -122,7 +122,7 @@ const statusConfig = {
   },
 };
 
-export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, onPauseClient, onResumeClient }) {
+export default function KanbanBoard({ clients, brokerSuggestions = [], onUpdate, onRequestCompletion, onPauseClient, onResumeClient }) {
   const mobile = useMobileLayout();
   const [mobileStatus, setMobileStatus] = useState(() => STATUS_OPTIONS.find(status => clients.some(client => client.status === status)) || STATUS_OPTIONS[0]);
   const [showMobileStats, setShowMobileStats] = useState(false);
@@ -496,6 +496,7 @@ export default function KanbanBoard({ clients, onUpdate, onRequestCompletion, on
       {/* Modal de edição */}
       {isModalOpen && (
         <ClientModal
+          brokerSuggestions={brokerSuggestions}
           clientToEdit={editingClient}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveClient}

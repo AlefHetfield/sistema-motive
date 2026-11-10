@@ -5,7 +5,7 @@ import FancySelect from '../components/FancySelect';
 import { fetchClients, deleteClient, saveClient } from '../services/api';
 import useActivityLog from '../hooks/useActivityLog';
 import { useAuth } from '../context/AuthContext';
-import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, AlertCircle, AlertTriangle, Calendar, CheckCircle2, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, PauseCircle, PlayCircle } from 'lucide-react';
+import { FilePenLine, Trash2, PlusCircle, List, Building, User, MoreHorizontal, Home, Search, AlertCircle, AlertTriangle, Calendar, CheckCircle2, Check, X, Archive, RotateCcw, Filter, ChevronDown, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, PauseCircle, PlayCircle, ClipboardList, LockKeyhole } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
 import LoadingAnimation from '../components/LoadingAnimation';
 import ClientModal from '../components/ClientModal';
@@ -18,6 +18,9 @@ import StatusBadge from '../components/ui/StatusBadge';
 import useMobileLayout from '../hooks/useMobileLayout';
 import ClientStatusAge from '../components/ClientStatusAge';
 import ClientAgeAvatar from '../components/ClientAgeAvatar';
+import ClientCommissionReport from '../components/ClientCommissionReport';
+import Button from '../components/ui/Button';
+import { formatClientCommission, getClientCommissionBreakdown, summarizeClientCommissions } from '../utils/clientCommission';
 import { isStalledClient, STALLED_CLIENT_DAYS } from '../utils/clientStatusAge';
 
 // Constantes e helpers replicados do main.js
@@ -400,11 +403,14 @@ const ClientsList = () => {
     const [pauseClient, setPauseClient] = useState(null);
     const [waitingOnly, setWaitingOnly] = useState(false);
     const [stalledOnly, setStalledOnly] = useState(false);
+    const [commissionReportSelection, setCommissionReportSelection] = useState(null);
     const { logActivity } = useActivityLog();
     const filterDropdownRef = useRef(null);
     
     // Verifica se o usuário é assistente (não vê dados de financiamento)
     const isAssistant = user?.role === 'ASSISTENTE';
+    const isAdmin = user?.role === 'ADM';
+    const brokerSuggestions = useMemo(() => [...new Set(allClients.map(client => client.corretor?.trim()).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'pt-BR')), [allClients]);
     const detailsClient = detailsClientId ? allClients.find(client => client.id === detailsClientId) : null;
     
     const loadClients = async () => {
@@ -942,6 +948,17 @@ const ClientsList = () => {
         return filtered;
     }, [allClients, appliedSearchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly, stalledOnly]);
 
+    const commissionSummary = useMemo(() => summarizeClientCommissions(isAdmin ? filteredClients : []), [filteredClients, isAdmin]);
+    const openCommissionReport = () => {
+        const tabLabel = { active: 'Ativos', signed: 'Assinados', archived: 'Arquivados' }[activeTab];
+        const scope = [
+            tabLabel,
+            appliedSearchTerm && `Busca “${appliedSearchTerm}”`,
+            ...activeFilterChips.map(chip => `${chip.label} · ${chip.value}`),
+        ].filter(Boolean).join(' • ').slice(0, 500);
+        setCommissionReportSelection({ clients: filteredClients.filter(client => client.venda), scope });
+    };
+
     // Calcular estatísticas financeiras
     const financialStats = useMemo(() => {
         const financiamentoTotal = filteredClients.reduce((sum, client) => {
@@ -1305,6 +1322,20 @@ const ClientsList = () => {
                     </div>
                 </div>
 
+                {isAdmin && (
+                    <div className="mt-3 flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between" aria-label="Resumo de comissões estimadas">
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><LockKeyhole size={13} aria-hidden="true" />Comissões líquidas estimadas</span>
+                                <span className="min-w-0 max-w-full text-lg font-bold tabular-nums text-primary [overflow-wrap:anywhere]">{formatClientCommission(commissionSummary.total)}</span>
+                            </div>
+                            <p className="mt-0.5 text-xs text-gray-500">{commissionSummary.count} {commissionSummary.count === 1 ? 'venda' : 'vendas'} na seleção{commissionSummary.missingCount > 0 && ` · ${commissionSummary.missingCount} ${commissionSummary.missingCount === 1 ? 'comissão a informar' : 'comissões a informar'}`}</p>
+                            {commissionSummary.reviewCount > 0 && <p className="mt-1 text-xs font-semibold text-amber-700">Total parcial · {commissionSummary.reviewCount} {commissionSummary.reviewCount === 1 ? 'comissão precisa' : 'comissões precisam'} de revisão</p>}
+                        </div>
+                        <Button variant="secondary" disabled={!commissionSummary.count || isLoading} onClick={openCommissionReport} className="w-full sm:w-auto"><ClipboardList size={16} aria-hidden="true" />Relatório de comissões</Button>
+                    </div>
+                )}
+
                 {activeFilterChips.length > 0 && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
                         <span className="text-xs font-medium text-gray-500">Filtros ativos:</span>
@@ -1336,6 +1367,7 @@ const ClientsList = () => {
             {viewMode === 'kanban' && activeTab === 'active' && (
                 <div className="animate-fade-in">
                     <KanbanBoard 
+                        brokerSuggestions={brokerSuggestions}
                         clients={filteredClients}
                         onUpdate={loadClients}
                         onRequestCompletion={handleRequestCompletion}
@@ -1482,6 +1514,7 @@ const ClientsList = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {filteredClients.length > 0 ? filteredClients.map(client => {
                                     const initials = getInitials(client.nome);
+                                    const commission = isAdmin && client.venda ? getClientCommissionBreakdown(client) : null;
                                     const palette = pickAvatarPalette(client.nome);
                                     const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                                     const needsAttention = ['Inconforme', 'Aguardando Reserva'].includes(client.status);
@@ -1536,6 +1569,7 @@ const ClientsList = () => {
                                                 <td className="px-4 py-3 text-right">
                                                     <p className="whitespace-nowrap text-sm font-semibold text-gray-900">{client.valorFinanciado ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(client.valorFinanciado)) : '—'}</p>
                                                     <p className="text-xs text-gray-500">{[client.modalidade, client.venda ? 'Venda' : null].filter(Boolean).join(' · ') || 'Sem modalidade'}</p>
+                                                    {commission && <p className={`mt-1 text-xs font-semibold ${commission.requiresReview ? 'text-amber-700' : 'text-primary'}`}>Comissão líquida estimada · {commission.requiresReview ? 'Revisar valores' : formatClientCommission(commission.net)}</p>}
                                                     {(activeTab === 'signed' || activeTab === 'archived') && (
                                                         <div className="mt-1.5 flex justify-end gap-1.5">
                                                             <button type="button" onClick={() => handleToggleRemuneracaoPaga(client.id, client.remuneracaoPaga)} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${client.remuneracaoPaga ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`} title="Alternar remuneração paga">Rem. {client.remuneracaoPaga ? 'paga' : 'pendente'}</button>
@@ -1578,6 +1612,7 @@ const ClientsList = () => {
                     {filteredClients.length > 0 ? (
                         filteredClients.map(client => {
                             const initials = getInitials(client.nome);
+                            const commission = isAdmin && client.venda ? getClientCommissionBreakdown(client) : null;
                             const palette = pickAvatarPalette(client.nome);
                             const [imovelName, imovelMeta] = client.imovel ? client.imovel.split(' - ', 2) : [client.imovel || '', ''];
                             const isExpanded = !!expandedMobileCards[client.id];
@@ -1634,6 +1669,7 @@ const ClientsList = () => {
                                                 </span>
                                             )}
                                         </div>}
+                                        {commission && <p className={`mt-1 text-xs font-semibold ${commission.requiresReview ? 'text-amber-700' : 'text-primary'}`}>Comissão líquida estimada · {commission.requiresReview ? 'Revisar valores' : formatClientCommission(commission.net)}</p>}
                                     </div>
 
                                     {/* Corpo do Card */}
@@ -1819,7 +1855,10 @@ const ClientsList = () => {
                 </div>
                 )}
 
+            {isAdmin && commissionReportSelection && <ClientCommissionReport clients={commissionReportSelection.clients} scope={commissionReportSelection.scope} onClose={() => setCommissionReportSelection(null)} />}
+
             <ClientModal 
+                brokerSuggestions={brokerSuggestions}
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
                 onSave={handleSaveClient}
