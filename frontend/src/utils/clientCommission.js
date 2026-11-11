@@ -30,6 +30,7 @@ export function getClientCommissionBreakdown(client) {
   const gross = commissionCents(client.comissaoEstimada);
   const discounts = [];
   if (client.visitaDiego === true) discounts.push({ descricao: 'Visita Diego', valor: '1000.00' });
+  if (client.reservaAnuncios === true) discounts.push({ descricao: 'Reserva Anúncios', valor: '500.00' });
   if (isVaniaBroker(client.corretor)) discounts.push({ descricao: 'Corretora Vânia', valor: '500.00' });
   for (const item of Array.isArray(client.descontosComissao) ? client.descontosComissao : []) {
     const value = commissionCents(item?.valor);

@@ -12,7 +12,7 @@ const now = new Date('2026-11-10T18:00:00.000Z');
 const admin = { id: 1, nome: 'Administrador', role: 'ADM', isActive: true };
 const assistant = { id: 2, nome: 'Assistente', role: 'ASSISTENTE', isActive: true };
 const broker = { id: 3, nome: 'Corretor', role: 'CORRETOR', isActive: true };
-const client = (id, amount, data = {}) => ({ id, nome: `Cliente ${id}`, imovel: `Imóvel ${id}`, status: 'Aprovado', observacoes: '', venda: true, corretor: 'Outro corretor', comissaoEstimada: amount, visitaDiego: false, descontosComissao: [], ...data });
+const client = (id, amount, data = {}) => ({ id, nome: `Cliente ${id}`, imovel: `Imóvel ${id}`, status: 'Aprovado', observacoes: '', venda: true, corretor: 'Outro corretor', comissaoEstimada: amount, visitaDiego: false, reservaAnuncios: false, descontosComissao: [], ...data });
 
 async function serve(t, prisma) {
   const app = express();
@@ -90,11 +90,11 @@ test('comissão estimada aceita centavos, zero e ausência com limite decimal do
 test('somente ADM pode escrever ou receber comissão, inclusive zero e null', () => {
   for (const user of [assistant, broker]) {
     for (const value of [null, '0.00', '8500.00']) assert.throws(() => clientWriteData({ comissaoEstimada: value }, user), error => error.status === 403);
-    for (const body of [{ visitaDiego: false }, { visitaDiego: true }, { descontosComissao: [] }, { descontosComissao: [{ descricao: 'Ajuste', valor: '1.00' }] }]) {
+    for (const body of [{ visitaDiego: false }, { visitaDiego: true }, { reservaAnuncios: false }, { reservaAnuncios: true }, { descontosComissao: [] }, { descontosComissao: [{ descricao: 'Ajuste', valor: '1.00' }] }]) {
       assert.throws(() => clientWriteData(body, user), error => error.status === 403);
     }
-    const redacted = presentClient(client(1, '8500.00', { visitaDiego: true, descontosComissao: [{ descricao: 'Ajuste', valor: '250.00' }] }), user);
-    for (const field of ['comissaoEstimada', 'visitaDiego', 'descontosComissao']) assert.equal(Object.hasOwn(redacted, field), false);
+    const redacted = presentClient(client(1, '8500.00', { visitaDiego: true, reservaAnuncios: true, descontosComissao: [{ descricao: 'Ajuste', valor: '250.00' }] }), user);
+    for (const field of ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao']) assert.equal(Object.hasOwn(redacted, field), false);
     assert.equal(redacted.nome, 'Cliente 1');
     for (const relation of ['property', 'simulacoes', 'contratos', 'tasks']) assert.throws(() => clientWriteData({ [relation]: { update: {} } }, user));
   }
@@ -126,6 +126,11 @@ test('descontos validam descrição, valor positivo, quantidade e tipos escalare
     descontosComissao: [{ descricao: 'Ajuste comercial', valor: '250.50' }],
   });
   assert.equal(clientWriteData({ visitaDiego: true }, admin).visitaDiego, true);
+  assert.equal(clientWriteData({ reservaAnuncios: true }, admin).reservaAnuncios, true);
+  assert.equal(clientWriteData({ reservaAnuncios: false }, admin).reservaAnuncios, false);
+  for (const value of [null, '', 'true', 'false', 0, 1, [], {}, { set: true }]) {
+    assert.throws(() => clientWriteData({ reservaAnuncios: value }, admin), error => error.status === 400);
+  }
   assert.equal(clientWriteData({ descontosComissao: Array.from({ length: 100 }, () => ({ descricao: 'Ajuste', valor: '0.01' })) }, admin).descontosComissao.length, 100);
   for (const value of [null, {}, 'Ajuste', [{ descricao: '', valor: '1.00' }], [{ descricao: '  ', valor: '1.00' }], [{ descricao: 'a'.repeat(101), valor: '1.00' }], [{ descricao: 'Ajuste', valor: '0.00' }], [{ descricao: 'Ajuste', valor: '-1.00' }], [{ descricao: 'Ajuste', valor: null }], [{ descricao: 'Ajuste', valor: '1.001' }], [{ descricao: 'Ajuste', valor: { set: 1 } }], [{ descricao: 'Ajuste', valor: '1.00', id: 1 }], Array.from({ length: 101 }, () => ({ descricao: 'Ajuste', valor: '1.00' }))]) {
     assert.throws(() => clientWriteData({ descontosComissao: value }, admin), error => error.status === 400);
@@ -133,6 +138,35 @@ test('descontos validam descrição, valor positivo, quantidade e tipos escalare
   for (const body of [{ visitaDiego: 'true' }, { visitaDiego: 1 }, { visitaDiego: { set: true } }, { venda: { set: true } }, { venda: 'true' }, { corretor: { set: 'Vânia' } }, { corretor: ['Vânia'] }, { comissaoEstimada: { set: 8500 } }]) {
     assert.throws(() => clientWriteData(body, admin), error => error.status === 400, JSON.stringify(body));
   }
+});
+
+test('Reserva Anúncios soma R$ 500 aos descontos, preserva o bruto e admite legado, zero e comissão a informar', () => {
+  const legacy = { venda: true, comissaoEstimada: '8500.00' };
+  assert.equal(getClientCommissionBreakdown(legacy).net, '8500.00');
+  const record = client(1, '8500.00', { corretor: 'Vânia', visitaDiego: true, descontosComissao: [{ descricao: 'Ajuste comercial', valor: '250.00' }] });
+  const before = structuredClone(record);
+  const updated = { ...record, ...clientWriteData({ reservaAnuncios: true }, admin, record) };
+  const breakdown = getClientCommissionBreakdown(updated);
+  assert.equal(breakdown.gross, '8500.00');
+  assert.equal(breakdown.discountTotal, '2250.00');
+  assert.equal(breakdown.net, '6250.00');
+  assert.deepEqual(breakdown.discounts.find(item => item.descricao === 'Reserva Anúncios'), { descricao: 'Reserva Anúncios', valor: '500.00' });
+  assert.equal(getClientCommissionBreakdown({ ...updated, ...clientWriteData({ reservaAnuncios: true }, admin, updated) }).net, '6250.00', 'Reabrir e salvar conserva uma única dedução.');
+  assert.equal(getClientCommissionBreakdown({ ...updated, ...clientWriteData({ reservaAnuncios: false }, admin, updated) }).net, '6750.00');
+  assert.deepEqual(record, before);
+  assert.equal(getClientCommissionBreakdown(client(2, '500.00', { reservaAnuncios: true })).net, '0.00');
+  assert.equal(getClientCommissionBreakdown(client(3, null, { reservaAnuncios: true })).net, null);
+  assert.throws(() => clientWriteData({ reservaAnuncios: true }, admin, client(4, '499.99')), error => error.status === 422 && error.code === 'COMMISSION_REVIEW_REQUIRED');
+  assert.throws(() => clientWriteData({ comissaoEstimada: '499.99' }, admin, client(5, '1000.00', { reservaAnuncios: true })), error => error.status === 422);
+  const notSale = client(6, '500.00', { venda: false, reservaAnuncios: true });
+  assert.equal(getClientCommissionBreakdown({ ...notSale, ...clientWriteData({ venda: true }, admin, notSale) }).net, '0.00');
+  assert.throws(() => clientWriteData({ venda: true }, admin, client(9, '499.99', { venda: false, reservaAnuncios: true })), error => error.status === 422);
+  const report = buildCommissionReport([updated, client(7, '500.00', { reservaAnuncios: true }), client(8, null, { reservaAnuncios: true })], { scope: 'Reserva Anúncios', generatedAt: now });
+  assert.equal(report.total, '6250.00');
+  assert.equal(report.missingCount, 1);
+  assert.equal(report.items[1].net, '0.00');
+  assert.match(report.text, /Desconto — Reserva Anúncios — R\$\s500,00/);
+  assert.match(report.text, /TOTAL LÍQUIDO ESTIMADO — R\$\s6\.250,00/);
 });
 
 test('Vânia usa nome completo exato normalizado e os descontos são cumulativos sem alterar o bruto', () => {
@@ -212,7 +246,7 @@ test('API valida conta ativa e papel atual, preserva comissão em edições de a
   assert.equal((await request(999, '/clients')).status, 401);
   for (const user of [2, 3]) {
     const listed = await (await request(user, '/clients')).json();
-    assert.ok(listed.every(item => ['comissaoEstimada', 'visitaDiego', 'descontosComissao'].every(field => !Object.hasOwn(item, field))));
+    assert.ok(listed.every(item => ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao'].every(field => !Object.hasOwn(item, field))));
     assert.equal((await request(user, '/commission-report', { ids: [1], scope: 'Ativos' })).status, 403);
     assert.equal((await request(user, '/clients/1', { comissaoEstimada: null }, 'PUT')).status, 403);
   }
@@ -238,11 +272,11 @@ test('API rejeita operações Prisma, recalcula troca de corretor e preserva os 
   const { prisma, records } = fixture();
   records.set(1, client(1, '1000.00', { visitaDiego: true, descontosComissao: [] }));
   const request = await serve(t, prisma);
-  for (const body of [{ corretor: { set: 'Vânia' } }, { venda: { set: true } }, { comissaoEstimada: { set: '1.00' } }, { visitaDiego: { set: true } }, { descontosComissao: { set: [] } }]) {
+  for (const body of [{ corretor: { set: 'Vânia' } }, { venda: { set: true } }, { comissaoEstimada: { set: '1.00' } }, { visitaDiego: { set: true } }, { reservaAnuncios: { set: true } }, { descontosComissao: { set: [] } }]) {
     assert.equal((await request(1, '/clients/1', body, 'PUT')).status, 400, JSON.stringify(body));
   }
   for (const user of [2, 3]) {
-    for (const body of [{ visitaDiego: false }, { descontosComissao: [] }, { descontosComissao: [{ descricao: 'Ajuste', valor: '1.00' }] }]) {
+    for (const body of [{ visitaDiego: false }, { reservaAnuncios: false }, { reservaAnuncios: true }, { descontosComissao: [] }, { descontosComissao: [{ descricao: 'Ajuste', valor: '1.00' }] }]) {
       assert.equal((await request(user, '/clients/1', body, 'PUT')).status, 403);
     }
     const response = await request(user, '/clients/1', { corretor: 'Vânia' }, 'PUT');
@@ -258,12 +292,43 @@ test('API rejeita operações Prisma, recalcula troca de corretor e preserva os 
   const operational = await request(2, '/clients/1', { status: 'Assinando Contrato' }, 'PUT');
   assert.equal(operational.status, 200);
   const publicResult = await operational.json();
-  for (const field of ['comissaoEstimada', 'visitaDiego', 'descontosComissao']) assert.equal(Object.hasOwn(publicResult, field), false);
+  for (const field of ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao']) assert.equal(Object.hasOwn(publicResult, field), false);
   assert.equal(records.get(1).visitaDiego, true);
   assert.deepEqual(records.get(1).descontosComissao, [{ descricao: 'Ajuste', valor: '250.00' }]);
   const report = await (await request(1, '/commission-report', { ids: [1], scope: 'Atualizados' })).json();
   assert.equal(report.total, '250.00');
   assert.match(report.text, /Status — Assinando Contrato/);
+});
+
+test('API conserva Reserva Anúncios na reabertura e edição operacional, e atualiza relatório ao desmarcar', async t => {
+  const { prisma, records } = fixture();
+  records.set(1, client(1, '8500.00', { corretor: 'Vânia', visitaDiego: true }));
+  const request = await serve(t, prisma);
+  const selected = await request(1, '/clients/1', { reservaAnuncios: true }, 'PUT');
+  assert.equal(selected.status, 200);
+  const saved = await selected.json();
+  assert.equal(saved.reservaAnuncios, true);
+  assert.equal(saved.comissaoEstimada, '8500.00');
+  assert.equal(getClientCommissionBreakdown(saved).net, '6500.00');
+  const reopened = (await (await request(1, '/clients')).json()).find(item => item.id === 1);
+  assert.equal(reopened.reservaAnuncios, true);
+  const report = await (await request(1, '/commission-report', { ids: [1] })).json();
+  assert.equal(report.total, '6500.00');
+  assert.match(report.text, /Desconto — Reserva Anúncios — R\$\s500,00/);
+  const operational = await request(2, '/clients/1', { status: 'Assinando Contrato' }, 'PUT');
+  assert.equal(operational.status, 200);
+  const publicResult = await operational.json();
+  for (const field of ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao']) assert.equal(Object.hasOwn(publicResult, field), false);
+  assert.equal(records.get(1).reservaAnuncios, true);
+  const rejected = await request(1, '/clients/1', { comissaoEstimada: '1999.99' }, 'PUT');
+  assert.equal(rejected.status, 422);
+  assert.equal(records.get(1).comissaoEstimada, '8500.00');
+  const deselected = await request(1, '/clients/1', { reservaAnuncios: false }, 'PUT');
+  assert.equal(deselected.status, 200);
+  assert.equal(getClientCommissionBreakdown(await deselected.json()).net, '7000.00');
+  const finalReport = await (await request(1, '/commission-report', { ids: [1] })).json();
+  assert.equal(finalReport.total, '7000.00');
+  assert.doesNotMatch(finalReport.text, /Reserva Anúncios/);
 });
 
 test('rotas normais protegem respostas de clientes e cadastro pelo gerador de contratos', async () => {
@@ -305,6 +370,7 @@ test('PostgreSQL local mantém legado null, centavos, privacidade e valor após 
     assert.equal((await prisma.client.findUnique({ where: { id: clientIds[2] } })).comissaoEstimada, null);
     const legacy = await prisma.client.findUnique({ where: { id: clientIds[2] } });
     assert.equal(legacy.visitaDiego, false);
+    assert.equal(legacy.reservaAnuncios, false);
     assert.deepEqual(legacy.descontosComissao, []);
     const request = await serve(t, prisma);
     const response = await request(userIds[0], '/commission-report', { ids: clientIds, scope: 'QA local' });
@@ -321,21 +387,23 @@ test('PostgreSQL local mantém legado null, centavos, privacidade e valor após 
     await assert.rejects(prisma.client.update({ where: { id: clientIds[0] }, data: { descontosComissao: { descricao: 'Não é uma lista' } } }));
 
     const sale = await prisma.client.create({ data: {
-      nome: `QA comissão ${suffix}`, venda: true, corretor: 'Vânia', comissaoEstimada: '8500.00', visitaDiego: true,
+      nome: `QA comissão ${suffix}`, venda: true, corretor: 'Vânia', comissaoEstimada: '8500.00', visitaDiego: true, reservaAnuncios: true,
       descontosComissao: [{ descricao: 'Ajuste comercial', valor: '250.00' }],
     } });
     clientIds.push(sale.id);
     const saleReport = await (await request(userIds[0], '/commission-report', { ids: [sale.id] })).json();
-    assert.equal(saleReport.total, '6750.00');
+    assert.equal(saleReport.total, '6250.00');
     assert.equal(saleReport.items[0].gross, '8500.00');
+    assert.match(saleReport.text, /Desconto — Reserva Anúncios — R\$\s500,00/);
     const changed = await request(userIds[1], `/clients/${sale.id}`, { status: 'Assinando Contrato' }, 'PUT');
     assert.equal(changed.status, 200);
     const changedResult = await changed.json();
-    for (const field of ['comissaoEstimada', 'visitaDiego', 'descontosComissao']) assert.equal(Object.hasOwn(changedResult, field), false);
+    for (const field of ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao']) assert.equal(Object.hasOwn(changedResult, field), false);
     const afterOperationalEdit = await prisma.client.findUnique({ where: { id: sale.id } });
     assert.equal(afterOperationalEdit.visitaDiego, true);
+    assert.equal(afterOperationalEdit.reservaAnuncios, true);
     assert.deepEqual(afterOperationalEdit.descontosComissao, [{ descricao: 'Ajuste comercial', valor: '250.00' }]);
-    assert.equal(getClientCommissionBreakdown(afterOperationalEdit).net, '6750.00');
+    assert.equal(getClientCommissionBreakdown(afterOperationalEdit).net, '6250.00');
     const rejected = await request(userIds[0], `/clients/${sale.id}`, { comissaoEstimada: '1000.00' }, 'PUT');
     assert.equal(rejected.status, 422);
     assert.equal(String((await prisma.client.findUnique({ where: { id: sale.id } })).comissaoEstimada), '8500');

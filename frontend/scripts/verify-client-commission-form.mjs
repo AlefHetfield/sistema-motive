@@ -95,6 +95,7 @@ try {
 
   await render(base);
   assert.equal(document.getElementById('comissaoEstimada').value, '0,00', 'Comissão zero é um valor preenchido');
+  assert.equal(document.getElementById('reservaAnuncios').checked, false, 'Cadastros anteriores começam sem a reserva de anúncios');
   await submit();
   assert.equal(saved.at(-1).comissaoEstimada, '0.00');
 
@@ -147,6 +148,37 @@ try {
   assert.match(netAmount(), /8\.250,00/, 'Alterar a corretora recalcula a dedução de Vânia');
   await setInput(document.getElementById('corretor'), 'Vaniana');
   assert.match(netAmount(), /8\.250,00/, 'Um trecho do nome não aciona a dedução de Vânia');
+
+  await render({ ...base, clientToEdit: { ...base.clientToEdit, corretor: 'Vânia', comissaoEstimada: '8500.00', visitaDiego: true, descontosComissao: [{ descricao: 'Ajuste comercial', valor: '250.00' }] } });
+  await click(document.getElementById('reservaAnuncios'));
+  assert.match(netAmount(), /6\.250,00/, 'Reserva Anúncios soma R$ 500 aos descontos da visita, da corretora e dos adicionais');
+  assert.ok(document.querySelector('[aria-label="Cálculo da comissão"]').textContent.includes('Reserva Anúncios'));
+  await submit();
+  assert.equal(saved.at(-1).reservaAnuncios, true);
+  assert.equal(saved.at(-1).comissaoEstimada, '8500.00', 'A reserva de anúncios preserva a comissão bruta');
+  await render({ ...base, clientToEdit: saved.at(-1) });
+  assert.equal(document.getElementById('reservaAnuncios').checked, true, 'A reserva permanece selecionada ao reabrir');
+  assert.match(netAmount(), /6\.250,00/, 'Reabrir não reaplica a reserva de anúncios');
+  await toggleSale();
+  await submit();
+  assert.equal(saved.at(-1).venda, false);
+  assert.equal(saved.at(-1).reservaAnuncios, true, 'Desmarcar Venda conserva a reserva para uma edição posterior');
+  await toggleSale();
+  assert.equal(document.getElementById('reservaAnuncios').checked, true);
+  await click(document.getElementById('reservaAnuncios'));
+  assert.match(netAmount(), /6\.750,00/, 'Desmarcar a reserva remove somente seus R$ 500');
+  await submit();
+  assert.equal(saved.at(-1).reservaAnuncios, false);
+
+  await render({ ...base, clientToEdit: { ...base.clientToEdit, comissaoEstimada: '499.99', reservaAnuncios: true } });
+  assert.ok(findButton('Salvar Cliente').disabled, 'Reserva acima da comissão bloqueia o salvamento');
+  assert.ok(document.getElementById('commission-review-error')?.textContent.includes('0,01'));
+  await assertSaveBlocked('O envio também impede líquido negativo causado pela reserva');
+  await setCommission('50000');
+  assert.equal(findButton('Salvar Cliente').disabled, false, 'Reserva igual à comissão permite líquido zero');
+  await submit();
+  assert.equal(saved.at(-1).comissaoEstimada, '500.00');
+  assert.equal(saved.at(-1).reservaAnuncios, true);
 
   await render({ ...base, clientToEdit: { ...base.clientToEdit, corretor: 'Vânia', comissaoEstimada: '8500.00', visitaDiego: true, descontosComissao: [] } });
   await addDiscount();
@@ -213,12 +245,13 @@ try {
 
   for (const role of ['ASSISTENTE', 'CORRETOR']) {
     scenario.role = role;
-    await render({ ...base, clientToEdit: { ...base.clientToEdit, comissaoEstimada: '9000.00', visitaDiego: true, descontosComissao: [{ descricao: 'Privado', valor: '250.00' }] } });
+    await render({ ...base, clientToEdit: { ...base.clientToEdit, comissaoEstimada: '9000.00', visitaDiego: true, reservaAnuncios: true, descontosComissao: [{ descricao: 'Privado', valor: '250.00' }] } });
     assert.equal(Boolean(document.getElementById('comissaoEstimada')), false, `${role} não visualiza o campo`);
     assert.equal(Boolean(document.getElementById('visitaDiego')), false, `${role} não visualiza a opção de visita`);
+    assert.equal(Boolean(document.getElementById('reservaAnuncios')), false, `${role} não visualiza a reserva de anúncios`);
     assert.equal(Boolean(document.querySelector('[data-discount-row]')), false, `${role} não visualiza descontos privados`);
     await submit();
-    for (const field of ['comissaoEstimada', 'visitaDiego', 'descontosComissao']) {
+    for (const field of ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao']) {
       assert.equal(Object.hasOwn(saved.at(-1), field), false, `${role} não envia ${field} no payload`);
     }
   }
@@ -232,6 +265,8 @@ try {
   assert.match(document.body.textContent, /8\.500,25/);
   await renderCard('ADM', { ...base.clientToEdit, corretor: 'Vânia', comissaoEstimada: '8500.25', visitaDiego: true, descontosComissao: [{ descricao: 'Ajuste', valor: '250.00' }] });
   assert.match(document.body.textContent, /6\.750,25/, 'Kanban destaca o líquido após todas as deduções');
+  await renderCard('ADM', { ...base.clientToEdit, corretor: 'Vânia', comissaoEstimada: '8500.25', visitaDiego: true, reservaAnuncios: true, descontosComissao: [{ descricao: 'Ajuste', valor: '250.00' }] });
+  assert.match(document.body.textContent, /6\.250,25/, 'Kanban inclui a reserva de anúncios no líquido');
   await renderCard('ADM', { ...base.clientToEdit, corretor: 'Vânia', comissaoEstimada: '100.00' });
   assert.ok(document.body.textContent.includes('Revisar valores'), 'Cadastros antigos com líquido inválido ficam sinalizados');
   await renderCard('ADM', { ...base.clientToEdit, comissaoEstimada: null });

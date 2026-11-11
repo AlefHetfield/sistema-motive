@@ -10,7 +10,7 @@ function commissionCents(value) {
 }
 
 const decimalAmount = cents => `${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`;
-const privateFields = ['comissaoEstimada', 'visitaDiego', 'descontosComissao'];
+const privateFields = ['comissaoEstimada', 'visitaDiego', 'reservaAnuncios', 'descontosComissao'];
 
 export function clientWriteData(body, user, current = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail('Dados do cliente inválidos.');
@@ -29,6 +29,7 @@ export function clientWriteData(body, user, current = {}) {
       ? null : decimalAmount(commissionCents(data.comissaoEstimada));
   }
   if (Object.hasOwn(data, 'visitaDiego') && typeof data.visitaDiego !== 'boolean') throw fail('Informe se houve Visita Diego.');
+  if (Object.hasOwn(data, 'reservaAnuncios') && typeof data.reservaAnuncios !== 'boolean') throw fail('Informe se há Reserva Anúncios.');
   if (Object.hasOwn(data, 'descontosComissao')) {
     if (!Array.isArray(data.descontosComissao) || data.descontosComissao.length > 100) throw fail('Informe até 100 descontos adicionais.');
     data.descontosComissao = data.descontosComissao.map(item => {
@@ -120,7 +121,7 @@ export function createCommissionReportHandler(prisma, now = () => new Date()) {
       const selection = commissionReportInput(req.body);
       const clients = selection.ids.length ? await prisma.client.findMany({
         where: { id: { in: selection.ids }, venda: true },
-        select: { id: true, nome: true, imovel: true, status: true, emEspera: true, observacoes: true, venda: true, corretor: true, comissaoEstimada: true, visitaDiego: true, descontosComissao: true, property: { select: { code: true, title: true } } },
+        select: { id: true, nome: true, imovel: true, status: true, emEspera: true, observacoes: true, venda: true, corretor: true, comissaoEstimada: true, visitaDiego: true, reservaAnuncios: true, descontosComissao: true, property: { select: { code: true, title: true } } },
       }) : [];
       const byId = new Map(clients.map(client => [client.id, client]));
       const ordered = selection.ids.map(id => byId.get(id)).filter(Boolean);

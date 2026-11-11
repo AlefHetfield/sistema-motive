@@ -31,6 +31,11 @@ assert.deepEqual(discountedClient, originalClient, 'Cálculo preserva a comissã
 assert.equal(getClientCommissionBreakdown({ ...discountedClient, descontosComissao: [] }).net, '7000.00');
 assert.equal(getClientCommissionBreakdown({ ...discountedClient, corretor: 'Outro corretor', descontosComissao: [] }).net, '7500.00');
 assert.equal(getClientCommissionBreakdown({ ...discountedClient, visitaDiego: false, descontosComissao: [] }).net, '8000.00');
+const reservedBreakdown = getClientCommissionBreakdown({ ...discountedClient, reservaAnuncios: true });
+assert.equal(reservedBreakdown.discountTotal, '2250.00');
+assert.equal(reservedBreakdown.net, '6250.00');
+assert.ok(reservedBreakdown.discounts.some(discount => discount.descricao === 'Reserva Anúncios' && discount.valor === '500.00'));
+assert.equal(getClientCommissionBreakdown({ ...discountedClient, reservaAnuncios: false }).net, '6750.00');
 const excessiveDiscounts = getClientCommissionBreakdown({ ...discountedClient, comissaoEstimada: '1500.00' });
 assert.equal(excessiveDiscounts.net, '-250.00');
 assert.equal(excessiveDiscounts.excess, '250.00');
@@ -192,6 +197,19 @@ try {
   assert.match(document.querySelector('[role="alert"]').textContent, /copiar manualmente/);
 
   clipboardFails = false;
+  const reservationResponse = {
+    ...response,
+    items: [{ ...response.items[0], reservaAnuncios: true }, response.items[1]],
+    total: '6250.00',
+    text: response.text.replaceAll('6.750,00', '6.250,00').replace('Ajuste comercial —', 'Reserva Anúncios — R$ 500,00\nAjuste comercial —'),
+  };
+  respond = async () => reservationResponse;
+  await mount();
+  assert.match(document.querySelector('pre').textContent, /Reserva Anúncios — R\$ 500,00/);
+  assert.match(document.body.textContent, /6\.250,00/);
+  await click(button('Copiar relatório'));
+  assert.equal(copiedTexts.at(-1), reservationResponse.text, 'A cópia inclui a reserva de anúncios e o total líquido atualizado');
+
   const reviewResponse = { ...response, count: 3, reviewCount: 1, text: response.text + '\nComissão pendente de revisão.' };
   respond = async () => reviewResponse;
   await mount();

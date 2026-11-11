@@ -123,6 +123,7 @@ const initialFormData = {
     valorFinanciado: '',
     comissaoEstimada: '',
     visitaDiego: false,
+    reservaAnuncios: false,
     descontosComissao: [],
     matricula: '',
     cidade: '',
@@ -154,6 +155,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete, brokerSu
         corretor: formData.corretor,
         comissaoEstimada: parseCommissionBR(formData.comissaoEstimada),
         visitaDiego: formData.visitaDiego,
+        reservaAnuncios: formData.reservaAnuncios,
         descontosComissao: commissionDiscounts,
     }) : null;
     const requiresCommissionReview = Boolean(canManageCommission && formData.venda && commission.requiresReview);
@@ -187,6 +189,7 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete, brokerSu
                     valorFinanciado: clientToEdit.valorFinanciado ? formatCurrencyFromDB(clientToEdit.valorFinanciado) : '',
                     comissaoEstimada: canManageCommission ? formatCurrencyFromDB(clientToEdit.comissaoEstimada) : '',
                     visitaDiego: canManageCommission && clientToEdit.visitaDiego === true,
+                    reservaAnuncios: canManageCommission && clientToEdit.reservaAnuncios === true,
                     descontosComissao: canManageCommission && Array.isArray(clientToEdit.descontosComissao)
                         ? clientToEdit.descontosComissao.map(discount => ({ key: nextDiscountKey.current++, descricao: discount.descricao || '', valor: formatCurrencyFromDB(discount.valor) }))
                         : [],
@@ -337,14 +340,14 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete, brokerSu
             });
         }
 
-        const { comissaoEstimada, visitaDiego, descontosComissao: _discountDrafts, ...clientData } = formData;
+        const { comissaoEstimada, visitaDiego, reservaAnuncios, descontosComissao: _discountDrafts, ...clientData } = formData;
         void _discountDrafts;
         const clientPayload = {
             ...clientData,
             cpf: formData.cpf.replace(/\D/g, '') || null,
             agencia: formData.agencia.replace(/\D/g, '') || null,
             valorFinanciado: valorFinanciadoParsed,
-            ...(canManageCommission ? { comissaoEstimada: parseCommissionBR(comissaoEstimada), visitaDiego, descontosComissao: commissionDiscounts } : {}),
+            ...(canManageCommission ? { comissaoEstimada: parseCommissionBR(comissaoEstimada), visitaDiego, reservaAnuncios, descontosComissao: commissionDiscounts } : {}),
         };
 
         // Adiciona status 'Documentação Recebida' para novos clientes
@@ -500,10 +503,16 @@ const ClientModal = ({ isOpen, onClose, onSave, clientToEdit, onDelete, brokerSu
                                 <p id="commission-estimate-help" className="text-xs text-gray-500">Valor previsto antes dos descontos</p>
                                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary"><LockKeyhole size={12} aria-hidden="true" />Administrativo</span>
                             </div>
-                            <label className="mt-4 flex items-center gap-2.5 text-sm font-medium text-gray-700">
-                                <input id="visitaDiego" type="checkbox" checked={formData.visitaDiego} onChange={handleInputChange} className="h-4 w-4 accent-primary" />
-                                <span>Visita Diego<span className="mt-0.5 block text-xs font-normal text-gray-500">Desconto de R$ 1.000,00</span></span>
-                            </label>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <label className="flex min-h-11 items-center gap-2.5 text-sm font-medium text-gray-700">
+                                    <input id="visitaDiego" type="checkbox" checked={formData.visitaDiego} onChange={handleInputChange} className="h-4 w-4 accent-primary" />
+                                    <span>Visita Diego<span className="mt-0.5 block text-xs font-normal text-gray-500">Desconto de R$ 1.000,00</span></span>
+                                </label>
+                                <label className="flex min-h-11 items-center gap-2.5 text-sm font-medium text-gray-700">
+                                    <input id="reservaAnuncios" type="checkbox" checked={formData.reservaAnuncios} onChange={handleInputChange} className="h-4 w-4 accent-primary" />
+                                    <span>Reserva Anúncios<span className="mt-0.5 block text-xs font-normal text-gray-500">Desconto de R$ 500,00</span></span>
+                                </label>
+                            </div>
                             <div className="mt-4">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <h4 className="text-sm font-semibold text-gray-800">Outros descontos</h4>
