@@ -1396,79 +1396,78 @@ const ClientsList = () => {
                     {mobile ? <button type="button" className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left" aria-expanded={showMobileStats} aria-controls="client-summary-content" onClick={() => setShowMobileStats(value => !value)}>
                         <span className="text-sm font-semibold text-gray-900">Resumo <span className="ml-1 font-normal text-gray-500">· {financialStats.total} {financialStats.total === 1 ? 'cliente' : 'clientes'}</span></span>
                         <ChevronDown size={17} className={`text-primary transition-transform ${showMobileStats ? 'rotate-180' : ''}`} />
-                    </button> : <div className="flex items-center justify-between gap-3 border-b border-[#E7ECEF] px-4 py-3.5">
-                        <div>
-                            <h2 className="text-sm font-semibold text-gray-900">Resumo da seleção</h2>
-                            <p className="text-xs text-gray-500">Os valores acompanham a busca e os filtros aplicados.</p>
-                        </div>
-                        {activeTab === 'active' && (
+                    </button> : null}
+
+                    {(!mobile || showMobileStats) && <div id="client-summary-content">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 xl:flex-nowrap">
+                        {!mobile && <h2 className="order-1 shrink-0 text-sm font-semibold text-gray-900">Resumo da seleção</h2>}
+                        {!mobile && activeTab === 'active' && (
                             <button
                                 type="button"
                                 onClick={() => setShowAllStats(current => !current)}
-                                className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80"
+                                className="order-2 ml-auto flex min-h-9 shrink-0 items-center gap-1 rounded-lg text-xs font-semibold text-primary outline-none hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-primary/30 xl:order-3"
                                 aria-expanded={showAllStats}
+                                aria-controls="client-summary-details"
                             >
                                 {showAllStats ? 'Ocultar detalhes' : 'Ver detalhes'}
                                 <ChevronDown size={14} className={`transition-transform ${showAllStats ? 'rotate-180' : ''}`} />
                             </button>
                         )}
-                    </div>}
-
-                    {(!mobile || showMobileStats) && <div id="client-summary-content">
-                    <div className="grid grid-cols-2 gap-px bg-[#E7ECEF] sm:grid-cols-3">
-                        <div className="min-w-0 bg-white p-3 sm:p-4">
-                            <div className="mb-2 flex items-center gap-2 text-gray-500">
-                                <User size={16} />
+                    <dl className={`order-3 grid w-full grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-5 gap-y-3 ${activeTab === 'active' || !isAssistant ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} xl:order-2 xl:min-w-0 xl:flex-1`}>
+                        <div className="min-w-0 border-slate-200 xl:border-l xl:pl-5">
+                            <dt className="flex items-center gap-1.5 text-gray-500">
+                                <User size={14} className="shrink-0" aria-hidden="true" />
                                 <span className="text-xs font-semibold uppercase tracking-wide">Clientes</span>
-                            </div>
-                            <p className="text-xl font-bold text-gray-900 sm:text-2xl">{financialStats.total}</p>
+                            </dt>
+                            <dd className="mt-1 text-lg font-bold tabular-nums leading-6 text-gray-900">{financialStats.total}</dd>
                         </div>
 
                         {!isAssistant ? (
-                            <div className="min-w-0 bg-white p-3 sm:p-4">
-                                <div className="mb-2 flex items-center gap-2 text-blue-700">
-                                    <Building size={16} />
+                            <div className="min-w-0 border-slate-200 xl:border-l xl:pl-5">
+                                <dt className="flex items-center gap-1.5 text-blue-700">
+                                    <Building size={14} className="shrink-0" aria-hidden="true" />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Financiamento</span>
-                                </div>
-                                <p className="truncate text-sm font-bold text-blue-950 sm:text-xl" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}>
+                                </dt>
+                                <dd className="mt-1 truncate text-base font-bold tabular-nums leading-6 text-blue-950 xl:text-lg" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}>
                                     {new Intl.NumberFormat('pt-BR', mobile ? { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 } : { style: 'currency', currency: 'BRL' }).format(financialStats.financiamentoTotal)}
-                                </p>
+                                </dd>
                             </div>
                         ) : (
-                            <div className="min-w-0 bg-white p-3 sm:p-4">
-                                <div className="mb-2 flex items-center gap-2 text-emerald-700">
-                                    <CheckCircle2 size={16} />
+                            <div className="min-w-0 border-slate-200 xl:border-l xl:pl-5">
+                                <dt className="flex items-center gap-1.5 text-emerald-700">
+                                    <CheckCircle2 size={14} className="shrink-0" aria-hidden="true" />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aprovados</span>
-                                </div>
-                                <p className="text-2xl font-bold text-emerald-950">{financialStats.aprovados}</p>
+                                </dt>
+                                <dd className="mt-1 text-lg font-bold tabular-nums leading-6 text-emerald-950">{financialStats.aprovados}</dd>
                             </div>
                         )}
 
                         {activeTab === 'active' ? (
-                            <div className="col-span-2 min-w-0 bg-white p-3 sm:col-span-1 sm:p-4">
-                                <div className="mb-2 flex items-center gap-2 text-amber-700">
-                                    <AlertTriangle size={16} />
+                            <div className="col-span-2 min-w-0 border-t border-slate-200 pt-3 sm:col-span-1 sm:border-t-0 sm:pt-0 xl:border-l xl:pl-5">
+                                <dt className="flex items-center gap-1.5 text-amber-700">
+                                    <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Aguardando ação</span>
-                                </div>
-                                <p className="text-xl font-bold text-amber-950 sm:text-2xl">{financialStats.inconformes + financialStats.aguardandoReserva}</p>
-                                <p className="mt-1 hidden text-xs text-amber-700 sm:block">Inconformes ou aguardando reserva</p>
+                                </dt>
+                                <dd className="mt-1 text-lg font-bold tabular-nums leading-6 text-amber-950">{financialStats.inconformes + financialStats.aguardandoReserva}</dd>
                             </div>
                         ) : !isAssistant ? (
-                            <div className="col-span-2 min-w-0 bg-white p-3 sm:col-span-1 sm:p-4">
-                                <div className="mb-2 flex items-center gap-2 text-purple-700">
-                                    <CheckCircle2 size={16} />
+                            <div className="col-span-2 min-w-0 border-t border-slate-200 pt-3 sm:col-span-1 sm:border-t-0 sm:pt-0 xl:border-l xl:pl-5">
+                                <dt className="flex items-center gap-1.5 text-purple-700">
+                                    <CheckCircle2 size={14} className="shrink-0" aria-hidden="true" />
                                     <span className="text-xs font-semibold uppercase tracking-wide">Remuneração</span>
-                                </div>
-                                <p className="truncate text-sm font-bold text-purple-950 sm:text-xl" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}>
+                                </dt>
+                                <dd className="mt-1 truncate text-base font-bold tabular-nums leading-6 text-purple-950 xl:text-lg" title={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}>
                                     {new Intl.NumberFormat('pt-BR', mobile ? { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 } : { style: 'currency', currency: 'BRL' }).format(financialStats.remuneracao)}
-                                </p>
+                                </dd>
                             </div>
                         ) : null}
+                    </dl>
                     </div>
 
-                    {mobile && activeTab === 'active' && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-gray-100 text-xs font-semibold text-primary" aria-expanded={showAllStats} onClick={() => setShowAllStats(value => !value)}>{showAllStats ? 'Ocultar indicadores' : 'Ver mais indicadores'}<ChevronDown size={14} className={showAllStats ? 'rotate-180' : ''} /></button>}
+                    {mobile && activeTab === 'active' && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-gray-100 text-xs font-semibold text-primary" aria-expanded={showAllStats} aria-controls="client-summary-details" onClick={() => setShowAllStats(value => !value)}>{showAllStats ? 'Ocultar indicadores' : 'Ver mais indicadores'}<ChevronDown size={14} className={showAllStats ? 'rotate-180' : ''} /></button>}
                     {activeTab === 'active' && showAllStats && (
-                        <div className="grid grid-cols-2 gap-3 border-t border-[#E7ECEF] bg-slate-50/60 p-4 lg:grid-cols-5">
+                        <div id="client-summary-details" className="grid grid-cols-2 gap-3 border-t border-[#E7ECEF] bg-slate-50/60 p-4 lg:grid-cols-5">
+                            <p className="col-span-2 text-xs leading-5 text-gray-500 lg:col-span-5">Os valores acompanham a busca e os filtros aplicados. Aguardando ação reúne clientes inconformes ou aguardando reserva.</p>
                             {[
                                 { label: 'Aprovados', value: financialStats.aprovados, color: 'text-emerald-700' },
                                 { label: 'Engenharia solicitada', value: financialStats.engenhariaSolicitada, color: 'text-orange-700' },
