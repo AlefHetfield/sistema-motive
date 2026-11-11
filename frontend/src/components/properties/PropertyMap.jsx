@@ -184,13 +184,13 @@ export default function PropertyMap({ properties, selectedPropertyId, hoveredPro
         mapRef.current = new maps.Map(containerRef.current, {
           center: { lat: -22.8219, lng: -47.2668 },
           zoom: 12,
-          mapTypeControl: true,
+          mapTypeId: 'roadmap',
+          mapTypeControl: false,
           streetViewControl: true,
           fullscreenControl: true,
           gestureHandling: 'greedy',
           clickableIcons: false,
           ...propertyMapThemeOptions(mapThemeRef.current),
-          mapTypeControlOptions: { position: maps.ControlPosition.TOP_RIGHT },
         });
         mapRef.current.addListener('click', () => {
           setContextMenu(null);

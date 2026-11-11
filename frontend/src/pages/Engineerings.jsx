@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Building2, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Eye, FilePenLine, Filter, HardHat, MapPin, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -75,7 +76,7 @@ function EngineeringTableRow({ item, today, onEdit, onDelete, onPreview }) {
   </tr>;
 }
 
-export default function Engineerings({ active = true, onChanged }) {
+export default function Engineerings({ active = true, onChanged, toolbarTarget }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
@@ -177,9 +178,12 @@ export default function Engineerings({ active = true, onChanged }) {
     } catch (reason) { toast.error(reason.message); }
   };
   return <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 lg:p-7">
+    {active && toolbarTarget && createPortal(<div className="hidden lg:flex">
+      <Button onClick={() => setEditor({ item: null })}><Plus size={17} aria-hidden="true" />Nova engenharia</Button>
+    </div>, toolbarTarget)}
     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
       <div><h2 className="text-xl font-bold text-slate-900">Imóveis exclusivos</h2><p className="mt-1 text-sm text-slate-500">Acompanhe os pedidos de engenharia e os valores de avaliação.</p></div>
-      <Button onClick={() => setEditor({ item: null })} className="w-full sm:w-auto"><Plus size={17} aria-hidden="true" />Nova engenharia</Button>
+      <Button onClick={() => setEditor({ item: null })} className={`w-full sm:w-auto ${toolbarTarget ? 'lg:hidden' : ''}`}><Plus size={17} aria-hidden="true" />Nova engenharia</Button>
     </div>
 
     <section aria-label="Resumo das engenharias" className="grid grid-cols-3 gap-2 sm:gap-4">

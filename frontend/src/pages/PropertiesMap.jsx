@@ -1,6 +1,7 @@
 import useMobileLayout from '../hooks/useMobileLayout';
 import FancySelect from '../components/FancySelect';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PropertyEngineeringSummary from '../components/engineering/PropertyEngineeringSummary';
@@ -26,6 +27,8 @@ import {
   Maximize2,
   Megaphone,
   MessageCircle,
+  Minimize2,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -46,6 +49,7 @@ import { toast } from 'sonner';
 import PropertyMap from '../components/properties/PropertyMap';
 import PropertyFormModal from '../components/properties/PropertyFormModal';
 import PropertyAddressSearch from '../components/properties/PropertyAddressSearch';
+import PropertyPhotoViewer from '../components/properties/PropertyPhotoViewer';
 import { PROPERTY_CITY_PRIORITY, PROPERTY_STATUSES, propertyCityColor } from '../components/properties/propertyConstants';
 import { createProperty, deleteProperty, fetchProperties, fetchPropertyDrivePhotos, geocodePropertyPlace, propertyDriveImageUrl, refreshPropertyListings, setPropertyFavorite, updateProperty } from '../services/api';
 
@@ -172,8 +176,14 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
   const [activePhoto, setActivePhoto] = useState(0);
   const [failedPhotoIds, setFailedPhotoIds] = useState(() => new Set());
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(Boolean(property.driveFolderUrl));
-  const [sheetLevel, setSheetLevel] = useState(0);
-  const sheetDragStart = useRef(null);
+  const [expanded, setExpanded] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const titleId = useId();
+  const panelRef = useRef(null);
+  const titleRef = useRef(null);
+  const actionsRef = useRef(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
   useEffect(() => {
     let active = true;
     if (!property.driveFolderUrl) return undefined;
@@ -198,38 +208,102 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
       toast.error('Não foi possível copiar o contato.');
     }
   };
-  const sheetHeights = ['42dvh', '65dvh', '88dvh'];
-  const finishSheetDrag = (event) => {
-    if (!mobile || sheetDragStart.current === null) return;
-    const movement = event.clientY - sheetDragStart.current;
-    sheetDragStart.current = null;
-    if (movement < -36) setSheetLevel(current => Math.min(2, current + 1));
-    if (movement > 36) {
-      if (sheetLevel === 0) onClose();
-      else setSheetLevel(current => Math.max(0, current - 1));
-    }
-  };
-  return (
-    <aside
-      style={mobile ? { height: sheetHeights[sheetLevel] } : undefined}
-      className="fixed inset-x-0 bottom-0 z-[60] flex w-full animate-in flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl slide-in-from-bottom-4 transition-[height] duration-300 lg:absolute lg:inset-y-4 lg:left-auto lg:right-4 lg:h-auto lg:max-h-none lg:w-[min(390px,calc(100%-32px))] lg:rounded-2xl lg:slide-in-from-right-4"
-    >
-      {mobile && <button type="button" aria-label={sheetLevel === 2 ? 'Recolher detalhes do imóvel' : 'Expandir detalhes do imóvel'} onClick={() => setSheetLevel(current => current === 2 ? 0 : current + 1)} onPointerDown={event => { sheetDragStart.current = event.clientY; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishSheetDrag} onPointerCancel={() => { sheetDragStart.current = null; }} className="flex h-7 shrink-0 touch-none items-center justify-center bg-white"><span className="h-1.5 w-12 rounded-full bg-gray-300" /></button>}
-      <div className="relative h-36 shrink-0 bg-gradient-to-br from-slate-200 to-slate-100 sm:h-48">
-        {displayedPhoto ? <img src={displayedPhoto.url} alt={displayedPhoto.name || property.title} onError={() => setFailedPhotoIds(current => new Set(current).add(displayedPhoto.id))} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-14 w-14 text-gray-300" />}</div>}
-        {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
-        <button type="button" onClick={onClose} aria-label="Fechar dados do imóvel" className="absolute right-3 top-3 rounded-full bg-white/95 p-2 text-gray-600 shadow hover:text-gray-900"><X className="h-4 w-4" /></button>
-        <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{property.code ? `Imóvel ${property.code}` : property.propertyType || 'Imóvel'}</p><h2 className="mt-1 text-xl font-bold leading-7 text-gray-900">{cleanPropertyTitle(property.title)}</h2></div>
-          <button type="button" onClick={() => onToggleFavorite(property)} disabled={isFavoriteUpdating} aria-label={property.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} title={property.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-50 ${property.isFavorite ? 'border-amber-200 bg-amber-50 text-amber-500' : 'border-slate-200 bg-white text-slate-300 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-500'}`}><Star className="h-5 w-5" fill={property.isFavorite ? 'currentColor' : 'none'} /></button>
-        </div>
-        <p className="mt-2 flex gap-2 text-sm leading-5 text-gray-500"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{property.address}{property.neighborhood ? ` · ${property.neighborhood}` : ''}{property.city ? `, ${property.city}` : ''}</p>
-        <p className="mt-4 text-2xl font-bold text-gray-900">{property.price ? currency.format(property.price) : 'Valor sob consulta'}</p>
+  useEffect(() => {
+    if (!active || !expanded) return;
+    const previousFocus = document.activeElement;
+    titleRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [active, expanded]);
 
-        <div className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mt-5 grid-cols-4 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200`}>
+  useEffect(() => {
+    if (!active) return;
+    const closeActions = event => {
+      if (!actionsRef.current?.contains(event.target)) actionsRef.current?.removeAttribute('open');
+    };
+    const handleKey = event => {
+      if (event.defaultPrevented || photosOpen) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (actionsRef.current?.open) {
+          actionsRef.current.removeAttribute('open');
+          actionsRef.current.querySelector('summary')?.focus();
+        } else if (expanded) setExpanded(false);
+        else closeRef.current();
+      }
+      if (event.key !== 'Tab' || !expanded) return;
+      event.stopImmediatePropagation();
+      const nodes = [...panelRef.current.querySelectorAll('button:not([disabled]), a[href], summary, [tabindex="0"]')]
+        .filter(node => {
+          const closedDetails = node.closest('details:not([open])');
+          return node.getClientRects().length > 0 && (!closedDetails || closedDetails.firstElementChild === node);
+        });
+      const first = nodes[0], last = nodes.at(-1);
+      if (!nodes.length) return;
+      if (!nodes.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeActions);
+    document.addEventListener('keydown', handleKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', closeActions);
+      document.removeEventListener('keydown', handleKey, true);
+    };
+  }, [active, expanded, photosOpen]);
+
+  const runAction = callback => {
+    actionsRef.current?.removeAttribute('open');
+    callback();
+  };
+  const summary = mobile && !expanded;
+  const displayTitle = cleanPropertyTitle(property.title) || propertyCardTitle(property);
+  const displayPrice = property.price ? currency.format(property.price) : 'Valor sob consulta';
+  const photoFailed = id => setFailedPhotoIds(current => new Set(current).add(id));
+
+  if (!active) return null;
+  return createPortal(<>
+    {expanded && <button type="button" tabIndex={-1} onClick={() => setExpanded(false)} aria-label="Recolher ficha do imóvel" className="fixed inset-0 z-[85] bg-slate-950/40 backdrop-blur-[2px]" />}
+    <aside ref={panelRef} role={expanded ? 'dialog' : undefined} aria-modal={expanded || undefined} aria-labelledby={titleId}
+      className={`fixed flex min-h-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl ${expanded ? 'z-[90]' : 'z-[60]'} ${mobile
+        ? `inset-x-0 bottom-0 rounded-t-2xl ${expanded ? 'h-[90dvh]' : 'max-h-[65dvh]'}`
+        : expanded ? 'inset-x-4 inset-y-4 mx-auto max-w-3xl rounded-2xl' : 'bottom-3 right-4 top-[148px] w-[390px] rounded-2xl'}`}>
+      {summary ? <div className="mobile-safe-bottom overflow-y-auto p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
+            {displayedPhoto ? <img src={displayedPhoto.url} alt="" onError={() => photoFailed(displayedPhoto.id)} className="h-full w-full object-cover" /> : <Home className="h-7 w-7 text-slate-400" />}
+          </div>
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold text-primary">{property.code || property.propertyType || 'Imóvel'}</p><h2 id={titleId} className="mt-1 line-clamp-2 break-words text-sm font-bold leading-5 text-gray-900">{displayTitle}</h2><p className="mt-1 text-base font-bold text-primary">{displayPrice}</p></div>
+          <button type="button" onClick={onClose} aria-label="Fechar dados do imóvel" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        </div>
+        <Button onClick={() => setExpanded(true)} className="mt-3 h-11 w-full">Ver detalhes<ChevronRight className="h-4 w-4" /></Button>
+      </div> : <>
+      <header className="flex shrink-0 items-start gap-2 border-b border-slate-200 px-4 py-3">
+        <div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-wide text-primary">{property.code ? `Imóvel ${property.code}` : property.propertyType || 'Imóvel'}</p><h2 ref={titleRef} id={titleId} tabIndex={-1} title={displayTitle} className="mt-0.5 line-clamp-2 break-words text-sm font-bold leading-5 text-gray-900 outline-none">{displayTitle}</h2><p className="mt-1 text-lg font-bold leading-6 text-primary">{displayPrice}</p></div>
+        <button type="button" onClick={() => setExpanded(current => !current)} aria-label={expanded ? 'Recolher detalhes do imóvel' : 'Ampliar ficha do imóvel'} title={expanded ? 'Recolher detalhes' : 'Ampliar ficha'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-500 hover:bg-slate-100">{expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+        <button type="button" onClick={onClose} aria-label="Fechar dados do imóvel" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+      </header>
+      <div role="region" aria-label="Informações do imóvel" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className={`relative bg-gradient-to-br from-slate-200 to-slate-100 ${expanded && !mobile ? 'h-[clamp(120px,30dvh,280px)]' : 'h-[clamp(100px,22dvh,180px)]'}`}>
+          {displayedPhoto ? <button type="button" onClick={() => setPhotosOpen(true)} aria-label="Ampliar fotos do imóvel" className="block h-full w-full"><img src={displayedPhoto.url} alt={displayedPhoto.name || displayTitle} onError={() => photoFailed(displayedPhoto.id)} className="h-full w-full object-cover" /><span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-950/70 px-2.5 py-1.5 text-xs font-semibold text-white"><Maximize2 className="h-3.5 w-3.5" />Ver fotos</span></button> : <div className="flex h-full items-center justify-center">{isLoadingPhotos ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : <Home className="h-12 w-12 text-gray-300" />}</div>}
+          {gallery.length > 1 && <><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex - 1 + gallery.length) % gallery.length)} aria-label="Foto anterior" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow hover:bg-white"><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => setActivePhoto((displayedPhotoIndex + 1) % gallery.length)} aria-label="Próxima foto" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow hover:bg-white"><ChevronRight className="h-4 w-4" /></button><span className="absolute bottom-3 right-3 rounded-full bg-gray-950/70 px-2.5 py-1 text-[11px] font-bold text-white">{displayedPhotoIndex + 1}/{gallery.length}</span></>}
+          <StatusBadge status={property.status} solid className="absolute bottom-3 left-3 shadow" />
+        </div>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <p className="flex min-w-0 flex-1 gap-2 break-words text-sm leading-5 text-gray-500"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span>{property.address}{property.neighborhood ? ` · ${property.neighborhood}` : ''}{property.city ? `, ${property.city}` : ''}</span></p>
+          <button type="button" onClick={() => onToggleFavorite(property)} disabled={isFavoriteUpdating} aria-label={property.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} title={property.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-50 ${property.isFavorite ? 'border-amber-200 bg-amber-50 text-amber-500' : 'border-slate-200 bg-white text-slate-300 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-500'}`}><Star className="h-5 w-5" fill={property.isFavorite ? 'currentColor' : 'none'} /></button>
+        </div>
+        <div className="mt-4 grid grid-cols-4 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
           <DetailMetric icon={<BedDouble className="h-4 w-4 text-primary" />} label="Dorm." value={property.bedrooms} />
           <DetailMetric icon={<Bath className="h-4 w-4 text-primary" />} label="Suítes" value={property.suites} />
           <DetailMetric icon={<Car className="h-4 w-4 text-primary" />} label="Vagas" value={property.parkingSpaces} />
@@ -237,7 +311,7 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
         </div>
 
         {canManageEngineerings && <div className="mt-4"><PropertyEngineeringSummary property={property} onOpen={onOpenEngineering} onCreate={onCreateEngineering} revision={engineeringRevision} active={active} /></div>}
-        <div className={`${mobile && sheetLevel < 2 ? 'hidden' : 'space-y-2.5'} mt-5 border-t border-slate-100 pt-4`}>
+        <div className="mt-5 space-y-2.5 border-t border-slate-100 pt-4">
           <details open className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"><span>Dados do imóvel</span><ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-90" /></summary>
             <div className="space-y-3 border-t border-slate-100 bg-slate-50/60 px-3.5 py-3 text-sm">
@@ -253,15 +327,23 @@ function PropertyDetail({ property, onClose, onEdit, onDelete, onToggleFavorite,
           <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"><span>Informações complementares</span><ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-90" /></summary><div className={`whitespace-pre-wrap break-words border-t border-slate-100 bg-slate-50/60 px-3.5 py-3 text-sm leading-6 ${property.additionalInformation ? 'text-gray-600' : 'italic text-gray-400'}`}>{property.additionalInformation || 'Nenhuma informação complementar cadastrada.'}</div></details>
         </div>
       </div>
-      <footer className={`${mobile && sheetLevel === 0 ? 'hidden' : 'grid'} mobile-safe-bottom ${property.sourceUrl ? 'grid-cols-4' : 'grid-cols-3'} gap-2 border-t border-slate-200 bg-slate-50 p-3`}>
-        <Link to={`/agenda?newProperty=${property.id}`} className={`${property.sourceUrl ? 'col-span-4' : 'col-span-3'} inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]`}><CalendarPlus className="h-4 w-4" />Agendar visita</Link>
-        <Link to={`/tasks?view=social&newProperty=${property.id}`} aria-label="Criar publicação deste imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-secondary ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-95"><Megaphone className="h-4 w-4" /><span className="truncate">Publicar</span></Link>
-        {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" aria-label="Abrir imóvel no site" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-primary ring-1 ring-slate-200 transition hover:bg-primary/5 active:scale-95"><Globe2 className="h-4 w-4" /><span className="truncate">Site</span></a>}
-        <button type="button" onClick={onEdit} aria-label="Editar imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 py-2 text-[11px] font-bold text-primary ring-1 ring-slate-200 transition hover:bg-primary/5 active:scale-95"><Pencil className="h-4 w-4" /><span className="truncate">Editar</span></button>
-        <button type="button" onClick={onDelete} aria-label="Excluir imóvel" className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-red-50 px-1 py-2 text-[11px] font-bold text-red-600 ring-1 ring-red-100 transition hover:bg-red-100 active:scale-95"><Trash2 className="h-4 w-4" /><span className="truncate">Excluir</span></button>
+      </div>
+      <footer className="mobile-safe-bottom flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 p-3">
+        <Link to={`/agenda?newProperty=${property.id}`} className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]"><CalendarPlus className="h-4 w-4 shrink-0" />Agendar visita</Link>
+        <details ref={actionsRef} className="group relative shrink-0">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-gray-600 hover:bg-slate-100 [&::-webkit-details-marker]:hidden"><MoreHorizontal className="h-4 w-4" />Mais ações</summary>
+          <div className="absolute bottom-[calc(100%+12px)] right-0 z-10 max-h-[min(65dvh,280px)] w-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+            <Link to={`/tasks?view=social&newProperty=${property.id}`} onClick={() => actionsRef.current?.removeAttribute('open')} aria-label="Criar publicação deste imóvel" className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-gray-700 hover:bg-slate-100"><Megaphone className="h-4 w-4" />Publicar</Link>
+            {property.sourceUrl && <a href={property.sourceUrl} target="_blank" rel="noreferrer" onClick={() => actionsRef.current?.removeAttribute('open')} aria-label="Abrir imóvel no site" className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-gray-700 hover:bg-slate-100"><Globe2 className="h-4 w-4" />Site</a>}
+            <button type="button" onClick={() => runAction(onEdit)} aria-label="Editar imóvel" className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 hover:bg-slate-100"><Pencil className="h-4 w-4" />Editar</button>
+            <button type="button" onClick={() => runAction(onDelete)} aria-label="Excluir imóvel" className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-lg border-t border-slate-100 px-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />Excluir</button>
+          </div>
+        </details>
       </footer>
+      </>}
     </aside>
-  );
+    {photosOpen && <PropertyPhotoViewer photos={gallery} index={displayedPhotoIndex} onIndexChange={setActivePhoto} onPhotoError={photoFailed} onClose={() => setPhotosOpen(false)} />}
+  </>, document.body);
 }
 
 function RefreshListingsModal({ total, state, onClose, onConfirm }) {
@@ -301,7 +383,7 @@ function DeleteModal({ property, onClose, onConfirm, isDeleting }) {
   return <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-[2px]"><button type="button" className="absolute inset-0" onClick={onClose} aria-label="Cancelar exclusão" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="h-5 w-5" /></span><h2 className="mt-4 text-lg font-bold text-gray-900">Excluir imóvel?</h2><p className="mt-2 text-sm leading-6 text-gray-500">O imóvel <strong>{cleanPropertyTitle(property.title)}</strong> será removido do mapa e não poderá ser recuperado.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100">Cancelar</button><button type="button" disabled={isDeleting} onClick={onConfirm} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">{isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}Excluir imóvel</button></div></div></div>;
 }
 
-export default function PropertiesMap({ active = true, onOpenEngineering, onCreateEngineering, engineeringRevision = 0 }) {
+export default function PropertiesMap({ active = true, onOpenEngineering, onCreateEngineering, engineeringRevision = 0, toolbarTarget }) {
   const { user } = useAuth();
   const canManageEngineerings = ['ADM', 'ASSISTENTE'].includes(user?.role);
   const mobile = useMobileLayout();
@@ -618,21 +700,21 @@ export default function PropertiesMap({ active = true, onOpenEngineering, onCrea
     }
   };
 
+  const mapActions = <div className="hidden items-center gap-2 lg:flex">
+    <Button variant="secondary" onClick={openListingRefresh} disabled={!listingRefreshTotal}><RefreshCw className="h-4 w-4" />Atualizar Imóveis</Button>
+    <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
+  </div>;
+
   return (
     <div className="flex h-full min-h-[400px] flex-col overflow-hidden bg-[#E8EEF1] dark:bg-[#101923]">
+      {active && toolbarTarget && createPortal(mapActions, toolbarTarget)}
       <header className="max-h-[38dvh] shrink-0 overflow-y-auto border-b border-slate-200 bg-white px-3 py-2 lg:mx-3 lg:mt-3 lg:max-h-none lg:overflow-visible lg:rounded-t-2xl lg:border lg:px-5 lg:py-3">
         {mobile && <div className="mb-2 flex items-center gap-2"><div className="flex min-w-0 flex-1 rounded-xl bg-gray-100 p-1" aria-label="Visualização dos imóveis">{[['map', 'Mapa'], ['list', 'Lista']].map(([value, label]) => <button key={value} type="button" aria-pressed={mobileView === value} onClick={() => setMobileView(value)} className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold ${mobileView === value ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div><button type="button" aria-expanded={mobileFilters} onClick={() => setMobileFilters(true)} className="relative min-h-11 rounded-xl border px-3 text-sm font-semibold text-gray-600"><SlidersHorizontal className="mr-1.5 inline h-4 w-4" />Filtros{activeFilterChips.length > 0 && <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-white">{activeFilterChips.length}</span>}</button></div>}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="hidden items-center gap-2 lg:flex"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><MapPin className="h-4 w-4" /></span><div><p className="text-sm font-bold text-slate-900">Portfólio imobiliário</p><p className="text-[11px] text-slate-500">Localize, filtre e atualize os imóveis em um único espaço.</p></div></div>
-            <p className="text-xs font-semibold text-slate-500 lg:mt-2"><strong className="text-slate-800">{filtered.length}</strong> imóvel(is) · <strong className="text-slate-800">{mappedCount}</strong> visível(is) no mapa</p>
-          </div>
-          <div className="hidden flex-wrap items-center gap-2 lg:flex">
-            <Button variant="secondary" onClick={openListingRefresh} disabled={!listingRefreshTotal}><RefreshCw className="h-4 w-4" />Atualizar Imóveis</Button>
-            <Button onClick={() => { setCreationLocation(null); setEditingProperty(null); }}><Plus className="h-4 w-4" />Cadastrar imóvel</Button>
-          </div>
+          <p className="text-xs font-semibold text-slate-500"><strong className="text-slate-800">{filtered.length}</strong> imóvel(is) · <strong className="text-slate-800">{mappedCount}</strong> visível(is) no mapa</p>
+          {!toolbarTarget && mapActions}
         </div>
-        <div className="mt-3 hidden gap-2 border-t border-slate-100 pt-3 lg:grid lg:grid-cols-3 xl:grid-cols-[minmax(180px,1fr)_minmax(120px,180px)_minmax(120px,160px)_minmax(120px,160px)_110px_140px]">
+        <div className="mt-2 hidden gap-2 lg:grid lg:grid-cols-3 xl:grid-cols-[minmax(180px,1fr)_minmax(120px,180px)_minmax(120px,160px)_minmax(120px,160px)_110px_140px]">
           <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={filters.search} onChange={event => updateFilter('search', event.target.value)} placeholder="Buscar imóvel, código ou proprietário" className={`${compactControlClass} pl-9`} /></label>
           <FancySelect size="compact" ariaLabel="Filtrar por status" value={filters.status} onChange={value => updateFilter('status', value)} placeholder="Todos os status" options={[{ value: '', label: 'Todos os status' }, ...PROPERTY_STATUSES.map(item => ({ value: item, label: item }))]} />
           <FancySelect size="compact" ariaLabel="Filtrar por cidade" value={filters.city} onChange={value => updateFilter('city', value)} placeholder="Todas as cidades" options={[{ value: '', label: 'Todas as cidades' }, ...cities.map(item => ({ value: item, label: item }))]} />
@@ -693,11 +775,10 @@ export default function PropertiesMap({ active = true, onOpenEngineering, onCrea
             )}
           </div>
           <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100%-32px)] flex-wrap gap-x-3 gap-y-2 rounded-xl border border-gray-200 bg-white/95 p-2.5 text-[11px] font-semibold text-gray-600 shadow-sm backdrop-blur sm:flex">{cityGroups.map(group => <span key={group.city} className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />{group.city}</span>)}</div>
-          {selectedProperty && !mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} canManageEngineerings={canManageEngineerings} onOpenEngineering={onOpenEngineering} onCreateEngineering={onCreateEngineering} engineeringRevision={engineeringRevision} active={active} />}
         </main>
       </div>
 
-      {selectedProperty && mobile && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} canManageEngineerings={canManageEngineerings} onOpenEngineering={onOpenEngineering} onCreateEngineering={onCreateEngineering} engineeringRevision={engineeringRevision} active={active} />}
+      {selectedProperty && <PropertyDetail key={selectedProperty.id} property={selectedProperty} onClose={() => setSelectedProperty(null)} onEdit={() => setEditingProperty(selectedProperty)} onDelete={() => setDeletePending(selectedProperty)} onToggleFavorite={toggleFavorite} isFavoriteUpdating={favoritePending.has(selectedProperty.id)} canManageEngineerings={canManageEngineerings} onOpenEngineering={onOpenEngineering} onCreateEngineering={onCreateEngineering} engineeringRevision={engineeringRevision} active={active && editingProperty === undefined && !deletePending && !mobileFilters && !showListingRefresh} />}
       {active && editingProperty !== undefined && <PropertyFormModal key={editingProperty?.id || `${creationLocation?.latitude || 'new'}:${creationLocation?.longitude || ''}`} property={editingProperty} initialLocation={editingProperty ? null : creationLocation} properties={properties} onClose={closePropertyForm} onSave={saveProperty} isSaving={isSaving} />}
       {showListingRefresh && <RefreshListingsModal total={listingRefreshTotal} state={listingRefresh} onClose={() => setShowListingRefresh(false)} onConfirm={runListingRefresh} />}
       {deletePending && <DeleteModal property={deletePending} onClose={() => setDeletePending(null)} onConfirm={confirmDelete} isDeleting={isDeleting} />}
