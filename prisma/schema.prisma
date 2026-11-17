@@ -200,6 +200,25 @@ model Property {
   @@map("properties")
 }
 
+model PropertyListingRefresh {
+  id            Int      @id
+  runId         String?  @db.Uuid
+  status        String   @default("idle") @db.VarChar(20)
+  total         Int      @default(0)
+  pendingIds    Json     @default("[]")
+  updatedIds    Json     @default("[]")
+  failed        Json     @default("[]")
+  retryAttempt  Int      @default(0)
+  delayReason   String?  @db.VarChar(20)
+  nextAttemptAt DateTime?
+  leaseToken    String?  @db.Uuid
+  leaseUntil    DateTime?
+  message       String   @default("")
+  updatedAt     DateTime @updatedAt
+
+  @@map("property_listing_refresh")
+}
+
 model Engineering {
   id            Int       @id @default(autoincrement())
   imovel        String    @db.VarChar(250)

@@ -365,12 +365,18 @@ export async function refreshPropertyDrivePhotos(cursor = 0, limit = 10) {
     return response.json();
 }
 
-export async function refreshPropertyListings(cursor = 0, limit = 6) {
+export async function fetchPropertyListingRefresh(signal) {
+    const response = await fetch(`${API_BASE_URL}/api/properties/refresh-listings/current`, { credentials: 'include', signal });
+    if (!response.ok) throw await apiError(response, 'Não foi possível verificar a atualização dos imóveis.');
+    return response.json();
+}
+
+export async function refreshPropertyListings({ action = 'start', jobId } = {}, signal) {
     const response = await fetch(`${API_BASE_URL}/api/properties/refresh-listings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ cursor, limit }),
+        credentials: 'include', signal,
+        body: JSON.stringify({ action, ...(jobId ? { jobId } : {}) }),
     });
     if (!response.ok) throw await apiError(response, 'Falha ao atualizar os anúncios.');
     return response.json();

@@ -15,7 +15,7 @@ test('disponibilidade do imóvel só é confirmada por preenchimento manual', as
     findMany: async ({ where = {}, take } = {}) => [...records.values()]
       .filter(record => !where.id?.gt || record.id > where.id.gt)
       .filter(record => !where.sourceUrl?.contains || record.sourceUrl?.includes(where.sourceUrl.contains))
-      .slice(0, take),
+      .slice(0, take ?? Infinity),
     findUnique: async ({ where }) => structuredClone(records.get(where.id) || null),
     create: async ({ data }) => {
       const record = { id: ++sequence, lastAvailabilityCheck: null, ...data };
@@ -30,6 +30,14 @@ test('disponibilidade do imóvel só é confirmada por preenchimento manual', as
       return record;
     },
   } };
+  let refreshState = null;
+  prisma.propertyListingRefresh = {
+    upsert: async () => refreshState ||= { id: 1, runId: null, status: 'idle', total: 0, pendingIds: [], updatedIds: [], failed: [], retryAttempt: 0, nextAttemptAt: null, leaseToken: null, leaseUntil: null, message: '' },
+    findUnique: async () => structuredClone(refreshState),
+    update: async ({ data }) => (refreshState = { ...refreshState, ...structuredClone(data) }),
+  };
+  prisma.$queryRaw = async () => [];
+  prisma.$transaction = async operation => operation(prisma);
   const realFetch = globalThis.fetch;
   let listingReads = 0;
   globalThis.fetch = async (url, options) => {
@@ -46,7 +54,7 @@ test('disponibilidade do imóvel só é confirmada por preenchimento manual', as
   app.use(express.json());
   app.use('/properties', createPropertyRouter(prisma, (req, res, next) => {
     req.user = { id: 1, nome: 'Teste', role: 'ADM' }; next();
-  }));
+  }, { listingRefreshOptions: { intervalMs: 0 } }));
   let server;
   try {
     server = app.listen(0, '127.0.0.1');
@@ -57,15 +65,22 @@ test('disponibilidade do imóvel só é confirmada por preenchimento manual', as
       return { status: response.status, data: await response.json() };
     };
 
-    const refreshed = await request('/refresh-listings', 'POST', { limit: 6 });
+    const started = await request('/refresh-listings', 'POST', { action: 'start' });
+    assert.equal(started.status, 200);
+    const refreshed = await request('/refresh-listings', 'POST', { action: 'step', jobId: started.data.job.id });
     assert.equal(refreshed.status, 200);
-    assert.equal(refreshed.data.updated.length, 2);
+    assert.equal(refreshed.data.updated.length, 1);
+    const finished = await request('/refresh-listings', 'POST', { action: 'step', jobId: started.data.job.id });
+    assert.equal(finished.data.job.status, 'completed');
+    assert.equal(finished.data.job.updatedCount, 2);
     assert.equal(listingReads, 2);
     assert.equal(records.get(1).lastAvailabilityCheck.toISOString(), confirmedAt.toISOString(), 'Atualização do site preserva a data manual existente.');
     assert.equal(records.get(2).lastAvailabilityCheck, null, 'Atualização do site não confirma imóvel sem data.');
     for (const write of writes) assert.equal(Object.hasOwn(write.data, 'lastAvailabilityCheck'), false, 'Rotina automática não envia data de confirmação.');
     assert.equal(records.get(1).price, 415000, 'Os dados do anúncio continuam sendo atualizados.');
     assert.equal(records.get(2).photoUrl, 'https://example.test/property.jpg');
+    assert.equal(records.get(1).title, 'Casa confirmada', 'O nome preenchido manualmente é preservado.');
+    assert.equal(records.get(2).title, 'Casa sem confirmação');
 
     const basic = { code: 'CA003', title: 'Novo imóvel', address: 'Rua Três, 30', latitude: -22.8, longitude: -47.2 };
     const created = await request('', 'POST', basic);

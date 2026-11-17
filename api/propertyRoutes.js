@@ -1,6 +1,7 @@
 import express from 'express';
 import { parsePropertyImport } from './propertyImporter.js';
 import { fetchDriveImage, listDriveFolderImages, normalizeDriveFolderUrl } from './googleDrive.js';
+import { createPropertyListingRefresh } from './propertyListingRefresh.js';
 
 const PROPERTY_STATUSES = ['Disponível', 'Com engenharia', 'Em negociação', 'Indisponível', 'Confirmando disponibilidade'];
 const LAND_CONFIGURATIONS = ['Meio', 'Intermediário', 'Inteiro'];
@@ -16,7 +17,7 @@ const PROPERTY_REFERENCE_PREFIXES = {
 };
 const MOTIVE_LISTING_HOSTS = new Set(['motiveimoveis.com', 'www.motiveimoveis.com']);
 const LISTING_HTML_LIMIT = 2 * 1024 * 1024;
-const listingError = (message, { status = 502, kind = 'listing' } = {}) => Object.assign(new Error(message), { status, kind });
+const listingError = (message, { status = 502, kind = 'listing', upstreamStatus, retryAfter } = {}) => Object.assign(new Error(message), { status, kind, upstreamStatus, retryAfter });
 const cleanText = (value, max = 500) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const nullableText = (value, max) => cleanText(value, max) || null;
 const cleanMultilineText = (value, max = 5000) => String(value ?? '')
@@ -172,8 +173,8 @@ const listingPreview = async (sourceUrl) => {
     });
     if (!response.ok) {
       if ([404, 410].includes(response.status)) throw listingError('O anúncio não foi encontrado ou ainda não está publicado.', { status: 404 });
-      if ([401, 403].includes(response.status)) throw listingError('O site da Motive recusou a consulta automática. Tente novamente mais tarde.', { status: 502, kind: 'connection' });
-      if (response.status === 429) throw listingError('O site da Motive limitou temporariamente as consultas. Aguarde alguns minutos e tente novamente.', { status: 503, kind: 'connection' });
+      if ([401, 403].includes(response.status)) throw listingError('O site da Motive recusou a consulta automática. Tente novamente mais tarde.', { status: 502, kind: 'connection', upstreamStatus: response.status });
+      if (response.status === 429) throw listingError('O site da Motive limitou temporariamente as consultas. Aguarde alguns minutos e tente novamente.', { status: 503, kind: 'connection', upstreamStatus: 429, retryAfter: response.headers.get('retry-after') });
       if (response.status >= 500) throw listingError('O site da Motive está temporariamente indisponível.', { status: 503, kind: 'connection' });
       throw listingError(`O anúncio não respondeu corretamente (HTTP ${response.status}).`);
     }
@@ -419,9 +420,33 @@ const enrichPropertyFromListing = (data, listing) => {
   return data;
 };
 
-export function createPropertyRouter(prisma, requireAuth) {
+export function createPropertyRouter(prisma, requireAuth, { listingRefreshOptions = {} } = {}) {
   const router = express.Router();
   router.use(requireAuth);
+  const listingRefresh = createPropertyListingRefresh(prisma, {
+    preview: listingPreview,
+    propertyData: (preview, property) => {
+      const data = { sourceUrl: preview.sourceUrl || property.sourceUrl };
+      if (preview.imageUrl) data.photoUrl = preview.imageUrl;
+      if (preview.property?.externalReference) data.code = cleanText(preview.property.externalReference, 60).toUpperCase();
+      for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces', 'neighborhood', 'city', 'propertyType', 'description']) {
+        const value = preview.property?.[field];
+        if (value !== null && value !== undefined && value !== '') data[field] = value;
+      }
+      if (!property.title) data.title = automaticPropertyTitle({ ...property, ...data });
+      return data;
+    },
+    ...listingRefreshOptions,
+  });
+
+  router.get('/refresh-listings/current', async (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    try { res.json(await listingRefresh.current()); }
+    catch (error) {
+      console.error('Erro ao consultar progresso da atualização:', error.code || error.name);
+      res.status(503).json({ error: 'Não foi possível consultar o progresso. Tente novamente em instantes.' });
+    }
+  });
 
   router.get('/', async (req, res) => {
     try {
@@ -631,74 +656,11 @@ export function createPropertyRouter(prisma, requireAuth) {
   });
 
   router.post('/refresh-listings', async (req, res) => {
-    const cursor = Math.max(0, integerValue(req.body?.cursor) || 0);
-    const limit = Math.min(10, Math.max(1, integerValue(req.body?.limit) || 6));
     try {
-      const candidates = await prisma.property.findMany({
-        where: {
-          id: { gt: cursor },
-          sourceUrl: { contains: 'motiveimoveis.com', mode: 'insensitive' },
-        },
-        orderBy: { id: 'asc' },
-        take: limit + 1,
-      });
-      const batch = candidates.slice(0, limit);
-      const updated = [];
-      const failed = [];
-
-      for (let index = 0; index < batch.length; index += 3) {
-        const chunk = batch.slice(index, index + 3);
-        const results = await Promise.all(chunk.map(async property => {
-          try {
-            const preview = await listingPreview(property.sourceUrl);
-            const data = {
-              sourceUrl: preview.sourceUrl || property.sourceUrl,
-            };
-            if (preview.imageUrl) data.photoUrl = preview.imageUrl;
-            if (preview.property?.externalReference) data.code = cleanText(preview.property.externalReference, 60).toUpperCase();
-            for (const field of ['price', 'area', 'landArea', 'bedrooms', 'suites', 'bathrooms', 'parkingSpaces', 'neighborhood', 'city', 'propertyType', 'description']) {
-              const value = preview.property?.[field];
-              if (value !== null && value !== undefined && value !== '') data[field] = value;
-            }
-            data.title = property.title || automaticPropertyTitle({ ...property, ...data });
-            return { property: await prisma.property.update({ where: { id: property.id }, data }) };
-          } catch (error) {
-            console.warn(`Não foi possível atualizar o anúncio do imóvel ${property.code || property.id}:`, error.message);
-            return {
-              failure: {
-                id: property.id,
-                code: property.code,
-                title: property.title,
-                error: error.message || 'O anúncio não respondeu corretamente.',
-                kind: error.kind || 'listing',
-              },
-            };
-          }
-        }));
-        for (const result of results) {
-          if (result.property) updated.push(result.property);
-          if (result.failure) failed.push(result.failure);
-        }
-      }
-
-      const siteUnavailable = batch.length > 0
-        && updated.length === 0
-        && failed.length === batch.length
-        && failed.every(failure => failure.kind === 'connection');
-      if (siteUnavailable) {
-        throw listingError(failed[0].error || 'Não foi possível conectar ao site da Motive.', { status: 502, kind: 'connection' });
-      }
-
-      res.json({
-        processed: batch.length,
-        updated,
-        failed,
-        nextCursor: batch.at(-1)?.id || cursor,
-        hasMore: candidates.length > limit,
-      });
+      res.json(await listingRefresh.action(req.body?.action, req.body?.jobId));
     } catch (error) {
-      console.error('Erro ao atualizar anúncios em lote:', error);
-      res.status(error.status || 500).json({ error: error.status ? error.message : 'Não foi possível atualizar os anúncios em lote.' });
+      console.error('Erro na atualização de anúncios:', error.code || error.name);
+      res.status(error.status || 503).json({ error: error.status ? error.message : 'Não foi possível continuar a atualização. O progresso salvo será mantido.' });
     }
   });
 
