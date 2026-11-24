@@ -105,7 +105,7 @@ const pageDescriptions = {
     '/tasks': 'Organize tarefas, responsáveis e pendências dos clientes.',
     '/notes': 'Guarde ideias, organize anotações e compartilhe com sua equipe.',
     '/agenda': 'Organize visitas e compromissos sincronizados com o Google Agenda.',
-    '/properties-map': 'Consulte o portfólio de imóveis e acompanhe as engenharias.',
+    '/properties-map': 'Consulte os imóveis e acompanhe captações e engenharias.',
     '/simulador': 'Compare condições de financiamento e gere propostas para seus clientes.',
     '/receipt-generator': 'Calcule valores e gere recibos de pró-labore em PDF.',
     '/contract-generator': 'Preencha, revise e gere contratos de compra e venda em Word.',

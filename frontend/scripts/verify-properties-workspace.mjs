@@ -9,7 +9,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost:5173/properties-map' });
 const descriptors = new Map();
-const scenario = { role: 'ADM', mapMounts: 0, engineeringMounts: 0 };
+const scenario = { role: 'ADM', mapMounts: 0, engineeringMounts: 0, prospectMounts: 0 };
 for (const [name, value] of Object.entries({
   window: dom.window, document: dom.window.document, navigator: dom.window.navigator, HTMLElement: dom.window.HTMLElement,
   IS_REACT_ACT_ENVIRONMENT: true, __propertiesWorkspaceScenario: scenario,
@@ -48,6 +48,12 @@ const fixtures = {
         <button onClick={onChanged}>Salvar engenharia de teste</button>
       </div>;
     }`,
+  PropertyProspects: `import { useEffect, useState } from 'react';
+    export default function Prospects({active}) {
+      const [filter,setFilter]=useState('');
+      useEffect(()=>{globalThis.__propertiesWorkspaceScenario.prospectMounts++;},[]);
+      return <div data-testid="prospects" data-active={active}><input aria-label="Filtro de captação" value={filter} onChange={event=>setFilter(event.target.value)} /></div>;
+    }`,
 };
 let root;
 try {
@@ -63,7 +69,7 @@ try {
       }`, loader: 'jsx' },
     plugins: [{ name: 'workspace-fixtures', setup(builder) {
       builder.onResolve({ filter: /^react(?:\/.*)?$/ }, args => ({ path: args.path, external: true }));
-      builder.onResolve({ filter: /\/(AuthContext|PrivateRoute|LoadingAnimation|PropertiesMap|Engineerings)$/ }, args => ({ path: args.path.split('/').at(-1), namespace: 'fixture' }));
+      builder.onResolve({ filter: /\/(AuthContext|PrivateRoute|LoadingAnimation|PropertiesMap|Engineerings|PropertyProspects)$/ }, args => ({ path: args.path.split('/').at(-1), namespace: 'fixture' }));
       builder.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ contents: fixtures[args.path], loader: 'jsx' }));
     } }],
   });
@@ -84,7 +90,7 @@ try {
   };
   const mount = async (role, url = '/properties-map') => {
     if (root) await act(async () => root.unmount());
-    Object.assign(scenario, { role, mapMounts: 0, engineeringMounts: 0 });
+    Object.assign(scenario, { role, mapMounts: 0, engineeringMounts: 0, prospectMounts: 0 });
     root = createRoot(document.getElementById('root'));
     await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(Harness))));
   };
@@ -117,6 +123,14 @@ try {
   assert.equal(element('url').textContent, '/properties-map', 'Alternar remove o comando de abertura já consumível');
   await click(button('Cadastrar engenharia pelo mapa'));
   assert.equal(element('url').textContent, '/properties-map?tab=engineerings&newProperty=43');
+  await click(link('Captação'));
+  assert.equal(element('url').textContent, '/properties-map?tab=captacao', 'Captação remove os comandos pendentes das engenharias.');
+  assert.equal(scenario.prospectMounts, 1);
+  const prospectFilter = await fill('Filtro de captação', 'Rua Jatobá');
+  await click(link('Mapa'));
+  await click(link('Captação'));
+  assert.equal(prospectFilter.value, 'Rua Jatobá');
+  assert.equal(scenario.prospectMounts, 1, 'Alternar de aba mantém a busca da captação.');
 
   await mount('ASSISTENTE', '/properties-map?tab=engineerings&engineering=71');
   assert.equal(scenario.engineeringMounts, 1, 'Link direto funciona para assistente');
@@ -124,8 +138,12 @@ try {
   await click(link('Mapa'));
   assert.equal(scenario.mapMounts, 1);
   await mount('CORRETOR');
-  assert.equal(link('Engenharias'), undefined, 'Corretor vê apenas Mapa');
+  assert.equal(link('Engenharias'), undefined, 'Engenharias continua restrito.');
+  assert.ok(link('Captação'), 'Corretor pode acessar a captação, como o mapa.');
   assert.equal(scenario.engineeringMounts, 0);
+  await mount('CORRETOR', '/properties-map?tab=captacao');
+  assert.equal(scenario.prospectMounts, 1, 'Link direto da captação funciona para corretor.');
+  assert.equal(scenario.mapMounts, 0, 'Captação não carrega o mapa sem necessidade.');
   await mount('CORRETOR', '/properties-map?tab=engineerings');
   assert.equal(document.querySelector('[role="alert"]').textContent, 'Acesso negado');
   assert.equal(scenario.engineeringMounts, 0, 'URL forçada não monta a área restrita');

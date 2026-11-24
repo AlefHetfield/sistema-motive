@@ -15,6 +15,7 @@
     "test:notes-ui": "node --test scripts/verify-note-autosave.mjs scripts/verify-note-formatting.mjs scripts/verify-note-snapshots.mjs scripts/verify-note-workspace.mjs scripts/verify-note-queue.mjs",
     "test:auth": "node --test scripts/verify-auth-recovery.mjs",
     "test:engineerings": "node scripts/verify-engineerings-ui.mjs",
+    "test:prospects": "node scripts/verify-prospects-ui.mjs",
     "test:properties-workspace": "node scripts/verify-properties-workspace.mjs",
     "test:property-listing-refresh": "node scripts/verify-property-listing-refresh-ui.mjs",
     "test:releases": "node scripts/verify-release-announcements.mjs",

@@ -78,6 +78,7 @@ model User {
   noteStates NoteUserState[]
   noteLabels NoteLabel[]
   releaseReceipts UserReleaseReceipt[]
+  propertyProspects PropertyProspect[]
 
   @@map("users")
 }
@@ -198,6 +199,41 @@ model Property {
   @@index([latitude, longitude])
   @@index([driveFolderUrl])
   @@map("properties")
+}
+
+enum ProspectStage {
+  SEARCHING
+  CONTACT_FOUND
+  IN_CONTACT
+  CAPTURED
+  DISCARDED
+}
+
+model PropertyProspect {
+  id             Int           @id @default(autoincrement())
+  street         String        @db.VarChar(180)
+  number         String        @db.VarChar(40)
+  complement     String?       @db.VarChar(120)
+  neighborhood   String?       @db.VarChar(160)
+  city           String        @db.VarChar(120)
+  state          String        @default("SP") @db.VarChar(2)
+  stage          ProspectStage @default(SEARCHING)
+  registration   String?       @db.VarChar(100)
+  ownerName      String?       @db.VarChar(160)
+  ownerPhone     String?       @db.VarChar(30)
+  notes          String?       @db.VarChar(4000)
+  photo          Bytes?
+  photoUpdatedAt DateTime?
+  createdById    Int?
+  createdByName  String        @db.VarChar(160)
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([stage, createdAt(sort: Desc), id])
+  @@index([city])
+  @@map("property_prospects")
 }
 
 model PropertyListingRefresh {

@@ -1,18 +1,20 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HardHat, MapPinned } from 'lucide-react';
+import { ClipboardList, HardHat, MapPinned } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PrivateRoute from '../components/PrivateRoute';
 import LoadingAnimation from '../components/LoadingAnimation';
 
 const PropertiesMap = lazy(() => import('./PropertiesMap'));
 const Engineerings = lazy(() => import('./Engineerings'));
+const PropertyProspects = lazy(() => import('./PropertyProspects'));
 
 export default function PropertiesWorkspace() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const canManageEngineerings = ['ADM', 'ASSISTENTE'].includes(user?.role);
-  const activeTab = searchParams.get('tab') === 'engineerings' ? 'engineerings' : 'map';
+  const requestedTab = searchParams.get('tab');
+  const activeTab = ['engineerings', 'captacao'].includes(requestedTab) ? requestedTab : 'map';
   const [visitedTabs, setVisitedTabs] = useState({ [activeTab]: true });
   const [engineeringRevision, setEngineeringRevision] = useState(0);
   const [toolbarTarget, setToolbarTarget] = useState(null);
@@ -26,7 +28,7 @@ export default function PropertiesWorkspace() {
     const params = new URLSearchParams(searchParams);
     params.delete('engineering');
     params.delete('newProperty');
-    if (tab === 'engineerings') params.set('tab', 'engineerings');
+    if (tab !== 'map') params.set('tab', tab);
     else params.delete('tab');
     return { pathname: '/properties-map', search: params.toString() };
   };
@@ -48,11 +50,11 @@ export default function PropertiesWorkspace() {
 
   return <div className="flex h-full min-h-[400px] min-w-0 flex-col overflow-hidden">
     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 lg:px-5">
-      <nav aria-label="Áreas de imóveis" className="flex min-w-0 flex-1 gap-1 lg:flex-none">
-        {[{ value: 'map', label: 'Mapa', icon: MapPinned }, ...(canManageEngineerings ? [{ value: 'engineerings', label: 'Engenharias', icon: HardHat }] : [])].map(tab => {
+      <nav aria-label="Áreas de imóveis" className="flex min-w-0 flex-1 gap-1 overflow-x-auto lg:flex-none">
+        {[{ value: 'map', label: 'Mapa', icon: MapPinned }, ...(canManageEngineerings ? [{ value: 'engineerings', label: 'Engenharias', icon: HardHat }] : []), { value: 'captacao', label: 'Captação', icon: ClipboardList }].map(tab => {
           const Icon = tab.icon;
           return <Link key={tab.value} id={`properties-tab-${tab.value}`} to={tabUrl(tab.value)} aria-current={activeTab === tab.value ? 'page' : undefined}
-            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-primary/30 sm:flex-none ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+            className={`inline-flex min-h-11 shrink-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-2.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-primary/30 sm:flex-none sm:px-4 ${activeTab === tab.value ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
             <Icon size={17} aria-hidden="true" />{tab.label}
           </Link>;
         })}
@@ -71,5 +73,8 @@ export default function PropertiesWorkspace() {
         <Engineerings active={activeTab === 'engineerings'} toolbarTarget={toolbarTarget} onChanged={() => setEngineeringRevision(value => value + 1)} />
       </Suspense>}
     </section>}
+    <section aria-labelledby="properties-tab-captacao" hidden={activeTab !== 'captacao'} className={`${activeTab === 'captacao' ? 'block' : 'hidden'} min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain`}>
+      {visitedTabs.captacao && <Suspense fallback={<LoadingAnimation message="Carregando captações…" />}><PropertyProspects active={activeTab === 'captacao'} toolbarTarget={toolbarTarget} /></Suspense>}
+    </section>
   </div>;
 }

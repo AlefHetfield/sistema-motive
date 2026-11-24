@@ -12,6 +12,7 @@ import { contractDownloadName, generateContractDocx, normalizeAndValidateContrac
 import { generateContractPreviewPdf } from './contractPreview.js';
 import { createPropertyRouter } from './propertyRoutes.js';
 import { createMatriculaRouter } from './matriculaRoutes.js';
+import { createProspectRouter } from './prospectRoutes.js';
 import { createTaskRouter } from './taskRoutes.js';
 import { createNoteRouter, createNoteLabelRouter } from './noteRoutes.js';
 import { createCalendarRouter } from './calendarRoutes.js';
@@ -115,6 +116,7 @@ function requireRole(...allowedRoles) {
 
 app.use('/api/properties', createPropertyRouter(prisma, requireAuth));
 app.use('/api/matriculas', createMatriculaRouter(requireAuth));
+app.use('/api/property-prospects', createProspectRouter(prisma, requireAuth));
 app.use('/api/tasks', createTaskRouter(prisma, requireAuth));
 app.use('/api/notes', createNoteRouter(prisma, requireAuth));
 app.use('/api/note-labels', createNoteLabelRouter(prisma, requireAuth));
