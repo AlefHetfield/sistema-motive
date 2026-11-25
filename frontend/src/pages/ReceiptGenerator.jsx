@@ -6,13 +6,14 @@ import {
     formatarMoeda,
     getTaxParamsForYear
 } from '../utils/taxCalculations';
-import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle, Loader2 } from 'lucide-react';
+import { Building, Building2, User, Calendar, Download, CircleDollarSign, Percent, FileDown, TrendingDown, Wallet, Edit, Search, MapPin, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ReceiptPreview from '../components/ReceiptPreview';
 import { ModernInput } from '../components/ModernInput';
 import { useToast } from '../hooks/useToast';
 import Button from '../components/ui/Button';
 import { surfaceClass } from '../components/ui/styles';
+import { fetchReceiptCompany } from '../services/api';
 
 
 const initialTaxes = {
@@ -61,14 +62,19 @@ const ReceiptGenerator = () => {
     const isFormValid = prolaboreBruto > 0 && !inputError && empresaNome && empresaCnpj && socioNome && mesReferencia;
 
     const [isCnpjLoading, setIsCnpjLoading] = useState(false);
+    const [cnpjSearchError, setCnpjSearchError] = useState('');
     // Quando a busca via CNPJ preencher o endereço, travamos os campos para evitar edições manuais
-    const [addressLocked, setAddressLocked] = useState(false);
+    const [foundAddress, setFoundAddress] = useState(null);
     // Ref para o input principal do pró-labore (para focar quando o usuário clicar em editar)
     const prolaboreInputRef = useRef(null);
 
     // Stable handlers to prevent recreating functions each render (helps preserve caret)
     const handleEmpresaNomeChange = useCallback((e) => setEmpresaNome(e.target.value), []);
-    const handleEmpresaCnpjChange = useCallback((e) => { setEmpresaCnpj(e.target.value); setAddressLocked(false); }, []);
+    const handleEmpresaCnpjChange = useCallback((e) => {
+        setEmpresaCnpj(e.target.value);
+        setFoundAddress(null);
+        setCnpjSearchError('');
+    }, []);
     const handleEmpresaEnderecoChange = useCallback((e) => setEmpresaEndereco(e.target.value), []);
     const handleEmpresaCepChange = useCallback((e) => setEmpresaCep(e.target.value), []);
     const handleEmpresaCidadeChange = useCallback((e) => setEmpresaCidade(e.target.value), []);
@@ -78,58 +84,24 @@ const ReceiptGenerator = () => {
 
 
     const handleCnpjSearch = async () => {
-        const cnpj = empresaCnpj.replace(/\D/g, '');
-        if (cnpj.length !== 14) {
-            notify.warning('CNPJ inválido. Digite 14 números.');
+        if (isCnpjLoading) return;
+        if (!empresaCnpj.trim()) {
+            setCnpjSearchError('Informe o CNPJ para buscar os dados da empresa.');
             return;
         }
 
+        setCnpjSearchError('');
         setIsCnpjLoading(true);
         try {
-            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'CNPJ não encontrado ou serviço indisponível.');
-            }
-            
-            const data = await response.json();
-            
-            // Valida se recebeu dados válidos
-            if (!data || typeof data !== 'object') {
-                throw new Error('Resposta inválida do servidor.');
-            }
-            
-            setEmpresaNome(data.razao_social || data.nome_fantasia || '');
-            
-            // Monta endereço apenas se tiver dados
-            const logradouro = data.logradouro || data.descricao_tipo_de_logradouro || '';
-            const numero = data.numero || '';
-            const bairro = data.bairro || '';
-            
-            if (logradouro || numero) {
-                const enderecoCompleto = [logradouro, numero].filter(Boolean).join(', ');
-                setEmpresaEndereco(bairro ? `${enderecoCompleto} - ${bairro}` : enderecoCompleto);
-            } else {
-                setEmpresaEndereco('');
-            }
-            
-            const municipio = data.municipio || data.cidade || '';
-            const uf = data.uf || data.estado || '';
-            if (municipio || uf) {
-                setEmpresaCidade([municipio, uf].filter(Boolean).join(' / '));
-            } else {
-                setEmpresaCidade('');
-            }
-            
-            setEmpresaCep(data.cep ? data.cep.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2') : '');
-            
-            // Bloqueia edição manual dos campos preenchidos automaticamente
-            setAddressLocked(true);
+            const company = await fetchReceiptCompany(empresaCnpj);
+            setEmpresaNome(company.nome);
+            setEmpresaEndereco(company.endereco);
+            setEmpresaCidade(company.cidade);
+            setEmpresaCep(company.cep);
+            setFoundAddress(company);
         } catch (error) {
-            console.error('Erro ao buscar CNPJ:', error);
-            notify.error(error.message || 'Erro ao buscar dados do CNPJ. Tente novamente.');
-            setAddressLocked(false);
+            setCnpjSearchError(error.message || 'Não foi possível consultar o CNPJ.');
+            setFoundAddress(null);
         } finally {
             setIsCnpjLoading(false);
         }
@@ -479,17 +451,21 @@ const ReceiptGenerator = () => {
                                                 <ModernInput id="empresa-nome" label="Nome da Empresa" Icon={Building} value={empresaNome} onChange={handleEmpresaNomeChange} placeholder="Razão Social" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-gray-600 mb-1 font-medium">CNPJ</label>
+                                                <label htmlFor="empresa-cnpj" className="block text-xs text-gray-600 mb-1 font-medium">CNPJ</label>
                                                 <div className="flex gap-2">
-                                                    <ModernInput id="empresa-cnpj" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} />
+                                                    <ModernInput id="empresa-cnpj" Icon={Building} value={empresaCnpj} onChange={handleEmpresaCnpjChange} placeholder="00.000.000/0000-00" disabled={isCnpjLoading} maxLength={24}
+                                                        aria-describedby={cnpjSearchError ? 'empresa-cnpj-erro' : undefined} className="min-w-0 flex-1" />
                                                     <Button
                                                         onClick={handleCnpjSearch}
-                                                        disabled={isCnpjLoading}
+                                                        loading={isCnpjLoading}
+                                                        loadingLabel="Buscando…"
+                                                        aria-label="Buscar CNPJ"
                                                         variant="primarySoft"
                                                     >
-                                                        {isCnpjLoading ? <Loader2 size={16} className="animate-spin" /> : <><Search size={16} /> Buscar</>}
+                                                        <Search size={16} aria-hidden="true" /> Buscar
                                                     </Button>
                                                 </div>
+                                                {cnpjSearchError && <p id="empresa-cnpj-erro" role="alert" className="mt-2 text-xs leading-5 text-red-700">{cnpjSearchError}</p>}
                                             </div>
                                              <div>
                                                 <ModernInput id="socio-nome" label="Nome do Sócio" Icon={User} value={socioNome} onChange={handleSocioNomeChange} placeholder="Nome completo" />
@@ -501,16 +477,16 @@ const ReceiptGenerator = () => {
                                                 <ModernInput id="mes-referencia" label="Mês de Referência" Icon={Calendar} value={mesReferencia} onChange={handleMesReferenciaChange} placeholder="Janeiro/2025" />
                                             </div>
                                             <div className="md:col-span-2">
-                                                <ModernInput id="empresa-endereco" label="Endereço" Icon={MapPin} value={empresaEndereco} onChange={handleEmpresaEnderecoChange} disabled={addressLocked} placeholder="Rua, número" />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
+                                                <ModernInput id="empresa-endereco" label="Endereço" Icon={MapPin} value={empresaEndereco} onChange={handleEmpresaEnderecoChange} disabled={Boolean(foundAddress?.endereco)} placeholder="Rua, número" />
+                                                {foundAddress?.endereco && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                             <div>
-                                                <ModernInput id="empresa-cep" label="CEP" Icon={MapPin} value={empresaCep} onChange={handleEmpresaCepChange} disabled={addressLocked} placeholder="00000-000" />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
+                                                <ModernInput id="empresa-cep" label="CEP" Icon={MapPin} value={empresaCep} onChange={handleEmpresaCepChange} disabled={Boolean(foundAddress?.cep)} placeholder="00000-000" />
+                                                {foundAddress?.cep && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                             <div>
-                                                <ModernInput id="empresa-cidade" label="Cidade/UF" Icon={Building2} value={empresaCidade} onChange={handleEmpresaCidadeChange} disabled={addressLocked} placeholder="São Paulo / SP" />
-                                                {addressLocked && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
+                                                <ModernInput id="empresa-cidade" label="Cidade/UF" Icon={Building2} value={empresaCidade} onChange={handleEmpresaCidadeChange} disabled={Boolean(foundAddress?.cidade)} placeholder="São Paulo / SP" />
+                                                {foundAddress?.cidade && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> Preenchido automaticamente</p>}
                                             </div>
                                         </div>
                                     </div>

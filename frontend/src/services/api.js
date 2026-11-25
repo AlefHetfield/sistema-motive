@@ -47,6 +47,26 @@ export async function fetchMatriculaMetadata(signal) {
     return response.json();
 }
 
+export async function fetchReceiptCompany(cnpj) {
+    const fallback = 'Não foi possível consultar o CNPJ. Tente novamente ou preencha os dados manualmente.';
+    let response;
+    try {
+        response = await fetch(`${API_BASE_URL}/api/receipts/company`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cnpj }),
+            signal: AbortSignal.timeout(12000),
+        });
+    } catch {
+        throw new Error(fallback);
+    }
+    if (!response.ok) throw await apiError(response, fallback);
+    const company = await response.json().catch(() => null);
+    if (!company?.nome) throw new Error(fallback);
+    return company;
+}
+
 export async function searchMatriculas(filters, signal) {
     const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => String(value).trim()));
     const response = await fetch(`${API_BASE_URL}/api/matriculas?${params}`, { credentials: 'include', signal });

@@ -18,6 +18,7 @@ import { createNoteRouter, createNoteLabelRouter } from './noteRoutes.js';
 import { createCalendarRouter } from './calendarRoutes.js';
 import { createEngineeringRouter } from './engineeringRoutes.js';
 import { createReleaseRouter } from './releaseRoutes.js';
+import { lookupReceiptCompany } from './receiptCompany.js';
 import { encodeSession, decodeSession } from './session.js';
 import { withClientStatusSince } from './clientStatusAge.js';
 import { clientWriteData, presentClient, currentClientUser, createCommissionReportHandler } from './clientCommission.js';
@@ -123,6 +124,13 @@ app.use('/api/note-labels', createNoteLabelRouter(prisma, requireAuth));
 app.use('/api/calendar', createCalendarRouter(requireAuth));
 app.use('/api/engineerings', createEngineeringRouter(prisma, requireAuth));
 app.use('/api/releases', createReleaseRouter(prisma, requireAuth));
+app.post('/api/receipts/company', requireAuth, async (req, res) => {
+  try {
+    res.json(await lookupReceiptCompany(req.body?.cnpj));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Não foi possível consultar o CNPJ.' });
+  }
+});
 const resolveClientUser = currentClientUser(prisma);
 app.use('/api/clients', requireAuth, resolveClientUser);
 
