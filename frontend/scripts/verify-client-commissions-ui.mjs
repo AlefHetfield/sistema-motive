@@ -50,6 +50,20 @@ assert.deepEqual(summarizeClientCommissions([
   { ...discountedClient, comissaoEstimada: '1500.00' },
   { venda: true, comissaoEstimada: null },
 ]), { total: '6750.00', count: 3, missingCount: 1, reviewCount: 1 }, 'Resumo soma os líquidos válidos e identifica revisões');
+const paidSales = [
+  { ...discountedClient, comissaoPaga: true },
+  { ...discountedClient, comissaoEstimada: '1500.00', comissaoPaga: true },
+  { venda: true, comissaoEstimada: null, comissaoPaga: true },
+];
+const pendingOnly = { excludePaid: true };
+assert.deepEqual(summarizeClientCommissions([
+  ...paidSales, { venda: true, comissaoEstimada: '200.10', comissaoPaga: false },
+], pendingOnly), { total: '200.10', count: 4, missingCount: 0, reviewCount: 0 });
+assert.equal(summarizeClientCommissions(paidSales, pendingOnly).total, '0.00', 'Sem comissões pendentes, o saldo a receber é zero');
+assert.equal(summarizeClientCommissions([
+  { ...paidSales[0], comissaoPaga: false },
+], pendingOnly).total, '6750.00', 'Desmarcar o pagamento recoloca apenas o valor líquido no saldo');
+assert.equal(summarizeClientCommissions(paidSales).total, '6750.00', 'O relatório completo mantém as vendas pagas');
 const large = summarizeClientCommissions(Array.from({ length: 5000 }, () => ({ venda: true, comissaoEstimada: '9999999999999.99' })));
 assert.equal(large.total, '49999999999999950.00', 'Soma preserva centavos além da precisão de Number');
 assert.match(formatClientCommission(large.total), /49\.999\.999\.999\.999\.950,00/);

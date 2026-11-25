@@ -948,7 +948,10 @@ const ClientsList = () => {
         return filtered;
     }, [allClients, appliedSearchTerm, filters, activeTab, sortDescriptor, monthYearFilter, waitingOnly, stalledOnly]);
 
-    const commissionSummary = useMemo(() => summarizeClientCommissions(isAdmin ? filteredClients : []), [filteredClients, isAdmin]);
+    const commissionSummary = useMemo(
+        () => summarizeClientCommissions(isAdmin ? filteredClients : [], { excludePaid: true }),
+        [filteredClients, isAdmin],
+    );
     const openCommissionReport = () => {
         const tabLabel = { active: 'Ativos', signed: 'Assinados', archived: 'Arquivados' }[activeTab];
         const scope = [
@@ -1326,7 +1329,7 @@ const ClientsList = () => {
                     <div className="mt-3 flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between" aria-label="Resumo de comissões estimadas">
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><LockKeyhole size={13} aria-hidden="true" />Comissões líquidas estimadas</span>
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><LockKeyhole size={13} aria-hidden="true" />Comissões líquidas estimadas a receber</span>
                                 <span className="min-w-0 max-w-full text-lg font-bold tabular-nums text-primary [overflow-wrap:anywhere]">{formatClientCommission(commissionSummary.total)}</span>
                             </div>
                             <p className="mt-0.5 text-xs text-gray-500">{commissionSummary.count} {commissionSummary.count === 1 ? 'venda' : 'vendas'} na seleção{commissionSummary.missingCount > 0 && ` · ${commissionSummary.missingCount} ${commissionSummary.missingCount === 1 ? 'comissão a informar' : 'comissões a informar'}`}</p>

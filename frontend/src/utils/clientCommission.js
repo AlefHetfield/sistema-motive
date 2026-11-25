@@ -49,12 +49,13 @@ export function getClientCommissionBreakdown(client) {
   };
 }
 
-export function summarizeClientCommissions(clients) {
+export function summarizeClientCommissions(clients, { excludePaid = false } = {}) {
   const sales = clients.filter(client => client.venda === true);
   let total = 0n;
   let missingCount = 0;
   let reviewCount = 0;
   for (const client of sales) {
+    if (excludePaid && client.comissaoPaga === true) continue;
     const breakdown = getClientCommissionBreakdown(client);
     const value = commissionCents(breakdown.net);
     if (value === null) missingCount++;
