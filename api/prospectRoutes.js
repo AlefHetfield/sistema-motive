@@ -1,10 +1,10 @@
 import express from 'express';
 import { prepareProspectPhoto } from './prospectPhoto.js';
-import { getMatriculaSearch } from './matriculaSearch.js';
+import { getMatriculaSearch, normalize } from './matriculaSearch.js';
 import { lookupProspectRegistration } from './prospectRegistration.js';
+import { lookupProspectPostalCode } from './prospectPostalCode.js';
 
 export const PROSPECT_STAGES = ['SEARCHING', 'CONTACT_FOUND', 'IN_CONTACT', 'CAPTURED', 'DISCARDED'];
-const states = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '));
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const positiveId = value => {
   if (!['number', 'string'].includes(typeof value) || !/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value)) || Number(value) > 2147483647) throw fail('Identificador inválido.');
@@ -20,7 +20,7 @@ function text(value, label, max, required = false) {
 export function prospectData(body, creating = false) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail('Dados da captação inválidos.');
   const fields = { street: ['a rua ou avenida', 180], number: ['o número ou s/n', 40], complement: ['Complemento', 120], neighborhood: ['Bairro', 160], city: ['a cidade', 120], registration: ['Matrícula', 100], ownerName: ['Nome do proprietário', 160], ownerPhone: ['Telefone', 30], notes: ['Observações', 4000] };
-  const allowed = new Set([...Object.keys(fields), 'state', 'stage', 'photoDataUrl', 'version']);
+  const allowed = new Set([...Object.keys(fields), 'state', 'stage', 'postalCode', 'photoDataUrl', 'version']);
   if (Object.keys(body).some(key => !allowed.has(key))) throw fail('Campo de captação inválido.');
   const data = {};
   for (const [key, [label, max]] of Object.entries(fields)) {
@@ -29,8 +29,13 @@ export function prospectData(body, creating = false) {
   }
   if (body.state !== undefined || creating) {
     const state = text(body.state ?? 'SP', 'UF', 2, true).toUpperCase();
-    if (!states.has(state)) throw fail('Selecione uma UF válida.');
+    if (state !== 'SP') throw fail('A captação é exclusiva para endereços em SP.');
     data.state = state;
+  }
+  if (body.postalCode !== undefined) {
+    const postalCode = text(body.postalCode, 'CEP', 9);
+    if (postalCode && !/^\d{5}-?\d{3}$/.test(postalCode)) throw fail('Informe um CEP com 8 dígitos.');
+    data.postalCode = postalCode?.replace('-', '') ?? null;
   }
   if (body.stage !== undefined) { if (!PROSPECT_STAGES.includes(body.stage)) throw fail('Etapa de captação inválida.'); data.stage = body.stage; }
   if (body.ownerPhone) {
@@ -43,10 +48,13 @@ export function prospectData(body, creating = false) {
   return data;
 }
 
-const select = { id: true, street: true, number: true, complement: true, neighborhood: true, city: true, state: true, stage: true, registration: true, ownerName: true, ownerPhone: true, notes: true, photoUpdatedAt: true, createdById: true, createdByName: true, version: true, createdAt: true, updatedAt: true };
+const select = { id: true, street: true, number: true, complement: true, neighborhood: true, city: true, state: true, postalCode: true, isFavorite: true, stage: true, registration: true, ownerName: true, ownerPhone: true, notes: true, photoUpdatedAt: true, createdById: true, createdByName: true, version: true, createdAt: true, updatedAt: true };
 const present = item => ({ ...item, hasPhoto: Boolean(item.photoUpdatedAt) });
 
-export function createProspectRouter(prisma, requireAuth, { registrationIndex = getMatriculaSearch } = {}) {
+export function createProspectRouter(prisma, requireAuth, {
+  registrationIndex = getMatriculaSearch,
+  postalCodeLookup = lookupProspectPostalCode,
+} = {}) {
   const router = express.Router();
   router.use(requireAuth);
   router.use(async (req, res, next) => {
@@ -61,12 +69,14 @@ export function createProspectRouter(prisma, requireAuth, { registrationIndex = 
     try {
       const query = key => { if (req.query[key] === undefined) return ''; if (typeof req.query[key] !== 'string' || req.query[key].length > 200) throw fail('Filtro inválido.'); return req.query[key].trim(); };
       const q = query('q'), stage = query('stage') || 'active', city = query('city');
+      const favorites = query('favorites');
       const page = query('page') ? positiveId(query('page')) : 1;
-      if (page > 100000 || !['active', 'all', ...PROSPECT_STAGES].includes(stage)) throw fail('Filtro inválido.');
+      if (page > 100000 || !['active', 'all', ...PROSPECT_STAGES].includes(stage) || !['', '1'].includes(favorites)) throw fail('Filtro inválido.');
       const terms = q ? (/^[\d\s()+.\-]+$/.test(q) ? [q.replace(/\D/g, '')].filter(Boolean) : q.replace(/[,;·/]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 12)) : [];
       const where = { ...(stage === 'active' ? { stage: { not: 'DISCARDED' } } : stage === 'all' ? {} : { stage }),
         ...(city ? { city: { equals: city, mode: 'insensitive' } } : {}),
-        ...(terms.length ? { AND: terms.map(term => ({ OR: ['street', 'number', 'neighborhood', 'city', 'state', 'registration', 'ownerName', 'ownerPhone', 'notes'].map(key => ({ [key]: { contains: term, mode: 'insensitive' } })) })) } : {}) };
+        ...(favorites ? { isFavorite: true } : {}),
+        ...(terms.length ? { AND: terms.map(term => ({ OR: ['street', 'number', 'neighborhood', 'city', 'state', 'postalCode', 'registration', 'ownerName', 'ownerPhone', 'notes'].map(key => ({ [key]: { contains: term, mode: 'insensitive' } })) })) } : {}) };
       const [items, total, groups, cities] = await Promise.all([
         prisma.propertyProspect.findMany({ where, select, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * 24, take: 24 }),
         prisma.propertyProspect.count({ where }),
@@ -76,13 +86,29 @@ export function createProspectRouter(prisma, requireAuth, { registrationIndex = 
       res.json({ items: items.map(present), total, page, pageSize: 24, cities: cities.map(item => item.city), summary: Object.fromEntries(groups.map(item => [item.stage, item._count._all])) });
     } catch (error) { next(error); }
   });
+  router.post('/lookup-postal-code', async (req, res, next) => {
+    try {
+      const body = req.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail('Informe o endereço.');
+      const address = prospectData({
+        street: body.street, number: body.number, city: body.city,
+        neighborhood: body.neighborhood ?? null, state: body.state,
+      }, true);
+      if (normalize(address.city).length < 3 || normalize(address.street).length < 3) {
+        throw fail('Informe a rua e a cidade completas para buscar o CEP.');
+      }
+      res.json(await postalCodeLookup(address));
+    } catch (error) {
+      next(error.status ? error : fail('Consulta de CEP indisponível. Você pode preencher o CEP manualmente.', 503));
+    }
+  });
   router.post('/lookup-registration', (req, res, next) => {
     try {
       const body = req.body;
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw fail('Informe o endereço.');
       const address = prospectData({ street: body.street, number: body.number, city: body.city, state: body.state, complement: body.complement ?? null }, true);
       const page = body.page === undefined ? 1 : positiveId(body.page);
-      res.json(lookupProspectRegistration(address.state === 'SP' ? registrationIndex() : null, address, page));
+      res.json(lookupProspectRegistration(registrationIndex(), address, page));
     } catch (error) { if (!error.status) error = fail('A base de matrículas está indisponível. Você pode preencher a matrícula manualmente.', 503); next(error); }
   });
   router.get('/:id/photo', async (req, res, next) => {
@@ -116,6 +142,16 @@ export function createProspectRouter(prisma, requireAuth, { registrationIndex = 
         return tx.propertyProspect.findUnique({ where: { id }, select });
       });
       res.json(present(item));
+    } catch (error) { next(error); }
+  });
+  router.patch('/:id/favorite', async (req, res, next) => {
+    try {
+      const id = positiveId(req.params.id);
+      const { isFavorite } = req.body ?? {};
+      if (typeof isFavorite !== 'boolean') throw fail('Informe se a captação deve ser favorita.');
+      const updated = await prisma.propertyProspect.updateMany({ where: { id }, data: { isFavorite } });
+      if (!updated.count) throw fail('Captação não encontrada.', 404);
+      res.json({ id, isFavorite });
     } catch (error) { next(error); }
   });
   router.delete('/:id', async (req, res, next) => {

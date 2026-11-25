@@ -9,6 +9,10 @@ export const prospectAddress = item => [
   [item.street, item.number].filter(Boolean).join(', '), item.complement,
   item.neighborhood, [item.city, item.state].filter(Boolean).join(' / '),
 ].filter(Boolean).join(' · ');
+export const formatProspectPostalCode = value => {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+};
 export const prospectPhone = value => {
   const digits = String(value || '').replace(/\D/g, '');
   const local = digits.length > 11 && digits.startsWith('55') ? digits.slice(2) : digits;

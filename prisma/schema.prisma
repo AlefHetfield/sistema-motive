@@ -217,6 +217,8 @@ model PropertyProspect {
   neighborhood   String?       @db.VarChar(160)
   city           String        @db.VarChar(120)
   state          String        @default("SP") @db.VarChar(2)
+  postalCode     String?       @db.VarChar(8)
+  isFavorite     Boolean       @default(false)
   stage          ProspectStage @default(SEARCHING)
   registration   String?       @db.VarChar(100)
   ownerName      String?       @db.VarChar(160)

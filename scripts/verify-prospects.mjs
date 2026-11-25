@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import { prospectData, createProspectRouter } from '../api/prospectRoutes.js';
 import { prepareProspectPhoto, MAX_PROSPECT_PHOTO_BYTES } from '../api/prospectPhoto.js';
 import { lookupProspectRegistration } from '../api/prospectRegistration.js';
+import { selectProspectPostalCode } from '../api/prospectPostalCode.js';
 import { createMatriculaSearch } from '../api/matriculaSearch.js';
 
 const address = { street: 'Rua Jatobá', number: '120', city: 'Sumaré', state: 'SP' };
@@ -21,6 +22,38 @@ test('cadastro exige endereço, valida etapa e telefone e recusa campos/operaç�
   }
   assert.equal(prospectData({ ...address, ownerPhone: '(19) 99999-1111' }, true).ownerPhone, '19999991111');
   assert.throws(() => prospectData({ notes: 'Mudança' }), error => error.status === 409);
+  assert.throws(() => prospectData({ ...address, state: 'MG' }, true), error => error.status === 400);
+  assert.throws(() => prospectData({ postalCode: '12345-67', version: 1 }), error => error.status === 400);
+  assert.equal(prospectData({ ...address, postalCode: '13170-123' }, true).postalCode, '13170123');
+});
+
+test('CEP exige rua e cidade exatas e usa número, lado e bairro para escolher sem ambiguidade', () => {
+  const row = (cep, properties = {}) => ({
+    cep, logradouro: 'Rua Jatobá', bairro: 'Jardim Teste', localidade: 'Sumaré', uf: 'SP', complemento: '', ...properties,
+  });
+  const resolved = (postalCode) => ({ postalCode, status: 'found' });
+  const west = row('13170-321', { complemento: 'até 119/120' });
+  const east = row('13170-322', { complemento: 'de 121/122 ao fim' });
+  assert.deepEqual(selectProspectPostalCode([west, east], address), resolved('13170321'));
+  assert.deepEqual(selectProspectPostalCode([west, east], { ...address, number: '122A' }), resolved('13170322'));
+  assert.deepEqual(selectProspectPostalCode([
+    row('13170-400', { complemento: 'lado par' }), row('13170-401', { complemento: 'lado ímpar' }),
+    row('13170-901', { complemento: '380' }), row('13170-902', { complemento: '500 2 Andar' }),
+  ], address), resolved('13170400'));
+  assert.deepEqual(selectProspectPostalCode([
+    row('13170-400', { complemento: 'lado par' }), row('13170-901', { complemento: '120' }),
+  ], address), { postalCode: null, status: 'ambiguous' });
+  assert.deepEqual(selectProspectPostalCode([row('13170-321'), row('13170-322')], address), { postalCode: null, status: 'ambiguous' });
+  assert.deepEqual(selectProspectPostalCode([row('13170-321', { complemento: 'trecho desconhecido' })], address), { postalCode: null, status: 'ambiguous' });
+  assert.deepEqual(selectProspectPostalCode([
+    row('13170-321'), row('13170-322', { bairro: 'Outro bairro' }),
+  ], { ...address, neighborhood: 'Jardim teste' }), resolved('13170321'));
+  assert.deepEqual(selectProspectPostalCode([
+    row('13170-321', { logradouro: 'Rua Jatobá do Sul' }), row('13170-322', { localidade: 'Hortolândia' }),
+  ], address), { postalCode: null, status: 'not_found' });
+  const sameName = [row('13170-201'), row('13170-202', { logradouro: 'Avenida Jatobá' })];
+  assert.deepEqual(selectProspectPostalCode(sameName, { ...address, street: 'Av. Jatobá' }), resolved('13170202'));
+  assert.deepEqual(selectProspectPostalCode(sameName, { ...address, street: 'Jatobá' }), { postalCode: null, status: 'ambiguous' });
 });
 
 test('matrícula automática exige endereço único e exato; ambiguidade, unidade e ausência ficam manuais', () => {
@@ -68,7 +101,10 @@ test('API e PostgreSQL locais: cadastro, imagem privada, concorrência, busca, d
     app.use('/prospects', createProspectRouter(prisma, (req, res, next) => {
       if (!req.headers['x-qa-user']) return res.status(401).json({ error: 'Não autenticado' });
       req.user = { id: Number(req.headers['x-qa-user']) }; next();
-    }, { registrationIndex: () => search([record('12345')]) }));
+    }, {
+      registrationIndex: () => search([record('12345')]),
+      postalCodeLookup: address => ({ postalCode: address.number === '120' ? '13170123' : null, status: 'found' }),
+    }));
     server = app.listen(0, '127.0.0.1');
     await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
     const base = `http://127.0.0.1:${server.address().port}/prospects`;
@@ -78,11 +114,26 @@ test('API e PostgreSQL locais: cadastro, imagem privada, concorrência, busca, d
     });
     assert.equal((await request('', { user: null })).status, 401);
     const image = await sharp({ create: { width: 1000, height: 750, channels: 3, background: '#315B78' } }).jpeg().toBuffer();
-    const createdResponse = await request('', { method: 'POST', user: userIds[2], body: { ...address, notes: suffix, photoDataUrl: `data:image/jpeg;base64,${image.toString('base64')}` } });
+    const createdResponse = await request('', { method: 'POST', user: userIds[2], body: { ...address, notes: suffix, postalCode: '13170-123', photoDataUrl: `data:image/jpeg;base64,${image.toString('base64')}` } });
     assert.equal(createdResponse.status, 201);
     let item = await createdResponse.json(); ids.push(item.id);
     assert.equal(item.stage, 'SEARCHING'); assert.equal(item.hasPhoto, true); assert.equal(item.version, 1);
     assert.equal(item.createdById, userIds[2]); assert.equal(Object.hasOwn(item, 'photo'), false);
+    assert.equal(item.postalCode, '13170123');
+    assert.equal(item.isFavorite, false);
+    const cepResponse = await request('/lookup-postal-code', { method: 'POST', body: address });
+    assert.equal(cepResponse.status, 200);
+    assert.equal((await cepResponse.json()).postalCode, '13170123');
+    assert.equal((await request('/lookup-postal-code', { method: 'POST', body: { ...address, state: 'RJ' } })).status, 400);
+    assert.equal((await request(`/${item.id}/favorite`, { method: 'PATCH', body: { isFavorite: 'true' } })).status, 400);
+    const favorited = await request(`/${item.id}/favorite`, { method: 'PATCH', user: userIds[1], body: { isFavorite: true } });
+    assert.equal(favorited.status, 200);
+    assert.deepEqual(await favorited.json(), { id: item.id, isFavorite: true });
+    const favorites = await (await request(`?q=${suffix}&favorites=1`)).json();
+    assert.equal(favorites.items[0].id, item.id);
+    assert.equal(favorites.items[0].version, item.version, 'Favoritar não invalida o formulário que outra pessoa está editando.');
+    assert.equal((await request(`/${item.id}/favorite`, { method: 'PATCH', body: { isFavorite: false } })).status, 200);
+    assert.equal((await (await request(`?q=${suffix}&favorites=1`)).json()).total, 0);
     const storedPhoto = (await prisma.propertyProspect.findUnique({ where: { id: item.id } })).photo;
     assert.ok(storedPhoto.length <= MAX_PROSPECT_PHOTO_BYTES);
     const photo = await request(`/${item.id}/photo`);
