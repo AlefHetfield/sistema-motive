@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Eye, FilePenLine, Filter, HardHat, MapPin, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Archive, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Eye, FilePenLine, Filter, HardHat, MapPin, Plus, RefreshCw, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Button from '../components/ui/Button';
 import { EmptyState, LoadingState } from '../components/ui/FeedbackState';
@@ -36,16 +36,25 @@ function EntryValue({ item, className = '' }) {
   </div>;
 }
 
-function RowActions({ item, onEdit, onDelete, onPreview }) {
+function ArchiveAction({ item, onArchive, className }) {
+  const Icon = item.archivedAt ? RotateCcw : Archive;
+  const label = item.archivedAt ? 'Restaurar engenharia' : 'Arquivar engenharia';
+  return <Button variant="ghost" size="icon" className={className} title={label}
+    aria-label={`${label} ${item.imovel}`} onClick={() => onArchive(item)}>
+    <Icon size={16} aria-hidden="true" />
+  </Button>;
+}
+
+function RowActions({ item, onEdit, onArchive, onPreview }) {
   const sizeClass = '!h-8 !w-8 !rounded-lg';
   return <div className="flex shrink-0 items-center justify-end">
     {item.propertyId && <Button variant="ghost" size="icon" className={sizeClass} title="Ver dados do imóvel vinculado" aria-label={`Ver dados do imóvel ${item.imovel}`} onClick={() => onPreview(item.propertyId)}><Eye size={16} aria-hidden="true" /></Button>}
     <Button variant="ghost" size="icon" className={sizeClass} title="Editar engenharia" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => onEdit(item)}><FilePenLine size={16} aria-hidden="true" /></Button>
-    <Button variant="ghost" size="icon" title="Excluir engenharia" aria-label={`Excluir engenharia ${item.imovel}`} onClick={() => onDelete(item)} className={`${sizeClass} text-red-500 hover:bg-red-50 hover:text-red-600`}><Trash2 size={16} aria-hidden="true" /></Button>
+    <ArchiveAction item={item} onArchive={onArchive} className={sizeClass} />
   </div>;
 }
 
-function EngineeringTableRow({ item, today, onEdit, onDelete, onPreview }) {
+function EngineeringTableRow({ item, today, onEdit, onArchive, onPreview }) {
   const entry = getEngineeringEntry(item);
   const financed = calculateEngineeringFinancing(item.valorAvaliado);
   const manual = item.valorEntradaManual !== null && item.valorEntradaManual !== undefined;
@@ -72,7 +81,7 @@ function EngineeringTableRow({ item, today, onEdit, onDelete, onPreview }) {
       <strong title={entry === null ? undefined : engineeringMoney(entry)} className={`block break-words leading-6 ${entry === null ? 'text-xs font-medium text-slate-500' : 'text-base font-bold text-primary 2xl:text-lg'}`}>{entry === null ? 'Aguardando valores' : engineeringMoney(entry)}</strong>
       {manual && <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">Manual</span>}
     </td>
-    <td className="px-2 py-3"><RowActions item={item} onEdit={onEdit} onDelete={onDelete} onPreview={onPreview} /></td>
+    <td className="px-2 py-3"><RowActions item={item} onEdit={onEdit} onArchive={onArchive} onPreview={onPreview} /></td>
   </tr>;
 }
 
@@ -86,16 +95,17 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
   const today = useEngineeringToday();
   const [sort, setSort] = useState('recentes');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [archivedView, setArchivedView] = useState(false);
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [response, setResponse] = useState(emptyResponse);
   const [request, setRequest] = useState({ key: null, error: '' });
   const [editor, setEditor] = useState(null);
-  const [deleting, setDeleting] = useState(null);
+  const [archiveTarget, setArchiveTarget] = useState(null);
   const [preview, setPreview] = useState(null);
   const requestedEngineering = searchParams.get('engineering');
   const requestedProperty = searchParams.get('newProperty');
-  const requestKey = JSON.stringify([search, city, appraisal, validity, sort, page, revision, today]);
+  const requestKey = JSON.stringify([search, city, appraisal, validity, sort, archivedView, page, revision, today]);
   const loading = request.key !== requestKey;
   const error = loading ? '' : request.error;
   useEffect(() => {
@@ -111,6 +121,7 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
     if (city) params.set('cidade', city);
     if (appraisal) params.set('avaliacao', appraisal);
     if (validity) params.set('validade', validity);
+    if (archivedView) params.set('situacao', 'arquivadas');
     engineeringApi(`?${params}`, { signal: controller.signal })
       .then(data => { if (!controller.signal.aborted) {
         const lastPage = Math.max(1, Math.ceil(data.total / (data.pageSize || 20)));
@@ -119,7 +130,7 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
       } })
       .catch(reason => { if (!controller.signal.aborted) setRequest({ key: requestKey, error: reason.message }); });
     return () => controller.abort();
-  }, [active, search, city, appraisal, validity, sort, page, revision, requestKey]);
+  }, [active, search, city, appraisal, validity, sort, archivedView, page, revision, requestKey]);
 
   useEffect(() => {
     if (!active || (!requestedEngineering && !requestedProperty)) return;
@@ -132,7 +143,11 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
         }
         if (requestedEngineering) {
           const item = await engineeringApi(`/${id}`, { signal: controller.signal });
-          if (!controller.signal.aborted) setEditor({ item });
+          if (!controller.signal.aborted) {
+            setArchivedView(Boolean(item.archivedAt));
+            setPage(1);
+            setEditor({ item });
+          }
         } else {
           const properties = await engineeringApi(`/properties?id=${id}`, { signal: controller.signal });
           if (!properties.length) throw new Error('O imóvel vinculado não foi encontrado.');
@@ -163,16 +178,17 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
   const edit = item => setEditor({ item });
   const saved = item => {
     toast.success(editor?.item ? 'Engenharia atualizada.' : 'Engenharia cadastrada.');
+    if (!editor?.item) setArchivedView(false);
     setEditor(null); setPage(1); setRevision(value => value + 1);
     onChanged?.();
     // The list stays governed by the current filters after a save.
     return item;
   };
-  const remove = async () => {
+  const changeArchive = async () => {
+    const archived = !archiveTarget.archivedAt;
     try {
-      await engineeringApi(`/${deleting.id}`, { method: 'DELETE' });
-      toast.success('Engenharia excluída.');
-      if (items.length === 1 && page > 1) setPage(value => value - 1);
+      await engineeringApi(`/${archiveTarget.id}/archive`, { method: 'PATCH', body: { archived } });
+      toast.success(archived ? 'Engenharia arquivada.' : 'Engenharia restaurada.');
       setRevision(value => value + 1);
       onChanged?.();
     } catch (reason) { toast.error(reason.message); }
@@ -187,13 +203,19 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
     </div>
 
     <section aria-label="Resumo das engenharias" className="grid grid-cols-3 gap-2 sm:gap-4">
-      {[{ label: 'Cadastradas', value: summary.total, icon: HardHat, color: 'bg-primary/10 text-primary' }, { label: 'Aguardando avaliação', value: summary.pendentes, icon: Clock3, color: 'bg-amber-50 text-amber-700' }, { label: 'Avaliadas', value: summary.avaliadas, icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-700' }].map(metric => {
+      {[{ label: archivedView ? 'Arquivadas' : 'Ativas', value: summary.total, icon: archivedView ? Archive : HardHat, color: 'bg-primary/10 text-primary' }, { label: 'Aguardando avaliação', value: summary.pendentes, icon: Clock3, color: 'bg-amber-50 text-amber-700' }, { label: 'Avaliadas', value: summary.avaliadas, icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-700' }].map(metric => {
         const Icon = metric.icon;
         return <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-3 sm:flex sm:items-center sm:gap-3 sm:p-4"><span className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg sm:mb-0 sm:h-10 sm:w-10 ${metric.color}`}><Icon size={18} aria-hidden="true" /></span><div><p className="text-xl font-bold leading-none text-slate-900 sm:text-2xl">{loading && !summary.total ? '—' : metric.value}</p><p className="mt-1.5 text-[11px] leading-4 text-slate-500 sm:text-xs">{metric.label}</p></div></div>;
       })}
     </section>
 
     <section aria-label="Pesquisar e filtrar engenharias" className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div role="group" aria-label="Situação das engenharias" className="mb-3 inline-flex gap-1 rounded-xl bg-slate-100 p-1">
+        <Button size="sm" variant={archivedView ? 'ghost' : 'secondary'} aria-pressed={!archivedView}
+          onClick={() => { setArchivedView(false); setPage(1); }}>Ativas</Button>
+        <Button size="sm" variant={archivedView ? 'secondary' : 'ghost'} aria-pressed={archivedView}
+          onClick={() => { setArchivedView(true); setPage(1); }}><Archive size={15} aria-hidden="true" />Arquivadas</Button>
+      </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_180px_180px_220px_140px]">
         <div className="flex items-end gap-2 md:contents"><div className="min-w-0 flex-1"><label htmlFor="engineering-search" className={formLabelClass}>Pesquisar</label><SearchInput id="engineering-search" label="Pesquisar engenharias" placeholder="Buscar imóvel…" value={query} onChange={setQuery} onClear={() => { setQuery(''); setSearch(''); setPage(1); }} onSubmit={() => { setSearch(query.trim()); setPage(1); }} /></div><Button variant="secondary" className="h-11 px-3 md:hidden" aria-expanded={filtersOpen} aria-controls="engineering-filters" onClick={() => setFiltersOpen(value => !value)}><Filter size={16} aria-hidden="true" />Filtros{filterCount > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] text-primary">{filterCount}</span>}</Button></div>
         <div id="engineering-filters" className={`${filtersOpen ? 'grid' : 'hidden'} gap-3 border-t border-slate-100 pt-3 md:contents`}>
@@ -206,7 +228,16 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
       {hasFilters && <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><p className="text-xs text-slate-500" role="status">{loading ? 'Buscando…' : `${response.total} resultado(s)`}</p><button type="button" onClick={clearFilters} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><X size={14} aria-hidden="true" />Limpar filtros</button></div>}
     </section>
 
-    {error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-5 py-7 text-center"><p className="text-sm text-red-700">{error}</p><Button variant="secondary" className="mt-4" onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} aria-hidden="true" />Tentar novamente</Button></div> : loading ? <LoadingState label="Carregando engenharias…" /> : !items.length ? <EmptyState icon={HardHat} title={hasFilters ? 'Nenhuma engenharia encontrada' : 'Comece pelos seus imóveis exclusivos'} description={hasFilters ? 'Ajuste a busca ou limpe os filtros para ver outros registros.' : 'Cadastre o imóvel, registre o pedido de engenharia e acompanhe o valor avaliado.'} action={<Button variant={hasFilters ? 'secondary' : 'primary'} onClick={hasFilters ? clearFilters : () => setEditor({ item: null })}>{hasFilters ? 'Limpar filtros' : <><Plus size={16} aria-hidden="true" />Cadastrar primeira engenharia</>}</Button>} /> : <>
+    {error ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-5 py-7 text-center"><p className="text-sm text-red-700">{error}</p><Button variant="secondary" className="mt-4" onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} aria-hidden="true" />Tentar novamente</Button></div> : loading ? <LoadingState label="Carregando engenharias…" /> : !items.length ? (
+      <EmptyState
+        icon={archivedView ? Archive : HardHat}
+        title={archivedView ? 'Nenhuma engenharia arquivada nesta seleção' : hasFilters ? 'Nenhuma engenharia encontrada' : 'Comece pelos seus imóveis exclusivos'}
+        description={hasFilters ? 'Ajuste a busca ou limpe os filtros para ver outros registros.' : archivedView ? 'As engenharias arquivadas ficam disponíveis aqui para consulta e restauração.' : 'Cadastre o imóvel, registre o pedido de engenharia e acompanhe o valor avaliado.'}
+        action={hasFilters ? <Button variant="secondary" onClick={clearFilters}>Limpar filtros</Button> : !archivedView && (
+          <Button onClick={() => setEditor({ item: null })}><Plus size={16} aria-hidden="true" />Cadastrar engenharia</Button>
+        )}
+      />
+    ) : <>
       <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white xl:block">
         <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
           <caption className="sr-only">Engenharias de imóveis exclusivos</caption>
@@ -221,15 +252,48 @@ export default function Engineerings({ active = true, onChanged, toolbarTarget }
               <th scope="col" className="w-[11%] px-2 py-3 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">{items.map(item => <EngineeringTableRow key={item.id} item={item} today={today} onEdit={edit} onDelete={setDeleting} onPreview={setPreview} />)}</tbody>
+          <tbody className="divide-y divide-slate-100">{items.map(item => <EngineeringTableRow key={item.id} item={item} today={today} onEdit={edit} onArchive={setArchiveTarget} onPreview={setPreview} />)}</tbody>
         </table>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:hidden">{items.map(item => <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-start gap-2">{item.property && <EngineeringPropertyThumbnail property={item.property} compact />}<div className="min-w-0 flex-1"><button type="button" onClick={() => edit(item)} className="break-words text-left text-sm font-semibold leading-5 text-slate-800 hover:text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button><p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13} className="shrink-0" aria-hidden="true" /><span className="break-words">{item.cidade || 'Cidade não informada'}</span></p></div><Button variant="ghost" size="icon" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => edit(item)}><FilePenLine size={17} aria-hidden="true" /></Button></div><EntryValue item={item} className="mt-4" /><dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><div><dt className="text-slate-500">Matrícula</dt><dd className="mt-1 break-words font-medium text-slate-700">{item.matricula || 'Não informada'}</dd></div><div><dt className="text-slate-500">Pedido de engenharia</dt><dd className="mt-1 font-medium text-slate-700">{engineeringDate(item.dataPedido)}</dd></div><div><dt className="text-slate-500">Valor final do imóvel</dt><dd className="mt-1 break-words font-semibold text-slate-700">{engineeringMoney(item.valorImovel)}</dd></div><div><dt className="text-slate-500">Valor avaliado</dt><dd className="mt-1 break-words"><Appraisal item={item} /></dd></div><div className="col-span-2"><dt className="mb-1.5 text-slate-500">Vencimento da engenharia</dt><dd><EngineeringValidity date={item.dataPedido} today={today} /></dd></div></dl>{item.descricao && <p className="mt-4 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}<footer className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">{item.propertyId ? <button type="button" onClick={() => setPreview(item.propertyId)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Eye size={15} aria-hidden="true" />Ver imóvel vinculado</button> : <span className="text-[11px] text-slate-400">Sem vínculo com o mapa</span>}<Button variant="ghost" size="icon" aria-label={`Excluir engenharia ${item.imovel}`} className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setDeleting(item)}><Trash2 size={16} aria-hidden="true" /></Button></footer></article>)}</div>
+      <div className="grid gap-3 md:grid-cols-2 xl:hidden">{items.map(item => (
+        <article key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-start gap-2">
+            {item.property && <EngineeringPropertyThumbnail property={item.property} compact />}
+            <div className="min-w-0 flex-1">
+              <button type="button" onClick={() => edit(item)} className="break-words text-left text-sm font-semibold leading-5 text-slate-800 hover:text-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{item.imovel}</button>
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500"><MapPin size={13} className="shrink-0" aria-hidden="true" /><span className="break-words">{item.cidade || 'Cidade não informada'}</span></p>
+            </div>
+            <Button variant="ghost" size="icon" aria-label={`Editar engenharia ${item.imovel}`} onClick={() => edit(item)}><FilePenLine size={17} aria-hidden="true" /></Button>
+          </div>
+          <EntryValue item={item} className="mt-4" />
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+            <div><dt className="text-slate-500">Matrícula</dt><dd className="mt-1 break-words font-medium text-slate-700">{item.matricula || 'Não informada'}</dd></div>
+            <div><dt className="text-slate-500">Pedido de engenharia</dt><dd className="mt-1 font-medium text-slate-700">{engineeringDate(item.dataPedido)}</dd></div>
+            <div><dt className="text-slate-500">Valor final do imóvel</dt><dd className="mt-1 break-words font-semibold text-slate-700">{engineeringMoney(item.valorImovel)}</dd></div>
+            <div><dt className="text-slate-500">Valor avaliado</dt><dd className="mt-1 break-words"><Appraisal item={item} /></dd></div>
+            <div className="col-span-2"><dt className="mb-1.5 text-slate-500">Vencimento da engenharia</dt><dd><EngineeringValidity date={item.dataPedido} today={today} /></dd></div>
+          </dl>
+          {item.descricao && <p className="mt-4 line-clamp-2 break-words text-xs leading-5 text-slate-500">{item.descricao}</p>}
+          <footer className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+            {item.propertyId ? (
+              <button type="button" onClick={() => setPreview(item.propertyId)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Eye size={15} aria-hidden="true" />Ver imóvel vinculado</button>
+            ) : <span className="text-[11px] text-slate-400">Sem vínculo com o mapa</span>}
+            <ArchiveAction item={item} onArchive={setArchiveTarget} />
+          </footer>
+        </article>
+      ))}</div>
       <nav aria-label="Paginação de engenharias" className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">{response.total} registro(s) · Página {page} de {pages}</p><div className="flex gap-2"><Button variant="secondary" size="icon" aria-label="Página anterior" disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={18} /></Button><Button variant="secondary" size="icon" aria-label="Próxima página" disabled={page >= pages} onClick={() => setPage(value => value + 1)}><ChevronRight size={18} /></Button></div></nav>
     </>}
     {active && (requestedEngineering || requestedProperty) && <p role="status" className="text-sm text-slate-500">Abrindo engenharia…</p>}
     {active && editor && <EngineeringModal key={editor.item?.id || `new:${editor.property?.id || ''}`} item={editor.item} initialProperty={editor.property} onClose={() => setEditor(null)} onSaved={saved} />}
     {active && preview && <PropertyDetailsModal propertyId={preview} onClose={() => setPreview(null)} />}
-    <ConfirmModal isOpen={active && Boolean(deleting)} title="Excluir engenharia?" message={`O registro de ${deleting?.imovel || 'engenharia'} será excluído.`} warning="O imóvel vinculado continuará disponível no mapa." confirmText="Excluir engenharia" confirmColor="red" onClose={() => setDeleting(null)} onConfirm={remove} />
+    <ConfirmModal isOpen={active && Boolean(archiveTarget)}
+      title={archiveTarget?.archivedAt ? 'Restaurar engenharia?' : 'Arquivar engenharia?'}
+      message={archiveTarget?.archivedAt
+        ? `A engenharia de ${archiveTarget.imovel} voltará para Ativas.`
+        : `A engenharia de ${archiveTarget?.imovel || 'imóvel'} ficará na lista Arquivadas. O vínculo com o mapa será preservado.`}
+      confirmText={archiveTarget?.archivedAt ? 'Restaurar engenharia' : 'Arquivar engenharia'}
+      confirmColor={archiveTarget?.archivedAt ? 'green' : 'orange'}
+      onClose={() => setArchiveTarget(null)} onConfirm={changeArchive} />
   </div>;
 }

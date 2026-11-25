@@ -80,8 +80,11 @@ export function engineeringFilters(query, today = engineeringToday()) {
   const avaliacao = value('avaliacao');
   const validade = value('validade');
   const sort = value('sort') || 'recentes';
+  const situacao = value('situacao') || 'ativas';
   if (q.length > 200 || cidade.length > 150 || !['', 'pendente', 'avaliada'].includes(avaliacao) || !['', 'validas', 'proximas', 'vencidas'].includes(validade) || !['recentes', 'antigos'].includes(sort)) throw fail('Filtro inválido.');
+  if (!['ativas', 'arquivadas', 'historico'].includes(situacao) || (situacao === 'historico' && query.propertyId === undefined)) throw fail('Filtro de arquivo inválido.');
   const where = {};
+  if (situacao !== 'historico') where.archivedAt = situacao === 'arquivadas' ? { not: null } : null;
   if (query.propertyId !== undefined) where.propertyId = positiveId(value('propertyId'));
   if (q) where.OR = [
     ...['imovel', 'matricula', 'cidade', 'descricao'].map(field => ({ [field]: { contains: q, mode: 'insensitive' } })),
@@ -96,7 +99,9 @@ export function engineeringFilters(query, today = engineeringToday()) {
         : { gte: firstValidRequest };
   }
   const direction = sort === 'recentes' ? 'desc' : 'asc';
-  return { page, pageSize, where, orderBy: [{ dataPedido: { sort: direction, nulls: 'last' } }, { id: direction }] };
+  const orderBy = [{ dataPedido: { sort: direction, nulls: 'last' } }, { id: direction }];
+  if (situacao === 'historico') orderBy.unshift({ archivedAt: { sort: 'desc', nulls: 'first' } });
+  return { page, pageSize, where, orderBy };
 }
 
 export function createEngineeringRouter(prisma, requireAuth) {
@@ -118,12 +123,13 @@ export function createEngineeringRouter(prisma, requireAuth) {
 
   router.get('/', async (req, res) => {
     const { page, pageSize, where, orderBy } = engineeringFilters(req.query);
+    const scope = where.archivedAt === undefined ? { propertyId: where.propertyId } : { archivedAt: where.archivedAt };
     const [items, total, cities, all, pendentes] = await Promise.all([
       prisma.engineering.findMany({ where, include, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
       prisma.engineering.count({ where }),
-      prisma.engineering.findMany({ where: { cidade: { not: null } }, select: { cidade: true }, distinct: ['cidade'], orderBy: { cidade: 'asc' } }),
-      prisma.engineering.count(),
-      prisma.engineering.count({ where: { valorAvaliado: null } }),
+      prisma.engineering.findMany({ where: { ...scope, cidade: { not: null } }, select: { cidade: true }, distinct: ['cidade'], orderBy: { cidade: 'asc' } }),
+      prisma.engineering.count({ where: scope }),
+      prisma.engineering.count({ where: { ...scope, valorAvaliado: null } }),
     ]);
     res.json({ items: items.map(present), total, page, pageSize, cidades: cities.map(item => item.cidade), summary: { total: all, pendentes, avaliadas: all - pendentes } });
   });
@@ -157,8 +163,24 @@ export function createEngineeringRouter(prisma, requireAuth) {
     await checkProperty(data);
     res.json(present(await prisma.engineering.update({ where: { id }, data, include })));
   });
+  const setArchived = async (id, archived) => {
+    const updated = await prisma.engineering.updateMany({
+      where: { id, archivedAt: archived ? null : { not: null } },
+      data: { archivedAt: archived ? new Date() : null },
+    });
+    if (!updated.count && !await prisma.engineering.findUnique({ where: { id }, select: { id: true } })) {
+      throw fail('Engenharia não encontrada.', 404);
+    }
+  };
+  router.patch('/:id/archive', async (req, res) => {
+    const { archived } = req.body ?? {};
+    if (typeof archived !== 'boolean') throw fail('Informe se a engenharia deve ser arquivada.');
+    await setArchived(positiveId(req.params.id), archived);
+    res.sendStatus(204);
+  });
+  // Keep clients on the previous API safe from permanent deletion.
   router.delete('/:id', async (req, res) => {
-    await prisma.engineering.delete({ where: { id: positiveId(req.params.id) } });
+    await setArchived(positiveId(req.params.id), true);
     res.sendStatus(204);
   });
   router.use((error, req, res, next) => {

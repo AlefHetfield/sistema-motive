@@ -47,10 +47,10 @@ test('engenharias: filtros de validade incluem limites antes de paginar e combin
   const today = '2026-10-28';
   const first = new Date(`${addEngineeringDays(today, -180)}T00:00:00.000Z`);
   const last = new Date(`${addEngineeringDays(today, -150)}T00:00:00.000Z`);
-  assert.deepEqual(engineeringFilters({ validade: 'validas' }, today).where, { dataPedido: { gte: first } });
-  assert.deepEqual(engineeringFilters({ validade: 'vencidas' }, today).where, { dataPedido: { lt: first } });
+  assert.deepEqual(engineeringFilters({ validade: 'validas' }, today).where, { archivedAt: null, dataPedido: { gte: first } });
+  assert.deepEqual(engineeringFilters({ validade: 'vencidas' }, today).where, { archivedAt: null, dataPedido: { lt: first } });
   assert.deepEqual(engineeringFilters({ validade: 'proximas', cidade: 'Sumaré', avaliacao: 'avaliada', page: '2', pageSize: '1' }, today), {
-    page: 2, pageSize: 1, where: { cidade: { equals: 'Sumaré', mode: 'insensitive' }, valorAvaliado: { not: null }, dataPedido: { gte: first, lte: last } },
+    page: 2, pageSize: 1, where: { archivedAt: null, cidade: { equals: 'Sumaré', mode: 'insensitive' }, valorAvaliado: { not: null }, dataPedido: { gte: first, lte: last } },
     orderBy: [{ dataPedido: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
   });
   for (const validade of ['invalid', ['validas'], { value: 'validas' }]) assert.throws(() => engineeringFilters({ validade }, today));
@@ -58,9 +58,11 @@ test('engenharias: filtros de validade incluem limites antes de paginar e combin
 
 test('engenharias: filtro do imóvel vinculado aceita somente identificadores positivos e combina filtros', () => {
   assert.deepEqual(engineeringFilters({ propertyId: '27', cidade: 'Sumaré', avaliacao: 'avaliada', pageSize: '1' }).where, {
-    propertyId: 27, cidade: { equals: 'Sumaré', mode: 'insensitive' }, valorAvaliado: { not: null },
+    archivedAt: null, propertyId: 27, cidade: { equals: 'Sumaré', mode: 'insensitive' }, valorAvaliado: { not: null },
   });
-  assert.deepEqual(engineeringFilters({}).where, {}, 'Ausência do filtro inclui registros com e sem vínculo.');
+  assert.deepEqual(engineeringFilters({}).where, { archivedAt: null }, 'A lista inicial inclui ativas com e sem vínculo.');
+  assert.deepEqual(engineeringFilters({ situacao: 'arquivadas', propertyId: '27' }).where, { archivedAt: { not: null }, propertyId: 27 });
+  assert.throws(() => engineeringFilters({ situacao: 'historico' }));
   for (const propertyId of ['', '0', '-1', '27x', '1.5', '2147483648', ['27', '28'], { id: '27' }]) {
     assert.throws(() => engineeringFilters({ propertyId }), undefined, `Identificador inválido: ${JSON.stringify(propertyId)}`);
   }
@@ -139,8 +141,12 @@ function fixture() {
       findMany: async ({ where, include, orderBy, skip = 0, take, distinct, select }) => {
         let rows = [...records.values()].filter(item => matches(item, where));
         if (distinct) return [...new Set(rows.map(item => item.cidade))].sort().map(cidade => ({ cidade }));
-        const direction = orderBy[0].dataPedido.sort === 'desc' ? -1 : 1;
+        const direction = orderBy.find(sort => sort.dataPedido).dataPedido.sort === 'desc' ? -1 : 1;
         rows.sort((a, b) => {
+          if (orderBy[0].archivedAt) {
+            if (Boolean(a.archivedAt) !== Boolean(b.archivedAt)) return a.archivedAt ? 1 : -1;
+            if (a.archivedAt && b.archivedAt && +a.archivedAt !== +b.archivedAt) return b.archivedAt - a.archivedAt;
+          }
           if (a.dataPedido === null && b.dataPedido !== null) return 1;
           if (b.dataPedido === null && a.dataPedido !== null) return -1;
           return ((a.dataPedido?.getTime() || 0) - (b.dataPedido?.getTime() || 0) || a.id - b.id) * direction;
@@ -149,7 +155,7 @@ function fixture() {
       },
       count: async ({ where } = {}) => [...records.values()].filter(item => matches(item, where)).length,
       create: async ({ data, include }) => {
-        const row = { id: ++sequence, propertyId: null, cidade: null, matricula: null, dataPedido: null, valorImovel: null, valorAvaliado: null, valorEntradaManual: null, descricao: null, createdAt: new Date(), updatedAt: new Date(), ...data };
+        const row = { id: ++sequence, propertyId: null, archivedAt: null, cidade: null, matricula: null, dataPedido: null, valorImovel: null, valorAvaliado: null, valorEntradaManual: null, descricao: null, createdAt: new Date(), updatedAt: new Date(), ...data };
         records.set(row.id, row);
         return present(row, include);
       },
@@ -158,7 +164,12 @@ function fixture() {
         records.set(current.id, { ...current, ...data, updatedAt: new Date() });
         return present(records.get(current.id), include);
       },
-      delete: async ({ where }) => { if (!records.delete(where.id)) missing(); },
+      updateMany: async ({ where, data }) => {
+        const row = records.get(where.id);
+        if (!row || !matches(row, where)) return { count: 0 };
+        records.set(row.id, { ...row, ...data, updatedAt: new Date() });
+        return { count: 1 };
+      },
     },
   };
   return { prisma, users, properties, records };
@@ -180,7 +191,7 @@ test('API: autenticação, perfil atual e usuário ativo protegem todas as opera
   const request = (user, path = '', method = 'GET') => fetch(`${base}${path}`, { method, headers: { ...(user ? { 'X-User': user } : {}), 'Content-Type': 'application/json' }, ...(method === 'POST' || method === 'PATCH' ? { body: JSON.stringify({ imovel: 'Casa' }) } : {}) });
   assert.equal((await request(null)).status, 401);
   assert.equal((await request(null, '?propertyId=10&pageSize=1')).status, 401);
-  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '?propertyId=10&pageSize=1'], ['GET', '/1'], ['GET', '/properties?q=Privado'], ['POST', ''], ['PATCH', '/1'], ['DELETE', '/1']]) {
+  for (const user of [3, 4, 99]) for (const [method, path] of [['GET', ''], ['GET', '?propertyId=10&pageSize=1'], ['GET', '/1'], ['GET', '/properties?q=Privado'], ['POST', ''], ['PATCH', '/1'], ['PATCH', '/1/archive'], ['DELETE', '/1']]) {
     assert.equal((await request(user, path, method)).status, user === 3 ? 403 : 401);
   }
   assert.equal((await request(1)).status, 200);
@@ -271,9 +282,13 @@ test('API: CRUD independente, vínculo sem alterar mapa, filtros e paginação e
   assert.equal((await request(`/${id}`, 'PATCH', { valorEntrada: '999.00' })).status, 400, 'Cliente não grava um valor calculado duplicado.');
   assert.equal((await request(`/${id}`, 'PATCH', { valorFinanciado: '999.00' })).status, 400, 'Cliente não grava financiamento derivado.');
   assert.equal((await request(`/${id}`, 'DELETE')).status, 204);
-  assert.equal((await request(`/${id}`)).status, 404);
-  assert.equal((await request(`/${id}`, 'PATCH', { imovel: 'Já excluído' })).status, 404);
-  assert.equal((await request(`/${id}`, 'DELETE')).status, 404);
+  assert.ok((await request(`/${id}`)).data.archivedAt, 'O fluxo antigo de exclusão também preserva o registro.');
+  assert.equal((await request('?q=Exclusivo')).data.total, 0);
+  assert.equal((await request('?q=Exclusivo&situacao=arquivadas')).data.items[0].id, id);
+  assert.equal((await request(`/${id}/archive`, 'PATCH', { archived: 'false' })).status, 400);
+  assert.equal((await request(`/${id}/archive`, 'PATCH', { archived: false })).status, 204);
+  assert.equal((await request('?q=Exclusivo')).data.items[0].id, id);
+  assert.equal((await request('/999/archive', 'PATCH', { archived: false })).status, 404);
   assert.deepEqual(properties.get(10), initialProperty);
 });
 
@@ -346,9 +361,11 @@ test('API: validade filtra todas as páginas e distingue vencida, hoje, 30 e 31 
   assert.equal((await fetch(`${base}?validade=unknown`)).status, 400);
 });
 
-test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel preserva engenharia', async () => {
+test('PostgreSQL local: arquivamento preserva o imóvel e a engenharia vinculada', async () => {
   const database = new URL(process.env.DATABASE_URL);
   assert.ok(['localhost', '127.0.0.1'].includes(database.hostname), 'Este teste só pode usar banco local.');
+  assert.equal(database.port, '5433');
+  assert.equal(database.pathname, '/motive_local');
   const prisma = new PrismaClient();
   const prefix = `engineering-test-${randomUUID()}`;
   let userId, propertyId, server;
@@ -424,6 +441,26 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
     const originalProperty = await prisma.property.findUnique({ where: { id: propertyId } });
     assert.equal(originalProperty.price, 350000);
     assert.equal(originalProperty.status, 'Disponível');
+    const linkedPath = `/${created.data.id}`;
+    assert.equal((await request(`${linkedPath}/archive`, 'PATCH', { archived: true })).status, 204);
+    const archived = (await request(linkedPath)).data;
+    assert.ok(archived.archivedAt);
+    assert.equal(archived.propertyId, propertyId);
+    assert.equal(archived.matricula, created.data.matricula);
+    assert.equal(archived.valorAvaliado, '370000.02');
+    assert.equal(archived.descricao, 'Laudo recebido');
+    assert.deepEqual(await prisma.property.findUnique({ where: { id: propertyId } }), originalProperty);
+    assert.equal((await request(`?propertyId=${propertyId}`)).data.total, 0);
+    assert.equal((await request(`?propertyId=${propertyId}&situacao=arquivadas`)).data.items[0].id, archived.id);
+    const history = `?propertyId=${propertyId}&situacao=historico&pageSize=1`;
+    assert.equal((await request(history)).data.items[0].id, archived.id, 'O mapa ainda pode consultar os valores arquivados.');
+    assert.equal((await request(`${linkedPath}/archive`, 'PATCH', { archived: true })).status, 204);
+    assert.equal((await request(linkedPath)).data.archivedAt, archived.archivedAt, 'Repetir a mesma operação preserva a data de arquivamento.');
+    const active = await request('', 'POST', { imovel: `${prefix}-new-linked`, propertyId, dataPedido: '2026-10-01' });
+    assert.equal(active.status, 201);
+    assert.equal((await request(history)).data.items[0].id, active.data.id, 'O mapa dá preferência a uma engenharia ativa.');
+    assert.equal((await request(`${linkedPath}/archive`, 'PATCH', { archived: false })).status, 204);
+    assert.equal((await request(history)).data.items[0].id, archived.id, 'Depois de restaurar, volta a valer a data do pedido.');
     await prisma.property.delete({ where: { id: propertyId } });
     propertyId = null;
     const afterPropertyRemoval = (await request(`/${created.data.id}`)).data;
@@ -432,7 +469,7 @@ test('PostgreSQL local: persistência de centavos/datas e exclusão de imóvel p
     assert.equal(afterPropertyRemoval.imovel, `${prefix}-linked`);
     assert.equal(afterPropertyRemoval.valorAvaliado, '370000.02');
     assert.equal((await request(`/${independent.data.id}`, 'DELETE')).status, 204);
-    assert.equal((await request(`/${independent.data.id}`)).status, 404);
+    assert.ok((await request(`/${independent.data.id}`)).data.archivedAt);
     await prisma.user.update({ where: { id: userId }, data: { role: 'CORRETOR' } });
     assert.equal((await request()).status, 403, 'Mudança de papel no banco revoga acesso imediatamente.');
   } finally {

@@ -17,7 +17,7 @@ export default function PropertyEngineeringSummary({ property, onOpen, onCreate,
   useEffect(() => {
     if (!active || !propertyId) return;
     const controller = new AbortController();
-    engineeringApi(`?propertyId=${propertyId}&pageSize=1`, { signal: controller.signal })
+    engineeringApi(`?propertyId=${propertyId}&situacao=historico&pageSize=1`, { signal: controller.signal })
       .then(response => {
         if (controller.signal.aborted) return;
         setResult({ key: requestKey, item: response.items[0] || null, total: response.total, error: '' });
@@ -49,7 +49,8 @@ export default function PropertyEngineeringSummary({ property, onOpen, onCreate,
     </div> : item ? <div className="mt-3 space-y-3">
       <div>
         <p className="break-words text-xs font-semibold leading-5 text-slate-700">{item.imovel}</p>
-        {result.total > 1 && <p className="mt-1 text-[11px] leading-4 text-slate-500">{result.total} registros vinculados · pedido mais recente</p>}
+        {item.archivedAt && <span className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Engenharia arquivada</span>}
+        {result.total > 1 && <p className="mt-1 text-[11px] leading-4 text-slate-500">{result.total} registros vinculados</p>}
       </div>
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
         <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Valor de entrada</p>
@@ -67,9 +68,14 @@ export default function PropertyEngineeringSummary({ property, onOpen, onCreate,
           <dd><EngineeringValidity date={item.dataPedido} today={today} /></dd>
         </div>
       </dl>
-      <Button variant="primarySoft" size="sm" className="w-full" onClick={() => onOpen(item)}>
-        Ver engenharia<ArrowUpRight size={14} aria-hidden="true" />
-      </Button>
+      <div className="space-y-2">
+        <Button variant="primarySoft" size="sm" className="w-full" onClick={() => onOpen(item)}>
+          Ver engenharia<ArrowUpRight size={14} aria-hidden="true" />
+        </Button>
+        {item.archivedAt && <Button variant="ghost" size="sm" className="w-full" onClick={() => onCreate(property)}>
+          <Plus size={14} aria-hidden="true" />Cadastrar nova engenharia
+        </Button>}
+      </div>
     </div> : <div className="mt-3">
       <p className="text-xs leading-5 text-slate-500">Cadastre o pedido e acompanhe a avaliação deste imóvel.</p>
       <Button variant="primarySoft" size="sm" className="mt-3 w-full" onClick={() => onCreate(property)}>

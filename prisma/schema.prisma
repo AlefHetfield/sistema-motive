@@ -266,6 +266,7 @@ model Engineering {
   valorEntradaManual Decimal? @db.Decimal(15, 2)
   descricao     String?
   propertyId    Int?
+  archivedAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   property      Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
